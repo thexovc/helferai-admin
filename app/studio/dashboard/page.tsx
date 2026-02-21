@@ -49,7 +49,7 @@ export default function StudioDashboard() {
             <Topbar title="Studio Dashboard" subtitle="User & revenue overview" product="studio" />
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* TOP KPIs */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
                     <KPICard label="MRR" value={kpis.mrr.value} trend={`${kpis.mrr.trend} vs last month`} trendUp large accent="#7c5cbf" icon={<TrendingUp size={20} />} />
                     <KPICard label="ARR" value={kpis.arr.value} subtitle="Annual projection" large accent="#7c5cbf" icon={<Calendar size={20} />} />
                     <KPICard label="Revenue Today" value={kpis.revenueToday.value} trend={`${kpis.revenueToday.trend} vs yesterday`} trendUp accent="#22c55e" icon={<DollarSign size={20} />} />
@@ -59,7 +59,7 @@ export default function StudioDashboard() {
                 </div>
 
                 {/* Stat Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
                     {[
                         { label: 'Total Users', value: total, icon: <Users size={16} />, color: '#7c5cbf' },
                         { label: 'Subscribing', value: active, icon: <TrendingUp size={16} />, color: '#22c55e' },

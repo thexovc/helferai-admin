@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
-import Topbar from '../../../components/Topbar';
-import { StudioService } from '../../lib/services/studio';
+import Topbar from '../Topbar';
+import { StudioService } from '@/app/lib/services/studio';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
@@ -10,7 +10,7 @@ import { Settings, BarChart as BarChartIcon, Users, Sliders } from 'lucide-react
 
 const COLORS = ['#7c5cbf', '#6c9e4e', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280'];
 
-export default function AnalysisPage() {
+export default function AnalyticsPageClient() {
     const [data, setData] = React.useState<any>(null);
 
     React.useEffect(() => {
@@ -27,11 +27,11 @@ export default function AnalysisPage() {
 
     return (
         <div>
-            <Topbar title="Studio Analysis" subtitle="AI Try-On & User Analytics" product="studio" />
+            <Topbar title="Studio Analytics" subtitle="AI Try-On & User Analytics" product="studio" />
             <div style={{ padding: 'var(--content-padding)' }}>
 
                 {/* Analysis Overview Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, marginBottom: 28 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 28 }}>
                     {overview.map((s: any) => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 20 }}>
                             <div style={{ width: 48, height: 48, borderRadius: 12, background: `${s.color}15`, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

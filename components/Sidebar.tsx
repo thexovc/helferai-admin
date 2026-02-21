@@ -7,7 +7,7 @@ import {
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
     LogOut, Home, X, Tag, Layers, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare
+    MessageSquare, Camera
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 
@@ -89,12 +89,13 @@ const inventoryNav: NavGroup[] = [
 ];
 
 const studioNav: NavGroup[] = [
-    { items: [{ href: '/studio/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }] },
     {
-        title: 'Management', items: [
-            { href: '/studio/users', icon: <UserCircle size={18} />, label: 'Users' },
-            { href: '/studio/analysis', icon: <LineChart size={18} />, label: 'Analysis' },
-        ],
+        items: [
+            { href: '/studio/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+            { href: '/studio/users', icon: <Users size={18} />, label: 'Users' },
+            { href: '/studio/try-ons', icon: <Camera size={18} />, label: 'Try-Ons' },
+            { href: '/studio/analytics', icon: <BarChart3 size={18} />, label: 'Analytics' },
+        ]
     },
     {
         title: 'Platform', items: [
