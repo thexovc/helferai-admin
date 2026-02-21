@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Building2, Users, Settings, Shield, ChevronLeft,
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
-    LogOut, Home, X
+    LogOut, Home, X, Tag, Layers, ShoppingBag, Scale, Building, Puzzle,
+    Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
+    MessageSquare
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 
@@ -27,9 +29,54 @@ interface Props {
 const inventoryNav: NavGroup[] = [
     { items: [{ href: '/inventory/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }] },
     {
-        title: 'Management', items: [
+        title: 'Inventory', items: [
+            { href: '/inventory/brands', icon: <Tag size={18} />, label: 'Brands' },
+            { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
+            { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
+            { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
+        ],
+    },
+    {
+        title: 'Integrations', items: [
+            { href: '/inventory/business-integrations', icon: <Building size={18} />, label: 'Business Integrations' },
+            { href: '/inventory/integrations', icon: <Puzzle size={18} />, label: 'Integrations' },
+            { href: '/inventory/whatsapp-numbers', icon: <Phone size={18} />, label: 'WhatsApp Numbers' },
+        ],
+    },
+    {
+        title: 'Business Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
-            { href: '/inventory/ai', icon: <Sparkles size={18} />, label: 'AI' },
+        ],
+    },
+    {
+        title: 'Referral System', items: [
+            { href: '/inventory/referral-analytics', icon: <BarChart3 size={18} />, label: 'Referral Analytics' },
+            { href: '/inventory/referral-tiers', icon: <Trophy size={18} />, label: 'Referral Tiers' },
+            { href: '/inventory/referrals', icon: <UserPlus size={18} />, label: 'Referrals' },
+            { href: '/inventory/referral-configs', icon: <Settings size={18} />, label: 'Referral Point Configs' },
+            { href: '/inventory/referral-rewards', icon: <Gift size={18} />, label: 'Referral Rewards' },
+        ],
+    },
+    {
+        title: 'Communication', items: [
+            { href: '/inventory/send-broadcast', icon: <Send size={18} />, label: 'Send Broadcast' },
+            { href: '/inventory/broadcast-history', icon: <Mail size={18} />, label: 'Broadcast History' },
+        ],
+    },
+    {
+        title: 'Admin Management', items: [
+            { href: '/inventory/admins', icon: <ShieldCheck size={18} />, label: 'Admins' },
+            { href: '/inventory/roles', icon: <Users size={18} />, label: 'Roles' },
+        ],
+    },
+    {
+        title: 'Analytics', items: [
+            { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
+        ],
+    },
+    {
+        title: 'Content Management', items: [
+            { href: '/inventory/testimonials', icon: <MessageSquare size={18} />, label: 'Testimonials' },
         ],
     },
     {
