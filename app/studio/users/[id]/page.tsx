@@ -7,7 +7,7 @@ import { STUDIO_USERS } from '../../../lib/data';
 import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
 import {
     ArrowLeft, Edit2, Ban, UserCircle, Image as ImageIcon, Video, Wand2,
-    Calendar, CreditCard, DollarSign, MapPin, Mail, RefreshCw, Trash2
+    Calendar, CreditCard, DollarSign, MapPin, Mail, RefreshCw, Trash2, Plus
 } from 'lucide-react';
 
 export default function StudioUserDetailPage({ params }: { params: { id: string } }) {
@@ -74,36 +74,61 @@ export default function StudioUserDetailPage({ params }: { params: { id: string 
                     ))}
                 </div>
 
-                {/* Activity or other details could go here, but focusing on spec */}
+                {/* Subscription History */}
                 <div style={{ background: '#fff', borderRadius: 20, padding: 32, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
-                    <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700 }}>Subscription History</h3>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ background: '#f9fafb' }}>
-                                {['Plan', 'Billing Cycle', 'Amount', 'Date', 'Status'].map(h => (
-                                    <th key={h} style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', textAlign: 'left', borderBottom: '1px solid #f0f0f0' }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style={{ background: '#fff' }}>
-                                <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14, fontWeight: 600 }}>{user.currentPlan}</td>
-                                <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>{user.billingCycle}</td>
-                                <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>{formatCurrency(user.amountPaying)}</td>
-                                <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>{formatDate(user.subStartDate)}</td>
-                                <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5' }}><StatusBadge status={user.status} size="sm" /></td>
-                            </tr>
-                            {user.previousPlan !== '-' && (
-                                <tr style={{ background: '#fafafa' }}>
-                                    <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14, fontWeight: 600 }}>{user.previousPlan}</td>
-                                    <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>{user.billingCycle}</td>
-                                    <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>{formatCurrency(user.amountPaying)}</td>
-                                    <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 14 }}>-</td>
-                                    <td style={{ padding: '16px 16px', borderBottom: '1px solid #f5f5f5' }}><StatusBadge status="Expired" size="sm" /></td>
+                    <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700 }}>Subscription History</h3>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#7c5cbf', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}>
+                        <Plus size={14} /> Create New
+                    </button>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#f9fafb' }}>
+                                    {['Plan', 'Payment Method', 'Start Date', 'End Date', 'Price', 'Billing', 'Status', 'Action'].map(h => (
+                                        <th key={h} style={{ padding: '12px 16px', fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' as const, textAlign: 'left' as const, borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
+                                    ))}
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <tr style={{ background: '#fff' }}>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, fontWeight: 600 }}>{user.currentPlan}</td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 12, color: '#6b7280' }}>Paystack Card •••• 6011</td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13 }}>{formatDate(user.subStartDate)}</td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13 }}>{formatDate(user.subEndDate)}</td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, fontWeight: 700 }}>{user.amountPaying > 0 ? formatCurrency(user.amountPaying) : '—'}</td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}>
+                                        <span style={{ padding: '2px 8px', background: user.billingCycle === 'Annual' ? '#f0ebff' : '#f3f4f6', color: user.billingCycle === 'Annual' ? '#7c5cbf' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{user.billingCycle}</span>
+                                    </td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}><StatusBadge status={user.status} size="sm" /></td>
+                                    <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <button style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
+                                            <button style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {user.previousPlan !== '-' && (
+                                    <tr style={{ background: '#fafafa' }}>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, fontWeight: 600 }}>{user.previousPlan}</td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 12, color: '#6b7280' }}>Paystack Card •••• 6011</td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13 }}>—</td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13 }}>—</td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5', fontSize: 13, fontWeight: 700 }}>—</td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}>
+                                            <span style={{ padding: '2px 8px', background: '#f3f4f6', color: '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{user.billingCycle}</span>
+                                        </td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}><StatusBadge status="Expired" size="sm" /></td>
+                                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f5f5f5' }}>
+                                            <div style={{ display: 'flex', gap: 4 }}>
+                                                <button style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
+                                                <button style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

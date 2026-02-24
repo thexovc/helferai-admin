@@ -7,7 +7,7 @@ import {
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
     LogOut, Home, X, Tag, Layers, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare, Camera
+    MessageSquare, Camera, DollarSign, CreditCard
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 
@@ -46,6 +46,7 @@ const inventoryNav: NavGroup[] = [
     {
         title: 'Business Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
+            { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
         ],
     },
     {
@@ -64,9 +65,8 @@ const inventoryNav: NavGroup[] = [
         ],
     },
     {
-        title: 'Admin Management', items: [
-            { href: '/inventory/admins', icon: <ShieldCheck size={18} />, label: 'Admins' },
-            { href: '/inventory/roles', icon: <Users size={18} />, label: 'Roles' },
+        title: 'Finance', items: [
+            { href: '/inventory/finance', icon: <DollarSign size={18} />, label: 'Finance' },
         ],
     },
     {
@@ -96,6 +96,11 @@ const studioNav: NavGroup[] = [
             { href: '/studio/try-ons', icon: <Camera size={18} />, label: 'Try-Ons' },
             { href: '/studio/analytics', icon: <BarChart3 size={18} />, label: 'Analytics' },
         ]
+    },
+    {
+        title: 'Finance', items: [
+            { href: '/studio/finance', icon: <DollarSign size={18} />, label: 'Finance' },
+        ],
     },
     {
         title: 'Platform', items: [

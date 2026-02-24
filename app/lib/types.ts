@@ -96,3 +96,26 @@ export interface ChartDataPoint {
   value: number;
   value2?: number;
 }
+
+export interface SubscriptionRecord {
+  id: string;
+  plan: string;
+  startDate: string;
+  endDate: string;
+  status: SubStatus | 'Active' | 'Expired';
+  paymentMethod: string;
+  price: number;
+  billingCycle: BillingCycle;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  businessOrUserName: string;
+  date: string;
+  plan: string;
+  amount: number;
+  paymentMethod: string;
+  billingCycle: BillingCycle;
+  status: 'Paid' | 'Failed' | 'Pending' | 'Refunded';
+  type: 'Subscription' | 'Renewal' | 'Upgrade';
+}

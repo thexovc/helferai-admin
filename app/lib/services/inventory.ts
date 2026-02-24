@@ -1,12 +1,11 @@
-import { BUSINESSES, MRR_DATA, MONTHLY_REVENUE_DATA, ARPU_DATA, RENEWAL_FORECAST } from '../data';
-import type { Business, KPIMetric, ChartDataPoint } from '../types';
+import { BUSINESSES, MRR_DATA, MONTHLY_REVENUE_DATA, ARPU_DATA, RENEWAL_FORECAST, FINANCE_TRANSACTIONS, INVENTORY_REVENUE_BY_PLAN, INVENTORY_PAYMENT_METHODS } from '../data';
+import type { Business, ChartDataPoint, FinanceTransaction } from '../types';
 
 /**
  * Service for HelferAI Inventory Backend
  */
 export const InventoryService = {
   async getBusinesses(): Promise<Business[]> {
-    // Simulate API call to Inventory Backend
     return BUSINESSES;
   },
 
@@ -36,6 +35,20 @@ export const InventoryService = {
       monthlyRevenue: MONTHLY_REVENUE_DATA,
       arpuTrend: ARPU_DATA,
       renewalForecast: RENEWAL_FORECAST,
+    };
+  },
+
+  async getFinanceData(): Promise<{
+    transactions: FinanceTransaction[];
+    revenueByPlan: { plan: string; value: number }[];
+    paymentMethods: { method: string; count: number; amount: number; color: string }[];
+    revenueOverTime: ChartDataPoint[];
+  }> {
+    return {
+      transactions: FINANCE_TRANSACTIONS,
+      revenueByPlan: INVENTORY_REVENUE_BY_PLAN,
+      paymentMethods: INVENTORY_PAYMENT_METHODS,
+      revenueOverTime: MONTHLY_REVENUE_DATA,
     };
   },
 

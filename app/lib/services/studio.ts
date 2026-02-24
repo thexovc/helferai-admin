@@ -1,5 +1,5 @@
-import { STUDIO_USERS, STUDIO_MRR_DATA, MONTHLY_REVENUE_DATA, ARPU_DATA, RENEWAL_FORECAST, TRYON_DATA, ROLE_DISTRIBUTION } from '../data';
-import type { StudioUser, ChartDataPoint, KPIMetric } from '../types';
+import { STUDIO_USERS, STUDIO_MRR_DATA, MONTHLY_REVENUE_DATA, ARPU_DATA, RENEWAL_FORECAST, TRYON_DATA, ROLE_DISTRIBUTION, STUDIO_FINANCE_TRANSACTIONS, STUDIO_REVENUE_BY_PLAN, STUDIO_PAYMENT_METHODS } from '../data';
+import type { StudioUser, ChartDataPoint, KPIMetric, FinanceTransaction } from '../types';
 
 /**
  * Service for HelferAI Studio Backend
@@ -67,5 +67,20 @@ export const StudioService = {
         ]
       }
     };
+  },
+
+  async getFinanceData(): Promise<{
+    transactions: FinanceTransaction[];
+    revenueByPlan: { plan: string; value: number }[];
+    paymentMethods: { method: string; count: number; amount: number; color: string }[];
+    revenueOverTime: ChartDataPoint[];
+  }> {
+    return {
+      transactions: STUDIO_FINANCE_TRANSACTIONS,
+      revenueByPlan: STUDIO_REVENUE_BY_PLAN,
+      paymentMethods: STUDIO_PAYMENT_METHODS,
+      revenueOverTime: STUDIO_MRR_DATA,
+    };
   }
 };
+

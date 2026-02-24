@@ -1,4 +1,4 @@
-import type { AdminUser, Business, Role, Permission, StudioUser, ChartDataPoint } from './types';
+import type { AdminUser, Business, Role, Permission, StudioUser, ChartDataPoint, FinanceTransaction } from './types';
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
 export const PERMISSIONS: Permission[] = [
@@ -152,3 +152,55 @@ export const ACTIVE_SESSIONS = [
   { id: 's2', device: 'iPhone 15 — Safari', location: 'Abuja, Nigeria', ip: '41.213.25.88', time: '2 hours ago', current: false },
   { id: 's3', device: 'Windows PC — Firefox', location: 'London, UK', ip: '185.22.44.11', time: '1 day ago', current: false },
 ];
+
+// ─── Inventory Finance Transactions ──────────────────────────────────────────
+export const FINANCE_TRANSACTIONS: FinanceTransaction[] = [
+  { id: 'ft1', businessOrUserName: 'Konga Retail Ltd', date: '2026-02-18', plan: 'Enterprise', amount: 250000, paymentMethod: 'Paystack Card •••• 4242', billingCycle: 'Annual', status: 'Paid', type: 'Renewal' },
+  { id: 'ft2', businessOrUserName: 'Shoprite Nigeria', date: '2026-02-17', plan: 'Pro', amount: 85000, paymentMethod: 'Flutterwave Card •••• 7891', billingCycle: 'Monthly', status: 'Paid', type: 'Subscription' },
+  { id: 'ft3', businessOrUserName: 'GlowUp Cosmetics', date: '2026-02-15', plan: 'Pro', amount: 85000, paymentMethod: 'Paystack Card •••• 3310', billingCycle: 'Monthly', status: 'Paid', type: 'Renewal' },
+  { id: 'ft4', businessOrUserName: 'SwiftPrint Hub', date: '2026-02-12', plan: 'Basic', amount: 25000, paymentMethod: 'Bank Transfer', billingCycle: 'Monthly', status: 'Paid', type: 'Subscription' },
+  { id: 'ft5', businessOrUserName: 'TechBridge Solutions', date: '2026-02-01', plan: 'Pro', amount: 65000, paymentMethod: 'Paystack Card •••• 5522', billingCycle: 'Monthly', status: 'Failed', type: 'Renewal' },
+  { id: 'ft6', businessOrUserName: 'Adunni Boutique', date: '2026-01-28', plan: 'Basic Helfer', amount: 0, paymentMethod: '—', billingCycle: 'Monthly', status: 'Pending', type: 'Subscription' },
+  { id: 'ft7', businessOrUserName: 'AgroFresh Farms', date: '2026-01-25', plan: 'Basic Helfer', amount: 0, paymentMethod: '—', billingCycle: 'Monthly', status: 'Pending', type: 'Subscription' },
+  { id: 'ft8', businessOrUserName: 'Konga Retail Ltd', date: '2026-01-20', plan: 'Enterprise → Pro', amount: 250000, paymentMethod: 'Paystack Card •••• 4242', billingCycle: 'Annual', status: 'Paid', type: 'Upgrade' },
+];
+
+// ─── Studio Finance Transactions ─────────────────────────────────────────────
+export const STUDIO_FINANCE_TRANSACTIONS: FinanceTransaction[] = [
+  { id: 'sft1', businessOrUserName: 'Kehinde Fashola', date: '2026-02-19', plan: 'Enterprise', amount: 45000, paymentMethod: 'Paystack Card •••• 6011', billingCycle: 'Annual', status: 'Paid', type: 'Renewal' },
+  { id: 'sft2', businessOrUserName: 'Zainab Musa', date: '2026-02-17', plan: 'Pro', amount: 15000, paymentMethod: 'Flutterwave Card •••• 4491', billingCycle: 'Annual', status: 'Paid', type: 'Subscription' },
+  { id: 'sft3', businessOrUserName: 'Aisha Garba', date: '2026-02-15', plan: 'Pro', amount: 20000, paymentMethod: 'Paystack Card •••• 2200', billingCycle: 'Monthly', status: 'Paid', type: 'Renewal' },
+  { id: 'sft4', businessOrUserName: 'Damilola Obi', date: '2026-02-01', plan: 'Pro', amount: 20000, paymentMethod: 'Bank Transfer', billingCycle: 'Monthly', status: 'Failed', type: 'Renewal' },
+  { id: 'sft5', businessOrUserName: 'Bola Tinubu Jr.', date: '2026-01-30', plan: 'Basic', amount: 0, paymentMethod: '—', billingCycle: 'Monthly', status: 'Pending', type: 'Subscription' },
+  { id: 'sft6', businessOrUserName: 'Kehinde Fashola', date: '2025-12-01', plan: 'Pro → Enterprise', amount: 45000, paymentMethod: 'Paystack Card •••• 6011', billingCycle: 'Annual', status: 'Paid', type: 'Upgrade' },
+];
+
+// ─── Revenue by Plan ─────────────────────────────────────────────────────────
+export const INVENTORY_REVENUE_BY_PLAN = [
+  { plan: 'Enterprise', value: 3750000 },
+  { plan: 'Pro', value: 2890000 },
+  { plan: 'Basic', value: 875000 },
+  { plan: 'Basic Helfer', value: 0 },
+];
+
+export const STUDIO_REVENUE_BY_PLAN = [
+  { plan: 'Enterprise', value: 540000 },
+  { plan: 'Pro', value: 640000 },
+  { plan: 'Basic', value: 180000 },
+];
+
+// ─── Payment Method Breakdown ─────────────────────────────────────────────────
+export const INVENTORY_PAYMENT_METHODS = [
+  { method: 'Paystack Card', count: 18, amount: 4200000, color: '#6c9e4e' },
+  { method: 'Flutterwave Card', count: 9, amount: 1850000, color: '#7c5cbf' },
+  { method: 'Bank Transfer', count: 6, amount: 920000, color: '#3b82f6' },
+  { method: 'USSD', count: 3, amount: 380000, color: '#f59e0b' },
+];
+
+export const STUDIO_PAYMENT_METHODS = [
+  { method: 'Paystack Card', count: 24, amount: 1240000, color: '#7c5cbf' },
+  { method: 'Flutterwave Card', count: 12, amount: 640000, color: '#6c9e4e' },
+  { method: 'Bank Transfer', count: 5, amount: 280000, color: '#3b82f6' },
+  { method: 'USSD', count: 2, amount: 120000, color: '#f59e0b' },
+];
+

@@ -69,19 +69,27 @@ function TabContent({ tab, business }: { tab: string; business: any }) {
 
     if (tab === 'subscriptions') return (
         <div>{createBtn}
-            <table style={tableStyle}><thead><tr>{['Plan', 'Start Date', 'End Date', 'Status', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
-                <tbody>
-                    {[{ plan: 'Enterprise', start: '2026-01-01', end: '2026-12-31', status: 'Active' },
-                    { plan: 'Pro', start: '2025-01-01', end: '2025-12-31', status: 'Expired' },
-                    ].map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                        <td style={tdStyle}><b>{s.plan}</b></td><td style={tdStyle}>{formatDate(s.start)}</td>
-                        <td style={tdStyle}>{formatDate(s.end)}</td><td style={tdStyle}><StatusBadge status={s.status} size="sm" /></td>
-                        <td style={tdStyle}><div style={{ display: 'flex', gap: 4 }}><button style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button><button style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button></div></td>
-                    </tr>)}
-                </tbody>
-            </table>
+            <div style={{ overflowX: 'auto' }}>
+                <table style={tableStyle}><thead><tr>{['Plan', 'Payment Method', 'Start Date', 'End Date', 'Price', 'Billing', 'Status', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                    <tbody>
+                        {[{ plan: 'Enterprise', paymentMethod: 'Paystack Card •••• 4242', start: '2026-01-01', end: '2026-12-31', price: 250000, billingCycle: 'Annual', status: 'Active' },
+                        { plan: 'Pro', paymentMethod: 'Paystack Card •••• 4242', start: '2025-01-01', end: '2025-12-31', price: 85000, billingCycle: 'Annual', status: 'Expired' },
+                        ].map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                            <td style={tdStyle}><b>{s.plan}</b></td>
+                            <td style={{ ...tdStyle, fontSize: 12, color: '#6b7280' }}>{s.paymentMethod}</td>
+                            <td style={tdStyle}>{formatDate(s.start)}</td>
+                            <td style={tdStyle}>{formatDate(s.end)}</td>
+                            <td style={{ ...tdStyle, fontWeight: 700 }}>{s.price > 0 ? formatCurrency(s.price) : '—'}</td>
+                            <td style={tdStyle}><span style={{ padding: '2px 8px', background: s.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: s.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{s.billingCycle}</span></td>
+                            <td style={tdStyle}><StatusBadge status={s.status} size="sm" /></td>
+                            <td style={tdStyle}><div style={{ display: 'flex', gap: 4 }}><button style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button><button style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button></div></td>
+                        </tr>)}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
+
 
     if (tab === 'products') return (
         <div>{createBtn}
