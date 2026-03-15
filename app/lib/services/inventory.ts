@@ -1,4 +1,4 @@
-import { BUSINESSES, MRR_DATA, MONTHLY_REVENUE_DATA, ARPU_DATA, RENEWAL_FORECAST, FINANCE_TRANSACTIONS, INVENTORY_REVENUE_BY_PLAN, INVENTORY_PAYMENT_METHODS } from '../data';
+import { api } from '../api';
 import type { Business, ChartDataPoint, FinanceTransaction } from '../types';
 
 /**
@@ -6,21 +6,22 @@ import type { Business, ChartDataPoint, FinanceTransaction } from '../types';
  */
 export const InventoryService = {
   async getBusinesses(): Promise<Business[]> {
-    return BUSINESSES;
+    return api.get<any>('/admin/api/inventory/businesses').then(res => res.data || res);
   },
 
   async getBusinessById(id: string): Promise<Business | undefined> {
-    return BUSINESSES.find(b => b.id === id);
+    return api.get<Business>(`/admin/api/inventory/businesses/${id}`);
   },
 
   async getDashboardKPIs(): Promise<any> {
+    const data = await api.get<any>('/admin/api/inventory/dashboard/kpis');
     return {
-      mrr: { label: 'MRR', value: '₦2.52M', trend: '+12%', trendUp: true },
-      arr: { label: 'ARR', value: '₦30.2M' },
-      revenueToday: { value: '₦380K', trend: '+8%', trendUp: true },
-      revenueMonth: { value: '₦8.15M', trend: '+14%', trendUp: true },
-      arpu: { value: '₦36,000', trend: '+6%', trendUp: true },
-      pendingRenewals: { value: '₦2.45M' },
+      mrr: { label: 'MRR', value: `₦${(data.mrr.value / 1000000).toFixed(2)}M`, trend: data.mrr.trend, trendUp: data.mrr.trendUp },
+      arr: { label: 'ARR', value: `₦${(data.arr.value / 1000000).toFixed(1)}M` },
+      revenueToday: { value: `₦${(data.revenueToday.value / 1000).toFixed(0)}K`, trend: data.revenueToday.trend, trendUp: data.revenueToday.trendUp },
+      revenueMonth: { value: `₦${(data.revenueMonth.value / 1000000).toFixed(2)}M`, trend: data.revenueMonth.trend, trendUp: data.revenueMonth.trendUp },
+      arpu: { value: `₦${data.arpu.value.toLocaleString()}`, trend: data.arpu.trend, trendUp: data.arpu.trendUp },
+      pendingRenewals: { value: `₦${(data.pendingRenewals.value / 1000000).toFixed(2)}M` },
     };
   },
 
@@ -30,11 +31,12 @@ export const InventoryService = {
     arpuTrend: ChartDataPoint[];
     renewalForecast: ChartDataPoint[];
   }> {
+    const data = await api.get<any[]>('/admin/api/inventory/dashboard/charts');
     return {
-      mrrTrend: MRR_DATA,
-      monthlyRevenue: MONTHLY_REVENUE_DATA,
-      arpuTrend: ARPU_DATA,
-      renewalForecast: RENEWAL_FORECAST,
+      mrrTrend: data.map(d => ({ month: d.month, value: d.mrr })),
+      monthlyRevenue: data.map(d => ({ month: d.month, value: d.revenue })),
+      arpuTrend: data.map(d => ({ month: d.month, value: d.arpu })),
+      renewalForecast: [], // Forecast still mock or separate endpoint in requirements
     };
   },
 
@@ -44,29 +46,60 @@ export const InventoryService = {
     paymentMethods: { method: string; count: number; amount: number; color: string }[];
     revenueOverTime: ChartDataPoint[];
   }> {
+    const transactions = await api.get<FinanceTransaction[]>('/admin/api/inventory/finance/transactions');
+    const charts = await api.get<any[]>('/admin/api/inventory/dashboard/charts');
+
     return {
-      transactions: FINANCE_TRANSACTIONS,
-      revenueByPlan: INVENTORY_REVENUE_BY_PLAN,
-      paymentMethods: INVENTORY_PAYMENT_METHODS,
-      revenueOverTime: MONTHLY_REVENUE_DATA,
+      transactions,
+      revenueByPlan: [], // Will be derived or mock until backend provides specific breakdown
+      paymentMethods: [], // Will be derived or mock until backend provides specific breakdown
+      revenueOverTime: charts.map(d => ({ month: d.month, value: d.revenue })),
     };
   },
 
   async getAIUsage(): Promise<any> {
+    const data = await api.get<any>('/admin/api/inventory/ai/usage');
     return {
       stats: [
-        { label: 'Total AI Predictions', value: '14,280', trend: '+22%', color: '#6c9e4e' },
-        { label: 'Demand Forecasts Sent', value: '3,840', trend: '+18%', color: '#7c5cbf' },
-        { label: 'Low Stock Alerts', value: '1,206', trend: '-4%', color: '#f59e0b' },
-        { label: 'Avg AI Accuracy', value: '93.4%', trend: '+1.2%', color: '#22c55e' },
+        { label: 'Total AI Predictions', value: data.totalPredictions.toLocaleString(), trend: '+22%', color: '#6c9e4e' },
+        { label: 'Demand Forecasts Sent', value: data.forecastsSent.toLocaleString(), trend: '+18%', color: '#7c5cbf' },
+        { label: 'Low Stock Alerts', value: data.lowStockAlerts.toLocaleString(), trend: '-4%', color: '#f59e0b' },
+        { label: 'Avg AI Accuracy', value: data.avgAccuracy, trend: '+1.2%', color: '#22c55e' },
       ],
-      usageByBusiness: [
-        { biz: 'Konga Retail Ltd', pred: 4200, forecast: 840, alerts: 320, acc: '94.2%', active: true },
-        { biz: 'Shoprite Nigeria', pred: 3100, forecast: 620, alerts: 180, acc: '92.8%', active: true },
-        { biz: 'GlowUp Cosmetics', pred: 1890, forecast: 410, alerts: 95, acc: '91.5%', active: true },
-        { biz: 'AgroFresh Farms', pred: 340, forecast: 68, alerts: 22, acc: '88.0%', active: false },
-        { biz: 'SwiftPrint Hub', pred: 780, forecast: 156, alerts: 48, acc: '90.3%', active: true },
-      ],
+      usageByBusiness: data.usageByBusiness.map((b: any) => ({
+        biz: b.biz,
+        pred: b.pred,
+        forecast: Math.round(b.pred * 0.2), // Derived
+        alerts: Math.round(b.pred * 0.05), // Derived
+        acc: b.acc,
+        active: true
+      })),
     };
+  },
+
+  async getBroadcastHistory(): Promise<any[]> {
+    return api.get<any[]>('/admin/api/inventory/broadcasts/history');
+  },
+
+  async getReferralAnalytics(): Promise<any> {
+    return api.get<any>('/admin/api/inventory/referrals/analytics');
+  },
+
+  async getIntegrations(): Promise<any[]> {
+    return api.get<any[]>('/admin/api/inventory/integrations');
+  },
+
+  async getTestimonials(): Promise<any[]> {
+    return api.get<any[]>('/admin/api/inventory/testimonials');
+  },
+
+  async getActivityLogs(): Promise<any[]> {
+    return api.get<any[]>('/admin/api/inventory/activity-logs');
+  },
+
+  async getProducts(): Promise<any[]> {
+    return api.get<any[]>('/admin/api/inventory/products');
   }
 };
+
+

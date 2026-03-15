@@ -1,7 +1,11 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Shield, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Shield, Lock, Mail, Loader2 } from 'lucide-react';
+import { useAdminLogin, useInventoryLogin } from '@/api/auth/auth.queries';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { Package, Wand2 } from 'lucide-react';
 
 export default function SignInPage() {
     const [showPass, setShowPass] = useState(false);
@@ -10,14 +14,44 @@ export default function SignInPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    function handleSubmit(e: React.FormEvent) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const platform = searchParams.get('platform') || 'studio';
+
+    const adminLogin = useAdminLogin();
+    const inventoryLogin = useInventoryLogin();
+
+    const isInventory = platform === 'inventory';
+    const platformName = isInventory ? 'Inventory' : 'Studio';
+    const platformColor = isInventory ? '#6c9e4e' : '#7c5cbf';
+    const platformGradient = isInventory ? 'linear-gradient(135deg, #6c9e4e, #5b8441)' : 'linear-gradient(135deg, #7c5cbf, #6347a0)';
+    const PlatformIcon = isInventory ? Package : Wand2;
+
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
-        setTimeout(() => {
+
+        try {
+            if (isInventory) {
+                await inventoryLogin.mutateAsync({ email, password });
+                toast.success('Logged into Inventory service');
+            } else {
+                await adminLogin.mutateAsync({ email, password });
+                toast.success('Logged into Studio service');
+            }
+
+            if (email.includes('2fa')) {
+                setShow2FA(true);
+                setLoading(false);
+                return;
+            }
+
+            router.push(isInventory ? '/inventory/dashboard' : '/studio/dashboard');
+        } catch (err: any) {
+            toast.error(err.message || `Login failed for ${platformName}`);
+        } finally {
             setLoading(false);
-            if (email.includes('2fa')) { setShow2FA(true); return; }
-            window.location.href = '/select';
-        }, 1200);
+        }
     }
 
     const inputStyle: React.CSSProperties = {
@@ -35,11 +69,11 @@ export default function SignInPage() {
             <div style={{ width: '100%', maxWidth: 440, animation: 'fadeIn 0.4s ease' }}>
                 {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <div style={{ width: 60, height: 60, borderRadius: 16, background: 'linear-gradient(135deg, #6c9e4e, #5b8441)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 8px 24px rgba(108,158,78,0.3)' }}>
-                        <Shield size={28} color="#fff" />
+                    <div style={{ width: 60, height: 60, borderRadius: 16, background: platformGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: `0 8px 24px ${isInventory ? 'rgba(108,158,78,0.3)' : 'rgba(124,92,191,0.3)'}` }}>
+                        <PlatformIcon size={28} color="#fff" />
                     </div>
-                    <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1a1a2e', margin: '0 0 4px' }}>HelferAI Admin</h1>
-                    <p style={{ color: '#9ca3af', fontSize: 14, margin: 0 }}>Sign in to your admin account</p>
+                    <h1 style={{ fontSize: 26, fontWeight: 800, color: '#1a1a2e', margin: '0 0 4px' }}>HelferAI {platformName}</h1>
+                    <p style={{ color: '#9ca3af', fontSize: 14, margin: 0 }}>Sign in to your {platformName.toLowerCase()} account</p>
                 </div>
 
                 {/* Card */}
@@ -79,17 +113,14 @@ export default function SignInPage() {
                             {/* Submit */}
                             <button type="submit" disabled={loading} style={{
                                 width: '100%', height: 48, borderRadius: 10, border: 'none',
-                                background: loading ? '#9ca3af' : 'linear-gradient(135deg, #6c9e4e, #5b8441)',
+                                background: loading ? '#9ca3af' : platformGradient,
                                 color: '#fff', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                                boxShadow: loading ? 'none' : '0 4px 16px rgba(108,158,78,0.35)',
+                                boxShadow: loading ? 'none' : `0 4px 16px ${isInventory ? 'rgba(108,158,78,0.35)' : 'rgba(124,92,191,0.35)'}`,
                                 transition: 'all 0.2s',
                             }}>
+                                {loading ? <Loader2 size={18} className="animate-spin" /> : null}
                                 {loading ? 'Signing in…' : 'Sign In'}
                             </button>
-
-                            <div style={{ marginTop: 20, padding: '12px 16px', background: '#f0f9ff', borderRadius: 10, fontSize: 12, color: '#0369a1' }}>
-                                <strong>Demo:</strong> Use any email. Add "2fa" to trigger 2FA flow. Navigate to <code>/select</code> after login.
-                            </div>
                         </form>
                     ) : (
                         /* 2FA UI */

@@ -1,31 +1,10 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Topbar from '../Topbar';
-import StatusBadge from '../StatusBadge';
-import { BUSINESSES } from '@/app/lib/data';
 import { formatCurrency, formatDate, getDaysRemainingColor } from '@/app/lib/utils';
 import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
-
-// Build a flat subscriptions list from all businesses
-const ALL_SUBSCRIPTIONS = BUSINESSES.map(b => ({
-    id: `sub-${b.id}`,
-    businessId: b.id,
-    businessName: b.name,
-    businessEmail: b.email,
-    plan: b.currentPlan,
-    previousPlan: b.previousPlan,
-    status: b.status,
-    startDate: b.subStartDate,
-    endDate: b.subEndDate,
-    daysRemaining: b.daysRemaining,
-    amountPaying: b.amountPaying,
-    billingCycle: b.billingCycle,
-    autoRenew: b.autoRenew,
-    paymentMethod: b.amountPaying > 0
-        ? (b.billingCycle === 'Annual' ? 'Paystack Card •••• 4242' : 'Paystack Card •••• 5522')
-        : '—',
-}));
+import { useInventorySubscriptions } from '@/api/inventory/inventory.queries';
 
 const PLAN_OPTIONS = ['All', 'Enterprise', 'Pro', 'Basic', 'Basic Helfer'];
 const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled'];
@@ -39,12 +18,13 @@ const statusStyle: Record<string, { bg: string; color: string }> = {
 };
 
 export default function SubscriptionsPageClient() {
+    const { data: subscriptions, isLoading } = useInventorySubscriptions();
     const [search, setSearch] = useState('');
     const [planFilter, setPlanFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [billingFilter, setBillingFilter] = useState('All');
 
-    const filtered = ALL_SUBSCRIPTIONS.filter(s => {
+    const filtered = (subscriptions || []).filter(s => {
         const matchSearch =
             s.businessName.toLowerCase().includes(search.toLowerCase()) ||
             s.businessEmail.toLowerCase().includes(search.toLowerCase()) ||
@@ -56,14 +36,14 @@ export default function SubscriptionsPageClient() {
     });
 
     // KPIs
-    const totalActive = ALL_SUBSCRIPTIONS.filter(s => s.status === 'Active').length;
-    const totalTrial = ALL_SUBSCRIPTIONS.filter(s => s.status === 'Trial').length;
-    const totalExpired = ALL_SUBSCRIPTIONS.filter(s => s.status === 'Expired').length;
-    const totalCancelled = ALL_SUBSCRIPTIONS.filter(s => s.status === 'Cancelled').length;
-    const totalMRR = ALL_SUBSCRIPTIONS
+    const totalActive = (subscriptions || []).filter(s => s.status === 'Active').length;
+    const totalTrial = (subscriptions || []).filter(s => s.status === 'Trial').length;
+    const totalExpired = (subscriptions || []).filter(s => s.status === 'Expired').length;
+    const totalCancelled = (subscriptions || []).filter(s => s.status === 'Cancelled').length;
+    const totalMRR = (subscriptions || [])
         .filter(s => s.status === 'Active' && s.billingCycle === 'Monthly')
         .reduce((acc, s) => acc + s.amountPaying, 0);
-    const totalARR = ALL_SUBSCRIPTIONS
+    const totalARR = (subscriptions || [])
         .filter(s => s.status === 'Active' && s.billingCycle === 'Annual')
         .reduce((acc, s) => acc + s.amountPaying, 0);
 
@@ -93,7 +73,7 @@ export default function SubscriptionsPageClient() {
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 8 }}>{k.icon}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{k.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{isLoading ? '...' : k.value}</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e' }}>{k.label}</div>
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{k.sub}</div>
                         </div>
@@ -105,7 +85,7 @@ export default function SubscriptionsPageClient() {
                     {/* Toolbar */}
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a2e', flex: 1 }}>
-                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({filtered.length})</span>
+                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({isLoading ? '...' : filtered.length})</span>
                         </h3>
 
                         {/* Search */}
@@ -147,7 +127,15 @@ export default function SubscriptionsPageClient() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.length === 0 ? (
+                                {isLoading ? (
+                                    [1, 2, 3, 4, 5].map(i => (
+                                        <tr key={i}>
+                                            <td colSpan={10} style={{ padding: '12px 14px' }}>
+                                                <div style={{ height: 20, background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : filtered.length === 0 ? (
                                     <tr>
                                         <td colSpan={10} style={{ padding: '48px 20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
                                             No subscriptions match your filters.
@@ -223,12 +211,7 @@ export default function SubscriptionsPageClient() {
 
                     {/* Footer */}
                     <div style={{ padding: '12px 20px', borderTop: '1px solid #f5f5f5', fontSize: 12, color: '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Showing <b style={{ color: '#1a1a2e' }}>{filtered.length}</b> of {ALL_SUBSCRIPTIONS.length} subscriptions</span>
-                        <span>
-                            Active: <b style={{ color: '#22c55e' }}>{filtered.filter(s => s.status === 'Active').length}</b> &nbsp;|&nbsp;
-                            Trial: <b style={{ color: '#f59e0b' }}>{filtered.filter(s => s.status === 'Trial').length}</b> &nbsp;|&nbsp;
-                            Expired: <b style={{ color: '#ef4444' }}>{filtered.filter(s => s.status === 'Expired').length}</b>
-                        </span>
+                        <span>Showing <b style={{ color: '#1a1a2e' }}>{isLoading ? '...' : filtered.length}</b> of {isLoading ? '...' : (subscriptions || []).length} subscriptions</span>
                     </div>
                 </div>
             </div>

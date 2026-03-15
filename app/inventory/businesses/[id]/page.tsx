@@ -1,15 +1,16 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
 import Link from 'next/link';
 import Topbar from '../../../../components/Topbar';
 import StatusBadge from '../../../../components/StatusBadge';
-import { BUSINESSES } from '../../../lib/data';
 import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
 import {
     ArrowLeft, Edit2, Ban, Users, CreditCard, Package, ShoppingCart, Receipt,
     MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, Sparkles, Plus, Trash2, Eye,
     DollarSign, BarChart2,
 } from 'lucide-react';
+import { useInventoryBusiness } from '@/api/inventory';
+
 
 const TABS = [
     { key: 'users', label: 'Users', icon: <Users size={14} /> },
@@ -222,10 +223,16 @@ function TabContent({ tab, business }: { tab: string; business: any }) {
     return null;
 }
 
-export default function BusinessDetailPage({ params }: { params: { id: string } }) {
+export default function BusinessDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+    const params = use(paramsPromise);
+    const { data: business, isLoading, error } = useInventoryBusiness(params.id);
     const [activeTab, setActiveTab] = useState('users');
-    const business = BUSINESSES.find(b => b.id === params.id) || BUSINESSES[0];
+
+    if (isLoading) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Business Details...</div>;
+    if (error || !business) return <div style={{ padding: 40, color: '#ef4444' }}>Error: Business not found</div>;
+
     const daysColor = getDaysRemainingColor(business.daysRemaining);
+
 
     return (
         <div>

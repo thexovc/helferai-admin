@@ -22,7 +22,7 @@ export default function SelectPage() {
             {/* Cards */}
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 800, width: '100%' }}>
                 {/* Inventory */}
-                <Link href="/inventory/dashboard" style={{ textDecoration: 'none', flex: 1, minWidth: 280, maxWidth: 360 }}>
+                <Link href="/signin?platform=inventory" style={{ textDecoration: 'none', flex: 1, minWidth: 280, maxWidth: 360 }}>
                     <div style={{ background: '#fff', borderRadius: 24, padding: 36, boxShadow: '0 4px 24px rgba(108,158,78,0.10)', border: '2px solid transparent', transition: 'all 0.25s', cursor: 'pointer', height: '100%' }}
                         onMouseEnter={e => { e.currentTarget.style.border = '2px solid #6c9e4e'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(108,158,78,0.22)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.border = '2px solid transparent'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(108,158,78,0.10)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
@@ -43,7 +43,7 @@ export default function SelectPage() {
                 </Link>
 
                 {/* Studio */}
-                <Link href="/studio/dashboard" style={{ textDecoration: 'none', flex: 1, minWidth: 280, maxWidth: 360 }}>
+                <Link href="/signin?platform=studio" style={{ textDecoration: 'none', flex: 1, minWidth: 280, maxWidth: 360 }}>
                     <div style={{ background: '#fff', borderRadius: 24, padding: 36, boxShadow: '0 4px 24px rgba(124,92,191,0.10)', border: '2px solid transparent', transition: 'all 0.25s', cursor: 'pointer', height: '100%' }}
                         onMouseEnter={e => { e.currentTarget.style.border = '2px solid #7c5cbf'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(124,92,191,0.22)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.border = '2px solid transparent'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(124,92,191,0.10)'; e.currentTarget.style.transform = 'translateY(0)'; }}>

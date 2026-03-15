@@ -2,12 +2,15 @@
 import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Filter, Scale, MoreVertical } from 'lucide-react';
+import { useInventoryUnits } from '@/api/inventory/inventory.queries';
 
 export default function UnitsPageClient() {
+    const { data: units, isLoading } = useInventoryUnits();
+
     return (
         <div>
             <Topbar title="Units" subtitle="Define measurement units for your inventory items." product="inventory" />
-            
+
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
@@ -20,8 +23,8 @@ export default function UnitsPageClient() {
                             <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and organize your units.</p>
                         </div>
                     </div>
-                    <button style={{ 
-                        background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, 
+                    <button style={{
+                        background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8,
                         padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(108,158,78,0.2)'
                     }}>
@@ -33,17 +36,17 @@ export default function UnitsPageClient() {
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
                     <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
                         <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                        <input 
-                            placeholder="Search units..." 
-                            style={{ 
-                                width: '100%', height: 44, paddingLeft: 44, paddingRight: 16, 
+                        <input
+                            placeholder="Search units..."
+                            style={{
+                                width: '100%', height: 44, paddingLeft: 44, paddingRight: 16,
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
                                 outline: 'none', fontSize: 14, color: '#1a1a2e', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                            }} 
+                            }}
                         />
                     </div>
-                    <button style={{ 
-                        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, 
+                    <button style={{
+                        background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
                         padding: '0 16px', height: 44, display: 'flex', alignItems: 'center', gap: 8,
                         color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer'
                     }}>
@@ -58,21 +61,37 @@ export default function UnitsPageClient() {
                             <tr>
                                 <th>Unit Name</th>
                                 <th>Abbreviation</th>
-                                <th>Base Unit</th>
-                                <th>Conversion Rate</th>
                                 <th>Status</th>
                                 <th style={{ width: 60 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Dummy Rows */}
-                            {[1, 2, 3, 4, 5].map((item) => (
-                                <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                    <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                    <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                    <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                    <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                            {isLoading ? (
+                                [1, 2, 3, 4, 5].map((item) => (
+                                    <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
+                                                <MoreVertical size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : units?.map((unit) => (
+                                <tr key={unit.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{unit.name}</td>
+                                    <td>{unit.abbreviation}</td>
+                                    <td>
+                                        <span style={{
+                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                            background: unit.status === 'Active' ? '#eaf4e3' : '#fef2f2',
+                                            color: unit.status === 'Active' ? '#6c9e4e' : '#ef4444'
+                                        }}>
+                                            {unit.status}
+                                        </span>
+                                    </td>
                                     <td style={{ textAlign: 'center' }}>
                                         <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
                                             <MoreVertical size={16} />
@@ -82,15 +101,17 @@ export default function UnitsPageClient() {
                             ))}
                         </tbody>
                     </table>
-                    
+
                     {/* Pagination Footer */}
-                    <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                        <span style={{ fontSize: 13, color: '#6b7280' }}>Showing 1 to 5 of 24 entries</span>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
+                    {!isLoading && (
+                        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+                            <span style={{ fontSize: 13, color: '#6b7280' }}>Showing {units?.length || 0} entries</span>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
+                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
             </div>

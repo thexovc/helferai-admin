@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
 import StatusBadge from '../../../components/StatusBadge';
-import { InventoryService } from '../../lib/services/inventory';
-import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../lib/utils';
+import { formatCurrency, formatDate, getDaysRemainingColor } from '../../lib/utils';
 import { Search, Building2, CheckCircle } from 'lucide-react';
-import type { Business } from '../../lib/types';
+import { useInventoryBusinesses } from '@/api/inventory';
 
 const SORT_FILTERS = [
     'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',
@@ -14,21 +13,17 @@ const SORT_FILTERS = [
     'Inactive 30 Days', 'Downgraded Recently',
 ];
 
+
 export default function BusinessesPage() {
-    const [data, setData] = React.useState<Business[] | null>(null);
+    const { data: businessesData, isLoading } = useInventoryBusinesses(1, 100); // 100 for now to avoid pagination complexity
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
-    React.useEffect(() => {
-        const load = async () => {
-            const res = await InventoryService.getBusinesses();
-            setData(res);
-        };
-        load();
-    }, []);
+    if (isLoading || !businessesData) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Businesses...</div>;
 
-    if (!data) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Businesses...</div>;
+    const data = businessesData.data || [];
+
 
     const filtered = data.filter(b => {
         const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) || b.email.toLowerCase().includes(search.toLowerCase());

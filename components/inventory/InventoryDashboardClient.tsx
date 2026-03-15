@@ -2,7 +2,7 @@
 import React from 'react';
 import Topbar from '../Topbar';
 import KPICard from '../KPICard';
-import { InventoryService } from '@/app/lib/services/inventory';
+import { useInventoryBusinesses, useInventoryKpis, useInventoryCharts } from '@/api/inventory';
 import { Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, DollarSign, Repeat } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -24,26 +24,32 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function InventoryDashboardClient() {
-    const [data, setData] = React.useState<any>(null);
+    const { data: businesses, isLoading: loadingBusinesses } = useInventoryBusinesses();
+    const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
+    const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
 
-    React.useEffect(() => {
-        const load = async () => {
-            const businesses = await InventoryService.getBusinesses();
-            const kpis = await InventoryService.getDashboardKPIs();
-            const charts = await InventoryService.getChartData();
-            setData({ businesses, kpis, charts });
-        };
-        load();
-    }, []);
+    const isLoading = loadingBusinesses || loadingKpis || loadingCharts;
 
-    if (!data) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Dashboard...</div>;
+    if (isLoading || !businesses || !kpis || !charts) {
+        return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Dashboard...</div>;
+    }
 
-    const { businesses, kpis, charts } = data;
-    const total = businesses.length;
-    const active = businesses.filter((b: any) => b.status === 'Active').length;
-    const trial = businesses.filter((b: any) => b.status === 'Trial').length;
-    const expired = businesses.filter((b: any) => b.status === 'Expired').length;
-    const cancelled = businesses.filter((b: any) => b.status === 'Cancelled').length;
+    const businessList = businesses.data || [];
+    const total = businessList.length;
+    const active = businessList.filter((b: any) => b.status === 'Active').length;
+    const trial = businessList.filter((b: any) => b.status === 'Trial').length;
+    const expired = businessList.filter((b: any) => b.status === 'Expired').length;
+    const cancelled = businessList.filter((b: any) => b.status === 'Cancelled').length;
+
+    // Adapt chart data for Recharts
+    const chartData = {
+        mrrTrend: charts.map((d: any) => ({ month: d.month, value: d.mrr })),
+        monthlyRevenue: charts.map((d: any) => ({ month: d.month, value: d.revenue })),
+        arpuTrend: charts.map((d: any) => ({ month: d.month, value: d.arpu })),
+        renewalForecast: [] as any[], // Mock or derived
+    };
+
+
 
     return (
         <div>
@@ -51,12 +57,12 @@ export default function InventoryDashboardClient() {
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* TOP KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-                    <KPICard label="MRR" value={kpis.mrr.value} trend={`${kpis.mrr.trend} vs last month`} trendUp large accent="#6c9e4e" icon={<TrendingUp size={20} />} />
-                    <KPICard label="ARR" value={kpis.arr.value} subtitle="Annual projection" large accent="#6c9e4e" icon={<Calendar size={20} />} />
-                    <KPICard label="Revenue Today" value={kpis.revenueToday.value} trend={`${kpis.revenueToday.trend} vs yesterday`} trendUp accent="#22c55e" icon={<DollarSign size={20} />} />
-                    <KPICard label="Revenue This Month" value={kpis.revenueMonth.value} trend={`${kpis.revenueMonth.trend} vs last`} trendUp accent="#22c55e" icon={<DollarSign size={20} />} />
-                    <KPICard label="ARPU" value={kpis.arpu.value} trend={`${kpis.arpu.trend} trend`} trendUp accent="#7c5cbf" icon={<Users size={20} />} />
-                    <KPICard label="Pending Renewals" value={kpis.pendingRenewals.value} subtitle="Next 30 days" accent="#f59e0b" icon={<Repeat size={20} />} />
+                    <KPICard label="MRR" value={`₦${(kpis.mrr.value / 1000000).toFixed(2)}M`} trend={`${kpis.mrr.trend} vs last month`} trendUp={kpis.mrr.trendUp} large accent="#6c9e4e" icon={<TrendingUp size={20} />} />
+                    <KPICard label="ARR" value={`₦${(kpis.arr.value / 1000000).toFixed(1)}M`} subtitle="Annual projection" large accent="#6c9e4e" icon={<Calendar size={20} />} />
+                    <KPICard label="Revenue Today" value={`₦${(kpis.revenueToday.value / 1000).toFixed(0)}K`} trend={`${kpis.revenueToday.trend} vs yesterday`} trendUp={kpis.revenueToday.trendUp} accent="#22c55e" icon={<DollarSign size={20} />} />
+                    <KPICard label="Revenue This Month" value={`₦${(kpis.revenueMonth.value / 1000000).toFixed(2)}M`} trend={`${kpis.revenueMonth.trend} vs last`} trendUp={kpis.revenueMonth.trendUp} accent="#22c55e" icon={<DollarSign size={20} />} />
+                    <KPICard label="ARPU" value={`₦${kpis.arpu.value.toLocaleString()}`} trend={`${kpis.arpu.trend} trend`} trendUp={kpis.arpu.trendUp} accent="#7c5cbf" icon={<Users size={20} />} />
+                    <KPICard label="Pending Renewals" value={`₦${(kpis.pendingRenewals.value / 1000000).toFixed(2)}M`} subtitle="Next 30 days" accent="#f59e0b" icon={<Repeat size={20} />} />
                 </div>
 
                 {/* Business Stats Row */}
@@ -90,7 +96,7 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>MRR Trend</h3>
                         <ResponsiveContainer width="100%" height={220}>
-                            <AreaChart data={charts.mrrTrend}>
+                            <AreaChart data={chartData.mrrTrend}>
                                 <defs>
                                     <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#6c9e4e" stopOpacity={0.18} />
@@ -110,7 +116,7 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Monthly Revenue</h3>
                         <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={charts.monthlyRevenue} barSize={28}>
+                            <BarChart data={chartData.monthlyRevenue} barSize={28}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                 <YAxis tickFormatter={v => `₦${v / 1000000}M`} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -130,7 +136,7 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>ARPU Trend</h3>
                         <ResponsiveContainer width="100%" height={200}>
-                            <LineChart data={charts.arpuTrend}>
+                            <LineChart data={chartData.arpuTrend}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                 <YAxis tickFormatter={v => `₦${(v / 1000).toFixed(0)}K`} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -144,7 +150,7 @@ export default function InventoryDashboardClient() {
                         <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Renewal Forecast</h3>
                         <p style={{ margin: '0 0 16px', fontSize: 12, color: '#9ca3af' }}>Next 4 weeks expected renewals</p>
                         <ResponsiveContainer width="100%" height={200}>
-                            <BarChart data={charts.renewalForecast} barSize={36}>
+                            <BarChart data={chartData.renewalForecast} barSize={36}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                                 <YAxis tickFormatter={v => `₦${v / 1000}K`} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
