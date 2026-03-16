@@ -5,7 +5,8 @@ import { Plus, Search, Trophy, MoreVertical } from 'lucide-react';
 import { useInventoryReferralTiers } from '@/api/inventory/inventory.queries';
 
 export default function ReferralTiersPageClient() {
-    const { data: tiers, isLoading } = useInventoryReferralTiers();
+    const { data: tiersResponse, isLoading } = useInventoryReferralTiers();
+    const tiers = (tiersResponse as any)?.data || (Array.isArray(tiersResponse) ? tiersResponse : []);
 
     return (
         <div>
@@ -74,7 +75,7 @@ export default function ReferralTiersPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : tiers?.map((tier) => (
+                            ) : tiers.map((tier) => (
                                 <tr key={tier.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{tier.name}</td>
                                     <td>{tier.minReferrals}</td>

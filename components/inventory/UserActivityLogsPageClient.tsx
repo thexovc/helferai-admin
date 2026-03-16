@@ -1,20 +1,27 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Search, ClipboardList, MoreVertical } from 'lucide-react';
-import { useInventoryActivityLogs } from '@/api/inventory';
+import { Search, Activity, MoreVertical, Eye, Clock } from 'lucide-react';
+import { useInventoryActivityLogs } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 import { formatDateTime } from '@/app/lib/utils';
 
 
 export default function UserActivityLogsPageClient() {
-    const { data: logs, isLoading } = useInventoryActivityLogs();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: logsResponse, isLoading } = useInventoryActivityLogs(page, pageSize);
+    const logs = logsResponse?.data || [];
+    const meta = logsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
     const [search, setSearch] = React.useState('');
 
-    const filtered = (logs || []).filter(l =>
-        l.adminName.toLowerCase().includes(search.toLowerCase()) ||
-        l.action.toLowerCase().includes(search.toLowerCase()) ||
-        l.targetId.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = (logs || []).filter(l => {
+        const matchSearch =
+            l.adminName.toLowerCase().includes(search.toLowerCase()) ||
+            (l.targetId || '').toLowerCase().includes(search.toLowerCase()) ||
+            l.action.toLowerCase().includes(search.toLowerCase());
+        return matchSearch;
+    });
 
     return (
         <div>
@@ -25,7 +32,7 @@ export default function UserActivityLogsPageClient() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ClipboardList size={24} />
+                            <Activity size={24} />
                         </div>
                         <div>
                             <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>User Activity Logs</h2>
@@ -94,15 +101,13 @@ export default function UserActivityLogsPageClient() {
                         </tbody>
                     </table>
 
-
-                    {/* Pagination Footer */}
-                    <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                        <span style={{ fontSize: 13, color: '#6b7280' }}>Showing 1 to 5 of 24 entries</span>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
-                        </div>
-                    </div>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>

@@ -1,11 +1,22 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, Phone, MoreVertical } from 'lucide-react';
+import { Plus, Search, Phone, MoreVertical, CheckCircle2, MessageSquare } from 'lucide-react';
 import { useInventoryWhatsappNumbers } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function WhatsAppNumbersPageClient() {
-    const { data: numbers, isLoading } = useInventoryWhatsappNumbers();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: numbersResponse, isLoading } = useInventoryWhatsappNumbers(page, pageSize);
+    const numbers = numbersResponse?.data || [];
+    const meta = numbersResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
+
+    const filtered = numbers.filter(n =>
+        n.number.toLowerCase().includes(search.toLowerCase()) ||
+        n.businessName.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div>
@@ -43,6 +54,8 @@ export default function WhatsAppNumbersPageClient() {
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
                                 outline: 'none', fontSize: 14, color: '#1a1a2e', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                             }}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                 </div>
@@ -74,20 +87,20 @@ export default function WhatsAppNumbersPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : numbers?.map((num) => (
-                                <tr key={num.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{num.number}</td>
-                                    <td>{num.businessName}</td>
+                            ) : filtered.map((n) => (
+                                <tr key={n.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{n.number}</td>
+                                    <td>{n.businessName}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: num.status === 'Active' ? '#eaf4e3' : '#fef2f2',
-                                            color: num.status === 'Active' ? '#6c9e4e' : '#ef4444'
+                                            background: n.status === 'Active' ? '#eaf4e3' : '#fef2f2',
+                                            color: n.status === 'Active' ? '#6c9e4e' : '#ef4444'
                                         }}>
-                                            {num.status}
+                                            {n.status}
                                         </span>
                                     </td>
-                                    <td>{new Date(num.lastActive).toLocaleString()}</td>
+                                    <td>{new Date(n.lastActive).toLocaleString()}</td>
                                     <td style={{ textAlign: 'center' }}>
                                         <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
                                             <MoreVertical size={16} />
@@ -97,6 +110,14 @@ export default function WhatsAppNumbersPageClient() {
                             ))}
                         </tbody>
                     </table>
+
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>

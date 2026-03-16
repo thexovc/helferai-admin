@@ -1,16 +1,21 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Search, Mail, MoreVertical } from 'lucide-react';
-import { useInventoryBroadcasts } from '@/api/inventory';
+import { Search, Filter, Megaphone, MoreVertical, Eye } from 'lucide-react';
+import { useInventoryBroadcasts } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 import { formatDateTime } from '@/app/lib/utils';
 
 
 export default function BroadcastHistoryPageClient() {
-    const { data: broadcasts, isLoading } = useInventoryBroadcasts();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: broadcastsResponse, isLoading } = useInventoryBroadcasts(page, pageSize);
+    const broadcasts = broadcastsResponse?.data || [];
+    const meta = broadcastsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
     const [search, setSearch] = React.useState('');
 
-    const filtered = (broadcasts || []).filter(b =>
+    const filteredBroadcasts = broadcasts.filter(b =>
         b.title.toLowerCase().includes(search.toLowerCase()) ||
         b.channel.toLowerCase().includes(search.toLowerCase())
     );
@@ -24,7 +29,7 @@ export default function BroadcastHistoryPageClient() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Mail size={24} />
+                            <Megaphone size={24} />
                         </div>
                         <div>
                             <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Broadcast History</h2>
@@ -71,12 +76,12 @@ export default function BroadcastHistoryPageClient() {
                                         <td colSpan={7}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : filteredBroadcasts.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No history found</td>
                                 </tr>
                             ) : (
-                                filtered.map((b: any) => (
+                                filteredBroadcasts.map((b: any) => (
                                     <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                         <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{b.title}</td>
                                         <td style={{ color: '#6b7280', fontSize: 13 }}>{formatDateTime(b.sentAt)}</td>
@@ -104,15 +109,13 @@ export default function BroadcastHistoryPageClient() {
                         </tbody>
                     </table>
 
-
-                    {/* Pagination Footer */}
-                    <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                        <span style={{ fontSize: 13, color: '#6b7280' }}>Showing 1 to 5 of 24 entries</span>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
-                        </div>
-                    </div>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>

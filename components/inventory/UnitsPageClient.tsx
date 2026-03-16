@@ -1,11 +1,17 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, Scale, MoreVertical } from 'lucide-react';
+import { Plus, Search, Filter, Ruler, MoreVertical } from 'lucide-react';
 import { useInventoryUnits } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function UnitsPageClient() {
-    const { data: units, isLoading } = useInventoryUnits();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: unitsResponse, isLoading } = useInventoryUnits(page, pageSize);
+    const units = unitsResponse?.data || [];
+    const meta = unitsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
 
     return (
         <div>
@@ -16,7 +22,7 @@ export default function UnitsPageClient() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Scale size={24} />
+                            <Ruler size={24} />
                         </div>
                         <div>
                             <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Units</h2>
@@ -79,7 +85,7 @@ export default function UnitsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : units?.map((unit) => (
+                            ) : units.map((unit) => (
                                 <tr key={unit.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{unit.name}</td>
                                     <td>{unit.abbreviation}</td>
@@ -102,16 +108,13 @@ export default function UnitsPageClient() {
                         </tbody>
                     </table>
 
-                    {/* Pagination Footer */}
-                    {!isLoading && (
-                        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                            <span style={{ fontSize: 13, color: '#6b7280' }}>Showing {units?.length || 0} entries</span>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
-                            </div>
-                        </div>
-                    )}
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>

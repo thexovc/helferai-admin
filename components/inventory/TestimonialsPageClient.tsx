@@ -1,11 +1,17 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, MessageSquare, MoreVertical, Star } from 'lucide-react';
+import { Search, Quote, Star, MoreVertical, Plus } from 'lucide-react';
 import { useInventoryTestimonials } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function TestimonialsPageClient() {
-    const { data: testimonials, isLoading } = useInventoryTestimonials();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: testimonialsResponse, isLoading } = useInventoryTestimonials(page, pageSize);
+    const testimonials = testimonialsResponse?.data || [];
+    const meta = testimonialsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
 
     return (
         <div>
@@ -16,7 +22,7 @@ export default function TestimonialsPageClient() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <MessageSquare size={24} />
+                            <Quote size={24} />
                         </div>
                         <div>
                             <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Testimonials</h2>
@@ -76,7 +82,7 @@ export default function TestimonialsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : testimonials?.map((t) => (
+                            ) : testimonials.map((t) => (
                                 <tr key={t.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{t.userName}</td>
                                     <td>

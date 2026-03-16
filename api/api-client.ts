@@ -21,6 +21,7 @@ export function createApiClient(baseUrl: string, tokenKey: string = 'adminToken'
     }
 
     const result = await response.json();
+    if (result.meta) return result;
     return result.data ?? result;
   }
 

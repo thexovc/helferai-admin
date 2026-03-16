@@ -7,6 +7,14 @@ export const inventoryKeys = {
   charts: () => [...inventoryKeys.all, 'charts'] as const,
   businesses: () => [...inventoryKeys.all, 'businesses'] as const,
   business: (id: string) => [...inventoryKeys.all, 'business', id] as const,
+  businessUsers: (id: string) => [...inventoryKeys.business(id), 'users'] as const,
+  businessSubscriptions: (id: string) => [...inventoryKeys.business(id), 'subscriptions'] as const,
+  businessProducts: (id: string) => [...inventoryKeys.business(id), 'products'] as const,
+  businessSales: (id: string) => [...inventoryKeys.business(id), 'sales'] as const,
+  businessExpenses: (id: string) => [...inventoryKeys.business(id), 'expenses'] as const,
+  businessWhatsapp: (id: string) => [...inventoryKeys.business(id), 'whatsapp'] as const,
+  businessIntegrations: (id: string) => [...inventoryKeys.business(id), 'integrations'] as const,
+  businessAi: (id: string) => [...inventoryKeys.business(id), 'ai'] as const,
   transactions: () => [...inventoryKeys.all, 'transactions'] as const,
   products: () => [...inventoryKeys.all, 'products'] as const,
   aiUsage: () => [...inventoryKeys.all, 'aiUsage'] as const,
@@ -55,17 +63,17 @@ export const useInventoryBusiness = (id: string) => {
   });
 };
 
-export const useInventoryTransactions = () => {
+export const useInventoryTransactions = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.transactions(),
-    queryFn: inventoryApi.getTransactions,
+    queryKey: [...inventoryKeys.transactions(), page, pageSize],
+    queryFn: () => inventoryApi.getTransactions(page, pageSize),
   });
 };
 
-export const useInventoryProducts = () => {
+export const useInventoryProducts = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.products(),
-    queryFn: inventoryApi.getProducts,
+    queryKey: [...inventoryKeys.products(), page, pageSize],
+    queryFn: () => inventoryApi.getProducts(page, pageSize),
   });
 };
 
@@ -76,10 +84,10 @@ export const useInventoryAiUsage = () => {
   });
 };
 
-export const useInventoryBroadcasts = () => {
+export const useInventoryBroadcasts = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.broadcasts(),
-    queryFn: inventoryApi.getBroadcastHistory,
+    queryKey: [...inventoryKeys.broadcasts(), page, pageSize],
+    queryFn: () => inventoryApi.getBroadcastHistory(page, pageSize),
   });
 };
 
@@ -97,52 +105,52 @@ export const useInventoryIntegrations = () => {
   });
 };
 
-export const useInventoryTestimonials = () => {
+export const useInventoryTestimonials = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.testimonials(),
-    queryFn: inventoryApi.getTestimonials,
+    queryKey: [...inventoryKeys.testimonials(), page, pageSize],
+    queryFn: () => inventoryApi.getTestimonials(page, pageSize),
   });
 };
 
-export const useInventoryActivityLogs = () => {
+export const useInventoryActivityLogs = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.activityLogs(),
-    queryFn: inventoryApi.getActivityLogs,
+    queryKey: [...inventoryKeys.activityLogs(), page, pageSize],
+    queryFn: () => inventoryApi.getActivityLogs(page, pageSize),
   });
 };
 
-export const useInventoryBrands = () => {
+export const useInventoryBrands = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.brands(),
-    queryFn: inventoryApi.getBrands,
+    queryKey: [...inventoryKeys.brands(), page, pageSize],
+    queryFn: () => inventoryApi.getBrands(page, pageSize),
   });
 };
 
-export const useInventoryCategories = () => {
+export const useInventoryCategories = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.categories(),
-    queryFn: inventoryApi.getCategories,
+    queryKey: [...inventoryKeys.categories(), page, pageSize],
+    queryFn: () => inventoryApi.getCategories(page, pageSize),
   });
 };
 
-export const useInventoryUnits = () => {
+export const useInventoryUnits = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.units(),
-    queryFn: inventoryApi.getUnits,
+    queryKey: [...inventoryKeys.units(), page, pageSize],
+    queryFn: () => inventoryApi.getUnits(page, pageSize),
   });
 };
 
-export const useInventoryWhatsappNumbers = () => {
+export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.whatsappNumbers(),
-    queryFn: inventoryApi.getWhatsappNumbers,
+    queryKey: [...inventoryKeys.whatsappNumbers(), page, pageSize],
+    queryFn: () => inventoryApi.getWhatsappNumbers(page, pageSize),
   });
 };
 
-export const useInventorySubscriptions = () => {
+export const useInventorySubscriptions = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.subscriptions(),
-    queryFn: inventoryApi.getSubscriptions,
+    queryKey: [...inventoryKeys.subscriptions(), page, pageSize],
+    queryFn: () => inventoryApi.getSubscriptions(page, pageSize),
   });
 };
 
@@ -160,10 +168,10 @@ export const useInventoryPointConfigs = () => {
   });
 };
 
-export const useInventoryReferralRewards = () => {
+export const useInventoryReferralRewards = (page = 1, pageSize = 10) => {
   return useQuery({
-    queryKey: inventoryKeys.referralRewards(),
-    queryFn: inventoryApi.getReferralRewards,
+    queryKey: [...inventoryKeys.referralRewards(), page, pageSize],
+    queryFn: () => inventoryApi.getReferralRewards(page, pageSize),
   });
 };
 
@@ -171,5 +179,69 @@ export const useInventoryFinanceSummary = () => {
   return useQuery({
     queryKey: inventoryKeys.financeSummary(),
     queryFn: inventoryApi.getFinanceSummary,
+  });
+};
+
+export const useBusinessUsers = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessUsers(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessUsers(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessSubscriptions = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessSubscriptions(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessSubscriptions(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessProducts = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessProducts(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessProducts(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessSales = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessSales(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessSales(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessExpenses = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessExpenses(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessExpenses(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessWhatsapp = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessWhatsapp(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessWhatsapp(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessIntegrations = (id: string, page = 1, pageSize = 10) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.businessIntegrations(id), page, pageSize],
+    queryFn: () => inventoryApi.getBusinessIntegrations(id, page, pageSize),
+    enabled: !!id,
+  });
+};
+
+export const useBusinessAi = (id: string) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.business(id), 'ai'],
+    queryFn: () => inventoryApi.getBusinessAi(id),
+    enabled: !!id,
   });
 };

@@ -5,7 +5,8 @@ import { Plus, Search, Settings, MoreVertical } from 'lucide-react';
 import { useInventoryPointConfigs } from '@/api/inventory/inventory.queries';
 
 export default function ReferralPointConfigsPageClient() {
-    const { data: configs, isLoading } = useInventoryPointConfigs();
+    const { data: configsResponse, isLoading } = useInventoryPointConfigs();
+    const configs = (configsResponse as any)?.data || (Array.isArray(configsResponse) ? configsResponse : []);
 
     return (
         <div>
@@ -72,7 +73,7 @@ export default function ReferralPointConfigsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : configs?.map((config) => (
+                            ) : configs.map((config) => (
                                 <tr key={config.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{config.action}</td>
                                     <td>{config.points} pts</td>

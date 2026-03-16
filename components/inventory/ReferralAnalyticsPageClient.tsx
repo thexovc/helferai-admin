@@ -2,6 +2,7 @@
 import React from 'react';
 import Topbar from '../Topbar';
 import { Search, BarChart3, MoreVertical } from 'lucide-react';
+import { SkeletonPulse, KPISkeleton, TableSkeleton } from '../Skeleton';
 import { useInventoryReferrals } from '@/api/inventory';
 
 
@@ -10,7 +11,17 @@ export default function ReferralAnalyticsPageClient() {
     const [search, setSearch] = React.useState('');
 
     if (isLoading || !analytics) {
-        return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Referral Analytics...</div>;
+        return (
+            <div>
+                <Topbar title="Referral Analytics" subtitle="Track performance metrics and ROI of your referral programs." product="inventory" />
+                <div style={{ padding: 'var(--content-padding)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    </div>
+                    <TableSkeleton rows={5} cols={4} />
+                </div>
+            </div>
+        );
     }
 
     const filteredReferrers = analytics.topReferrers.filter(r =>

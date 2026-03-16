@@ -3,9 +3,15 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Filter, Tag, MoreVertical } from 'lucide-react';
 import { useInventoryBrands } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function BrandsPageClient() {
-    const { data: brands, isLoading } = useInventoryBrands();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: brandsResponse, isLoading } = useInventoryBrands(page, pageSize);
+    const brands = brandsResponse?.data || [];
+    const meta = brandsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
 
     return (
         <div>
@@ -83,7 +89,7 @@ export default function BrandsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : brands?.map((brand) => (
+                            ) : brands.map((brand) => (
                                 <tr key={brand.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{brand.name}</td>
                                     <td>{brand.manufacturer}</td>
@@ -108,16 +114,13 @@ export default function BrandsPageClient() {
                         </tbody>
                     </table>
 
-                    {/* Pagination Footer */}
-                    {!isLoading && (
-                        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                            <span style={{ fontSize: 13, color: '#6b7280' }}>Showing {brands?.length || 0} entries</span>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                                <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
-                            </div>
-                        </div>
-                    )}
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>

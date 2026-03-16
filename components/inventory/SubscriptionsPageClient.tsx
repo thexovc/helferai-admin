@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Topbar from '../Topbar';
 import { formatCurrency, formatDate, getDaysRemainingColor } from '@/app/lib/utils';
-import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus } from 'lucide-react';
+import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus, Filter, ShieldCheck, Download, MoreVertical } from 'lucide-react';
 import { useInventorySubscriptions } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 const PLAN_OPTIONS = ['All', 'Enterprise', 'Pro', 'Basic', 'Basic Helfer'];
 const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled'];
@@ -18,13 +19,17 @@ const statusStyle: Record<string, { bg: string; color: string }> = {
 };
 
 export default function SubscriptionsPageClient() {
-    const { data: subscriptions, isLoading } = useInventorySubscriptions();
-    const [search, setSearch] = useState('');
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: subscriptionsResponse, isLoading } = useInventorySubscriptions(page, pageSize);
+    const subscriptions = subscriptionsResponse?.data || [];
+    const meta = subscriptionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
     const [planFilter, setPlanFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [billingFilter, setBillingFilter] = useState('All');
 
-    const filtered = (subscriptions || []).filter(s => {
+    const filtered = subscriptions.filter(s => {
         const matchSearch =
             s.businessName.toLowerCase().includes(search.toLowerCase()) ||
             s.businessEmail.toLowerCase().includes(search.toLowerCase()) ||
@@ -36,14 +41,14 @@ export default function SubscriptionsPageClient() {
     });
 
     // KPIs
-    const totalActive = (subscriptions || []).filter(s => s.status === 'Active').length;
-    const totalTrial = (subscriptions || []).filter(s => s.status === 'Trial').length;
-    const totalExpired = (subscriptions || []).filter(s => s.status === 'Expired').length;
-    const totalCancelled = (subscriptions || []).filter(s => s.status === 'Cancelled').length;
-    const totalMRR = (subscriptions || [])
+    const totalActive = subscriptions.filter(s => s.status === 'Active').length;
+    const totalTrial = subscriptions.filter(s => s.status === 'Trial').length;
+    const totalExpired = subscriptions.filter(s => s.status === 'Expired').length;
+    const totalCancelled = subscriptions.filter(s => s.status === 'Cancelled').length;
+    const totalMRR = subscriptions
         .filter(s => s.status === 'Active' && s.billingCycle === 'Monthly')
         .reduce((acc, s) => acc + s.amountPaying, 0);
-    const totalARR = (subscriptions || [])
+    const totalARR = subscriptions
         .filter(s => s.status === 'Active' && s.billingCycle === 'Annual')
         .reduce((acc, s) => acc + s.amountPaying, 0);
 
@@ -85,7 +90,7 @@ export default function SubscriptionsPageClient() {
                     {/* Toolbar */}
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a2e', flex: 1 }}>
-                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({isLoading ? '...' : filtered.length})</span>
+                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({isLoading ? '...' : meta.total})</span>
                         </h3>
 
                         {/* Search */}
@@ -211,7 +216,7 @@ export default function SubscriptionsPageClient() {
 
                     {/* Footer */}
                     <div style={{ padding: '12px 20px', borderTop: '1px solid #f5f5f5', fontSize: 12, color: '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Showing <b style={{ color: '#1a1a2e' }}>{isLoading ? '...' : filtered.length}</b> of {isLoading ? '...' : (subscriptions || []).length} subscriptions</span>
+                        <span>Showing <b style={{ color: '#1a1a2e' }}>{isLoading ? '...' : filtered.length}</b> of {isLoading ? '...' : meta.total} subscriptions</span>
                     </div>
                 </div>
             </div>

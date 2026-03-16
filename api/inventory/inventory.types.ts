@@ -1,33 +1,42 @@
 export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled';
 export type BillingCycle = 'Monthly' | 'Annual';
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
+
 export interface Business {
   id: string;
   name: string;
   email: string;
   logo?: string;
-  address: string;
-  registrationNumber: string;
-  website: string;
-  taxNumber: string;
-  industry: string;
-  country: string;
+  address?: string;
+  registrationNumber?: string;
+  website?: string;
+  taxNumber?: string;
+  industry?: string;
+  country?: string;
   status: SubStatus;
   currentPlan: string;
-  previousPlan: string;
-  subStartDate: string;
-  subEndDate: string;
+  previousPlan?: string;
+  subStartDate?: string;
+  subEndDate?: string;
   daysRemaining: number;
   amountPaying: number;
   billingCycle: BillingCycle;
-  autoRenew: boolean;
-  lastLogin: string;
-  dateJoined: string;
-  totalRevenue: number;
-  totalSales: number;
-  totalExpenses: number;
-  totalProducts: number;
-  totalUsers: number;
+  autoRenew?: boolean;
+  lastLogin?: string;
+  dateJoined?: string;
+  totalRevenue?: number;
+  totalSales?: number;
+  totalExpenses?: number;
+  totalProducts?: number;
+  totalUsers?: number;
 }
 
 
@@ -38,6 +47,10 @@ export interface KPIMetrics {
   revenueMonth: { value: number; trend: string; trendUp: boolean };
   arpu: { value: number; trend: string; trendUp: boolean };
   pendingRenewals: { value: number };
+  conversionRate: { value: string; trend: string; trendUp: boolean };
+  renewalForecast: Array<{ month: string; amount: number }>;
+  newThisMonth?: { value: number };
+  newPaying?: { value: number };
 }
 
 export interface ChartData {
@@ -69,12 +82,84 @@ export interface Product {
   status: string;
 }
 
+export interface AIUsageMetric {
+  value: number | string;
+  trend: string;
+  comparisonColor: 'green' | 'blue' | 'red';
+}
+
 export interface AIUsage {
-  totalPredictions: number;
-  forecastsSent: number;
-  lowStockAlerts: number;
-  avgAccuracy: string;
+  totalPredictions: AIUsageMetric;
+  forecastsSent: AIUsageMetric;
+  lowStockAlerts: AIUsageMetric;
+  avgAccuracy: AIUsageMetric;
   usageByBusiness: Array<{ biz: string; pred: number; acc: string }>;
+  trends?: any;
+}
+
+export interface BusinessUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface BusinessSubscription {
+  id: string;
+  plan: string;
+  amount: number;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+}
+
+export interface BusinessProduct {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  brand: string;
+  sellingPrice: number;
+  openingStock: number;
+  unit: string;
+}
+
+export interface BusinessSale {
+  id: string;
+  receiptNumber: string;
+  customer: string;
+  totalAmount: number;
+  paymentStatus: string;
+  processingStatus: string;
+  createdAt: string;
+}
+
+export interface BusinessExpense {
+  id: string;
+  amount: number;
+  purpose: string;
+  account: string;
+  date: string;
+  referenceNumber: string;
+}
+
+export interface BusinessWhatsapp {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface BusinessIntegrationItem {
+  id: string;
+  name: string;
+  status: string;
+  connectedAt: string;
+  slug: string;
 }
 
 export interface Broadcast {

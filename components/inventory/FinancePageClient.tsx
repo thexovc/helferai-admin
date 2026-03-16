@@ -2,6 +2,7 @@
 import React from 'react';
 import Topbar from '../Topbar';
 import { formatCurrency, formatDate } from '@/app/lib/utils';
+import { SkeletonPulse, KPISkeleton, ChartSkeleton, TableSkeleton } from '../Skeleton';
 // Modular API imports handled in previous step
 
 import {
@@ -39,20 +40,41 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
 };
 
-import { useInventoryTransactions, useInventoryKpis, useInventoryCharts } from '@/api/inventory';
+import { useInventoryTransactions, useInventoryKpis, useInventoryCharts } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function InventoryFinancePageClient() {
-    const { data: transactions, isLoading: loadingTxns } = useInventoryTransactions();
-    const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
-    const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('All');
     const [typeFilter, setTypeFilter] = React.useState('All');
 
+    const { data: transactionsResponse, isLoading: loadingTxns } = useInventoryTransactions(page, pageSize);
+    const transactions = transactionsResponse?.data || [];
+    const meta = transactionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+
+    const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
+    const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
+
     const isLoading = loadingTxns || loadingKpis || loadingCharts;
 
-    if (isLoading || !transactions || !kpis || !charts) {
-        return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Finance...</div>;
+    if (isLoading || !transactionsResponse || !kpis || !charts) {
+        return (
+            <div>
+                <Topbar title="Finance" subtitle="Revenue, payments & subscription transactions" product="inventory" />
+                <div style={{ padding: 'var(--content-padding)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 24 }}>
+                        {Array(6).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
+                        <ChartSkeleton />
+                        <ChartSkeleton />
+                    </div>
+                    <TableSkeleton rows={5} cols={8} />
+                </div>
+            </div>
+        );
     }
 
     const filtered = transactions.filter((t: any) => {
@@ -72,11 +94,12 @@ export default function InventoryFinancePageClient() {
         { plan: 'Pro', value: totalRevenue * 0.3 },
         { plan: 'Basic', value: totalRevenue * 0.1 },
     ];
-    const paymentMethods = [
+    const pmList = [
         { method: 'Card (Paystack)', count: 24, amount: totalRevenue * 0.7, color: '#6c9e4e' },
         { method: 'Bank Transfer', count: 8, amount: totalRevenue * 0.2, color: '#3b82f6' },
         { method: 'USSD', count: 4, amount: totalRevenue * 0.1, color: '#f59e0b' },
     ];
+    const totalPmTxns = pmList.reduce((acc, pm) => acc + pm.count, 0);
 
 
     return (
@@ -147,7 +170,7 @@ export default function InventoryFinancePageClient() {
                 <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 24 }}>
                     <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Payment Methods Breakdown</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                        {paymentMethods.map((pm: any) => (
+                        {pmList.map((pm: any) => (
                             <div key={pm.method} style={{ padding: '16px 20px', background: '#f9fafb', borderRadius: 12, border: `1.5px solid ${pm.color}30` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                     <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>{pm.method}</span>
@@ -155,7 +178,7 @@ export default function InventoryFinancePageClient() {
                                 </div>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: pm.color }}>{fmtK(pm.amount)}</div>
                                 <div style={{ marginTop: 8, height: 4, background: '#f0f0f0', borderRadius: 99 }}>
-                                    <div style={{ height: 4, background: pm.color, borderRadius: 99, width: `${(pm.count / 36) * 100}%` }} />
+                                    <div style={{ height: 4, background: pm.color, borderRadius: 99, width: `${(pm.count / totalPmTxns) * 100}%` }} />
                                 </div>
                             </div>
                         ))}
@@ -168,13 +191,13 @@ export default function InventoryFinancePageClient() {
                         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a2e', flex: 1 }}>Recent Transactions</h3>
                         <div style={{ position: 'relative', minWidth: 220 }}>
                             <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search transactions…" style={{ paddingLeft: 30, width: '100%', height: 34, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, outline: 'none', color: '#1a1a2e' }} />
+                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search transactions…" style={{ paddingLeft: 30, width: '100%', height: 34, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, outline: 'none', color: '#1a1a2e' }} />
                         </div>
-                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
+                        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
                             <option>All</option>
                             {['Paid', 'Failed', 'Pending', 'Refunded'].map(s => <option key={s}>{s}</option>)}
                         </select>
-                        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
+                        <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
                             <option>All</option>
                             {['Subscription', 'Renewal', 'Upgrade'].map(t => <option key={t}>{t}</option>)}
                         </select>
@@ -219,10 +242,13 @@ export default function InventoryFinancePageClient() {
                             </tbody>
                         </table>
                     </div>
-                    <div style={{ padding: '12px 20px', borderTop: '1px solid #f5f5f5', fontSize: 12, color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Showing {filtered.length} of {transactions.length} transactions</span>
-                        <span>Total paid: <b style={{ color: '#1a1a2e' }}>{formatCurrency(totalRevenue)}</b></span>
-                    </div>
+                    <Pagination
+                        currentPage={meta.page}
+                        totalPages={Math.ceil(meta.total / meta.pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={meta.pageSize}
+                    />
                 </div>
             </div>
         </div>

@@ -4,7 +4,9 @@ import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
 import StatusBadge from '../../../components/StatusBadge';
 import { formatCurrency, formatDate, getDaysRemainingColor } from '../../lib/utils';
+import { SkeletonPulse, KPISkeleton, TableSkeleton } from '@/components/Skeleton';
 import { Search, Building2, CheckCircle } from 'lucide-react';
+import Pagination from '@/components/Pagination';
 import { useInventoryBusinesses } from '@/api/inventory';
 
 const SORT_FILTERS = [
@@ -15,14 +17,32 @@ const SORT_FILTERS = [
 
 
 export default function BusinessesPage() {
-    const { data: businessesData, isLoading } = useInventoryBusinesses(1, 100); // 100 for now to avoid pagination complexity
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const { data: businessesData, isLoading } = useInventoryBusinesses(page, pageSize);
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
-    if (isLoading || !businessesData) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Businesses...</div>;
+    if (isLoading || !businessesData) {
+        return (
+            <div>
+                <Topbar title="Business Management" subtitle="Manage all customer businesses" product="inventory" />
+                <div style={{ padding: 'var(--content-padding)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                        {Array(5).fill(0).map((_, i) => <SkeletonPulse key={i} width={100} height={30} borderRadius={99} />)}
+                    </div>
+                    <TableSkeleton rows={8} cols={7} />
+                </div>
+            </div>
+        );
+    }
 
-    const data = businessesData.data || [];
+    const data = businessesData?.data || [];
+    const meta = businessesData?.meta || { total: 0, page: 1, pageSize: 10 };
 
 
     const filtered = data.filter(b => {
@@ -38,7 +58,7 @@ export default function BusinessesPage() {
         return matchSearch && matchStatus && matchFilter;
     }).sort((a, b) => a.daysRemaining - b.daysRemaining);
 
-    const total = data.length;
+    const total = meta.total;
     const active = data.filter(b => b.status === 'Active').length;
 
     return (
@@ -91,16 +111,14 @@ export default function BusinessesPage() {
                         <table style={{ minWidth: 900 }}>
                             <thead>
                                 <tr>
-                                    {['Business Name', 'Joined', 'Status', 'Plan', 'Days Left', 'Amount', 'Billing', 'Renew'].map(h => (
+                                    {['Business Name', 'Owner', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.map((b, i) => (
-                                    <tr key={b.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s', cursor: 'pointer' }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#f0f9f0')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
+                                    <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                                         <td>
                                             <Link href={`/inventory/businesses/${b.id}`} style={{ textDecoration: 'none' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -111,20 +129,27 @@ export default function BusinessesPage() {
                                                 </div>
                                             </Link>
                                         </td>
-                                        <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{formatDate(b.dateJoined)}</td>
-                                        <td><StatusBadge status={b.status} size="sm" /></td>
-                                        <td style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e' }}>{b.currentPlan}</td>
+                                        <td style={{ color: '#6b7280', fontSize: 13 }}>{b.email}</td>
                                         <td>
-                                            <span style={{ fontWeight: 700, fontSize: 13, color: getDaysRemainingColor(b.daysRemaining) }}>
-                                                {b.daysRemaining < 0 ? `${Math.abs(b.daysRemaining)}d overdue` : `${b.daysRemaining}d`}
+                                            <span style={{
+                                                padding: '4px 10px',
+                                                background: b.status === 'Active' ? '#dcfce7' : '#f3f4f6',
+                                                color: b.status === 'Active' ? '#15803d' : '#6b7280',
+                                                borderRadius: 99, fontSize: 11, fontWeight: 700
+                                            }}>
+                                                {b.status}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e', whiteSpace: 'nowrap' }}>{b.amountPaying > 0 ? formatCurrency(b.amountPaying) : '—'}</td>
+                                        <td style={{ fontWeight: 600 }}>{b.currentPlan}</td>
+                                        <td>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: 13, color: b.daysRemaining < 30 ? '#ef4444' : '#1a1a2e', fontWeight: 600 }}>{b.daysRemaining} days</span>
+                                                <span style={{ fontSize: 10, color: '#9ca3af' }}>left in cycle</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ fontWeight: 700, color: '#1a1a2e' }}>{formatCurrency(b.amountPaying)}</td>
                                         <td>
                                             <span style={{ padding: '3px 8px', background: b.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: b.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{b.billingCycle}</span>
-                                        </td>
-                                        <td>
-                                            <span style={{ color: b.autoRenew ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{b.autoRenew ? 'Yes' : 'No'}</span>
                                         </td>
                                     </tr>
                                 ))}

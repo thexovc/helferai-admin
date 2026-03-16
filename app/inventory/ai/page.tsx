@@ -3,17 +3,30 @@ import React from 'react';
 import Topbar from '../../../components/Topbar';
 import { Sparkles } from 'lucide-react';
 import { useInventoryAiUsage } from '@/api/inventory';
+import { SkeletonPulse, KPISkeleton, ChartSkeleton } from '@/components/Skeleton';
 
 export default function AIPage() {
     const { data, isLoading } = useInventoryAiUsage();
 
-    if (isLoading || !data) return <div style={{ padding: 40, color: '#9ca3af' }}>Loading AI Insights...</div>;
+    if (isLoading || !data) {
+        return (
+            <div>
+                <Topbar title="AI Insights" subtitle="Demand forecasting & inventory optimization" product="inventory" />
+                <div style={{ padding: 'var(--content-padding)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    </div>
+                    <ChartSkeleton />
+                </div>
+            </div>
+        );
+    }
 
     const stats = [
-        { label: 'Total AI Predictions', value: data.totalPredictions.toLocaleString(), trend: '+22%', color: '#6c9e4e' },
-        { label: 'Demand Forecasts Sent', value: data.forecastsSent.toLocaleString(), trend: '+18%', color: '#7c5cbf' },
-        { label: 'Low Stock Alerts', value: data.lowStockAlerts.toLocaleString(), trend: '-4%', color: '#f59e0b' },
-        { label: 'Avg AI Accuracy', value: data.avgAccuracy, trend: '+1.2%', color: '#22c55e' },
+        { label: 'Total AI Predictions', value: data.totalPredictions.value.toLocaleString(), trend: data.totalPredictions.trend, color: data.totalPredictions.comparisonColor === 'green' ? '#6c9e4e' : data.totalPredictions.comparisonColor === 'red' ? '#ef4444' : '#0ea5e9' },
+        { label: 'Demand Forecasts Sent', value: data.forecastsSent.value.toLocaleString(), trend: data.forecastsSent.trend, color: data.forecastsSent.comparisonColor === 'green' ? '#7c5cbf' : data.forecastsSent.comparisonColor === 'red' ? '#ef4444' : '#0ea5e9' },
+        { label: 'Low Stock Alerts', value: data.lowStockAlerts.value.toLocaleString(), trend: data.lowStockAlerts.trend, color: data.lowStockAlerts.comparisonColor === 'green' ? '#f59e0b' : data.lowStockAlerts.comparisonColor === 'red' ? '#ef4444' : '#0ea5e9' },
+        { label: 'Avg AI Accuracy', value: data.avgAccuracy.value, trend: data.avgAccuracy.trend, color: data.avgAccuracy.comparisonColor === 'green' ? '#22c55e' : data.avgAccuracy.comparisonColor === 'red' ? '#ef4444' : '#0ea5e9' },
     ];
 
     const usageByBusiness = data.usageByBusiness.map((b: any) => ({
@@ -47,7 +60,7 @@ export default function AIPage() {
                                 <span style={{ color: s.color }}>{s.icon}</span>
                             </div>
                             <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{s.value}</div>
-                            <div style={{ fontSize: 11, color: s.trend.startsWith('+') ? '#22c55e' : '#ef4444', fontWeight: 700, marginTop: 4 }}>{s.trend} this month</div>
+                            <div style={{ fontSize: 11, color: s.color, fontWeight: 700, marginTop: 4 }}>{s.trend}</div>
                         </div>
                     ))}
                 </div>

@@ -3,7 +3,8 @@ import React from 'react';
 import Topbar from '../Topbar';
 import KPICard from '../KPICard';
 import { useInventoryBusinesses, useInventoryKpis, useInventoryCharts } from '@/api/inventory';
-import { Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, DollarSign, Repeat } from 'lucide-react';
+import { Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, DollarSign, Repeat, Package, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import { SkeletonPulse, KPISkeleton, ChartSkeleton } from '../Skeleton';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Area, AreaChart,
@@ -31,7 +32,20 @@ export default function InventoryDashboardClient() {
     const isLoading = loadingBusinesses || loadingKpis || loadingCharts;
 
     if (isLoading || !businesses || !kpis || !charts) {
-        return <div style={{ padding: 40, color: '#9ca3af' }}>Loading Dashboard...</div>;
+        return (
+            <div>
+                <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
+                <div style={{ padding: 'var(--content-padding)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
+                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                        <ChartSkeleton />
+                        <ChartSkeleton />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     const businessList = businesses.data || [];
@@ -46,7 +60,7 @@ export default function InventoryDashboardClient() {
         mrrTrend: charts.map((d: any) => ({ month: d.month, value: d.mrr })),
         monthlyRevenue: charts.map((d: any) => ({ month: d.month, value: d.revenue })),
         arpuTrend: charts.map((d: any) => ({ month: d.month, value: d.arpu })),
-        renewalForecast: [] as any[], // Mock or derived
+        renewalForecast: kpis.renewalForecast || [],
     };
 
 
@@ -73,9 +87,9 @@ export default function InventoryDashboardClient() {
                         { label: 'Trial Users', value: trial, icon: <Calendar size={16} />, color: '#f59e0b' },
                         { label: 'Expired', value: expired, icon: <AlertCircle size={16} />, color: '#ef4444' },
                         { label: 'Cancelled', value: cancelled, icon: <XCircle size={16} />, color: '#6b7280' },
-                        { label: 'New This Month', value: 3, icon: <Users size={16} />, color: '#7c5cbf' },
-                        { label: 'New Paying', value: 2, icon: <DollarSign size={16} />, color: '#0ea5e9' },
-                        { label: 'Conversion Rate', value: '62%', icon: <TrendingUp size={16} />, color: '#6c9e4e' },
+                        { label: 'New This Month', value: kpis.newThisMonth?.value ?? 0, icon: <Users size={16} />, color: '#7c5cbf' },
+                        { label: 'New Paying', value: kpis.newPaying?.value ?? 0, icon: <DollarSign size={16} />, color: '#0ea5e9' },
+                        { label: 'Conversion Rate', value: kpis.conversionRate?.value ?? '0%', icon: <TrendingUp size={16} />, color: '#6c9e4e' },
                     ].map(s => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: s.color }}>{s.icon}</div>

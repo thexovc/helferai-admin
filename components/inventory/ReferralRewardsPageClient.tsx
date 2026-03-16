@@ -3,9 +3,15 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Gift, MoreVertical } from 'lucide-react';
 import { useInventoryReferralRewards } from '@/api/inventory/inventory.queries';
+import Pagination from '../Pagination';
 
 export default function ReferralRewardsPageClient() {
-    const { data: rewards, isLoading } = useInventoryReferralRewards();
+    const [page, setPage] = React.useState(1);
+    const [pageSize, setPageSize] = React.useState(10);
+    const { data: rewardsResponse, isLoading } = useInventoryReferralRewards(page, pageSize);
+    const rewards = rewardsResponse?.data || [];
+    const meta = rewardsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const [search, setSearch] = React.useState('');
 
     return (
         <div>
@@ -38,6 +44,8 @@ export default function ReferralRewardsPageClient() {
                         <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                         <input
                             placeholder="Search referral rewards..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                             style={{
                                 width: '100%', height: 44, paddingLeft: 44, paddingRight: 16,
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
@@ -74,7 +82,7 @@ export default function ReferralRewardsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : rewards?.map((reward) => (
+                            ) : rewards.map((reward) => (
                                 <tr key={reward.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{reward.name}</td>
                                     <td>{reward.pointsRequired} pts</td>
@@ -97,6 +105,14 @@ export default function ReferralRewardsPageClient() {
                             ))}
                         </tbody>
                     </table>
+
+                    <Pagination
+                        currentPage={page}
+                        totalPages={Math.ceil(meta.total / pageSize)}
+                        onPageChange={setPage}
+                        totalItems={meta.total}
+                        pageSize={pageSize}
+                    />
                 </div>
 
             </div>
