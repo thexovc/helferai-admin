@@ -3,6 +3,7 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Filter, Tag, MoreVertical } from 'lucide-react';
 import { useInventoryBrands } from '@/api/inventory/inventory.queries';
+import { Brand } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 
 export default function BrandsPageClient() {
@@ -89,7 +90,7 @@ export default function BrandsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : brands.map((brand) => (
+                            ) : brands.map((brand: Brand) => (
                                 <tr key={brand.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{brand.name}</td>
                                     <td>{brand.manufacturer}</td>

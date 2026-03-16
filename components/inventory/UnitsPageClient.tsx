@@ -3,6 +3,7 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Filter, Ruler, MoreVertical } from 'lucide-react';
 import { useInventoryUnits } from '@/api/inventory/inventory.queries';
+import { Unit } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 
 export default function UnitsPageClient() {
@@ -85,7 +86,7 @@ export default function UnitsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : units.map((unit) => (
+                            ) : units.map((unit: Unit) => (
                                 <tr key={unit.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{unit.name}</td>
                                     <td>{unit.abbreviation}</td>

@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Package, Wand2 } from 'lucide-react';
 
-export default function SignInPage() {
+function SignInContent() {
     const [showPass, setShowPass] = useState(false);
     const [show2FA, setShow2FA] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -156,5 +156,15 @@ export default function SignInPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function SignInPage() {
+    return (
+        <React.Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', background: '#f4f7f4', alignItems: 'center', justifyContent: 'center' }}>
+            <Loader2 size={32} color="#6c9e4e" className="animate-spin" />
+        </div>}>
+            <SignInContent />
+        </React.Suspense>
     );
 }

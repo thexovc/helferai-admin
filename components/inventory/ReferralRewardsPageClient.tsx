@@ -3,6 +3,7 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Gift, MoreVertical } from 'lucide-react';
 import { useInventoryReferralRewards } from '@/api/inventory/inventory.queries';
+import { ReferralReward } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 
 export default function ReferralRewardsPageClient() {
@@ -82,7 +83,7 @@ export default function ReferralRewardsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : rewards.map((reward) => (
+                            ) : rewards.map((reward: ReferralReward) => (
                                 <tr key={reward.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{reward.name}</td>
                                     <td>{reward.pointsRequired} pts</td>

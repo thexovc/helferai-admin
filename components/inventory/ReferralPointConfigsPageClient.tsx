@@ -3,6 +3,7 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Settings, MoreVertical } from 'lucide-react';
 import { useInventoryPointConfigs } from '@/api/inventory/inventory.queries';
+import { PointConfig } from '@/api/inventory/inventory.types';
 
 export default function ReferralPointConfigsPageClient() {
     const { data: configsResponse, isLoading } = useInventoryPointConfigs();
@@ -73,7 +74,7 @@ export default function ReferralPointConfigsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : configs.map((config) => (
+                            ) : configs.map((config: PointConfig) => (
                                 <tr key={config.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{config.action}</td>
                                     <td>{config.points} pts</td>

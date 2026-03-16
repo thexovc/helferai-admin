@@ -3,10 +3,12 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Send, MoreVertical } from 'lucide-react';
 import { useInventoryBroadcasts } from '@/api/inventory/inventory.queries';
+import { Broadcast } from '@/api/inventory/inventory.types';
 import { formatDateTime } from '@/app/lib/utils';
 
 export default function SendBroadcastPageClient() {
-    const { data: broadcasts, isLoading } = useInventoryBroadcasts();
+    const { data: response, isLoading } = useInventoryBroadcasts();
+    const broadcasts = response?.data || [];
 
     return (
         <div>
@@ -77,7 +79,7 @@ export default function SendBroadcastPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : broadcasts?.map((b) => (
+                            ) : broadcasts.map((b: Broadcast) => (
                                 <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{b.title}</td>
                                     <td>{b.channel}</td>

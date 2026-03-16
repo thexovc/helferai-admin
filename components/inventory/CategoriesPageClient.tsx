@@ -3,6 +3,7 @@ import React from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Filter, Layers, MoreVertical } from 'lucide-react';
 import { useInventoryCategories } from '@/api/inventory/inventory.queries';
+import { Category } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 
 export default function CategoriesPageClient() {
@@ -87,7 +88,7 @@ export default function CategoriesPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : categories.map((category) => (
+                            ) : categories.map((category: Category) => (
                                 <tr key={category.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{category.name}</td>
                                     <td>{category.description}</td>
