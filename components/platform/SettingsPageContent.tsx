@@ -1,14 +1,21 @@
 'use client';
 import React, { useState } from 'react';
-import Topbar from '../../../components/Topbar';
-import { ACTIVE_SESSIONS } from '../../lib/data';
+import Topbar from '../Topbar';
+import { ACTIVE_SESSIONS } from '@/app/lib/data';
 import { Lock, Shield, Monitor, LogOut, Eye, EyeOff, Wifi, AlertTriangle, CheckCircle } from 'lucide-react';
 
-export default function SettingsPage() {
+interface Props {
+    product: 'inventory' | 'studio' | 'admin';
+}
+
+export default function SettingsPageContent({ product }: Props) {
     const [showCurrentPass, setShowCurrentPass] = useState(false);
     const [showNewPass, setShowNewPass] = useState(false);
     const [twoFAEnabled, setTwoFAEnabled] = useState(true);
     const [saved, setSaved] = useState(false);
+
+    const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
+    const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
 
     const inputStyle: React.CSSProperties = { height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb', color: '#1a1a2e' };
 
@@ -17,7 +24,7 @@ export default function SettingsPage() {
     const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 24 }}>
             <div style={{ padding: '18px 24px', borderBottom: '1px solid #f5f5f5', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#eaf4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6c9e4e' }}>{icon}</div>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: lightBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accentColor }}>{icon}</div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{title}</h2>
             </div>
             <div style={{ padding: 24 }}>{children}</div>
@@ -26,12 +33,12 @@ export default function SettingsPage() {
 
     return (
         <div>
-            <Topbar title="Settings" subtitle="Security & account preferences" product="admin" />
+            <Topbar title="Settings" subtitle="Security & account preferences" product={product} />
             <div style={{ padding: 'var(--content-padding)', maxWidth: 800, margin: '0 auto' }}>
                 {/* Success Toast */}
                 {saved && (
-                    <div style={{ marginBottom: 16, padding: '12px 20px', background: '#eaf4e3', border: '1px solid #6c9e4e', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, color: '#374151', fontSize: 14, fontWeight: 500 }}>
-                        <CheckCircle size={16} color="#6c9e4e" /> Settings saved successfully!
+                    <div style={{ marginBottom: 16, padding: '12px 20px', background: lightBg, border: `1px solid ${accentColor}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, color: '#374151', fontSize: 14, fontWeight: 500 }}>
+                        <CheckCircle size={16} color={accentColor} /> Settings saved successfully!
                     </div>
                 )}
 
@@ -41,7 +48,7 @@ export default function SettingsPage() {
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Current Password</label>
                             <div style={{ position: 'relative' }}>
-                                <input type={showCurrentPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = '#6c9e4e')} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
+                                <input type={showCurrentPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
                                 <button onClick={() => setShowCurrentPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex' }}>
                                     {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                 </button>
@@ -50,7 +57,7 @@ export default function SettingsPage() {
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>New Password</label>
                             <div style={{ position: 'relative' }}>
-                                <input type={showNewPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = '#6c9e4e')} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
+                                <input type={showNewPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
                                 <button onClick={() => setShowNewPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex' }}>
                                     {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                 </button>
@@ -58,10 +65,10 @@ export default function SettingsPage() {
                         </div>
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Confirm New Password</label>
-                            <input type="password" placeholder="••••••••" style={inputStyle} onFocus={e => (e.target.style.borderColor = '#6c9e4e')} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
+                            <input type="password" placeholder="••••••••" style={inputStyle} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
                         </div>
                     </div>
-                    <button onClick={handleSave} style={{ marginTop: 20, padding: '10px 24px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.3)' }}>
+                    <button onClick={handleSave} style={{ marginTop: 20, padding: '10px 24px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 2px 8px ${accentColor}4d` }}>
                         Update Password
                     </button>
                 </SectionCard>
@@ -75,7 +82,7 @@ export default function SettingsPage() {
                             </p>
                             <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Adds an extra layer of security to your admin account.</p>
                         </div>
-                        <button onClick={() => setTwoFAEnabled(v => !v)} style={{ padding: '10px 20px', background: twoFAEnabled ? '#fee2e2' : '#eaf4e3', color: twoFAEnabled ? '#dc2626' : '#6c9e4e', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        <button onClick={() => setTwoFAEnabled(v => !v)} style={{ padding: '10px 20px', background: twoFAEnabled ? '#fee2e2' : lightBg, color: twoFAEnabled ? '#dc2626' : accentColor, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                             {twoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
                         </button>
                     </div>
@@ -91,15 +98,15 @@ export default function SettingsPage() {
                 <SectionCard title="Active Sessions" icon={<Monitor size={16} />}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {ACTIVE_SESSIONS.map(session => (
-                            <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: session.current ? '#f0f9f0' : '#fafafa', borderRadius: 12, border: session.current ? '1.5px solid #6c9e4e' : '1px solid #f0f0f0' }}>
+                            <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: session.current ? lightBg : '#fafafa', borderRadius: 12, border: session.current ? `1.5px solid ${accentColor}` : '1px solid #f0f0f0' }}>
                                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                                    <div style={{ width: 38, height: 38, borderRadius: 10, background: session.current ? '#eaf4e3' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <Wifi size={16} color={session.current ? '#6c9e4e' : '#9ca3af'} />
+                                    <div style={{ width: 38, height: 38, borderRadius: 10, background: session.current ? lightBg : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Wifi size={16} color={session.current ? accentColor : '#9ca3af'} />
                                     </div>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', display: 'flex', gap: 8, alignItems: 'center' }}>
                                             {session.device}
-                                            {session.current && <span style={{ fontSize: 10, padding: '2px 7px', background: '#6c9e4e', color: '#fff', borderRadius: 99, fontWeight: 700 }}>CURRENT</span>}
+                                            {session.current && <span style={{ fontSize: 10, padding: '2px 7px', background: accentColor, color: '#fff', borderRadius: 99, fontWeight: 700 }}>CURRENT</span>}
                                         </div>
                                         <div style={{ fontSize: 12, color: '#6b7280' }}>{session.location} · {session.ip} · {session.time}</div>
                                     </div>

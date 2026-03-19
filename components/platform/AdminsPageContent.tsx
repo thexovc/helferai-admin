@@ -1,23 +1,30 @@
 'use client';
 import React, { useState } from 'react';
-import Topbar from '../../../components/Topbar';
-import { ROLES, PERMISSIONS } from '../../lib/data';
+import Topbar from '../Topbar';
+import { ROLES, PERMISSIONS } from '@/app/lib/data';
 import { Check, Plus, Edit2, Trash2, Users } from 'lucide-react';
 
-export default function AdminsPage() {
+interface Props {
+    product: 'inventory' | 'studio' | 'admin';
+}
+
+export default function AdminsPageContent({ product }: Props) {
     const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
     const [roles, setRoles] = useState(ROLES);
 
+    const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
+    const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
+
     const tabStyle = (t: string) => ({
         padding: '8px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
-        background: activeTab === t ? '#6c9e4e' : 'transparent',
+        background: activeTab === t ? accentColor : 'transparent',
         color: activeTab === t ? '#fff' : '#6b7280',
         transition: 'all 0.2s',
     } as React.CSSProperties);
 
     return (
         <div>
-            <Topbar title="Admins & RBAC" subtitle="Manage roles and permissions" product="admin" />
+            <Topbar title="Admins & RBAC" subtitle="Manage roles and permissions" product={product} />
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
@@ -25,7 +32,7 @@ export default function AdminsPage() {
                         <button style={tabStyle('roles')} onClick={() => setActiveTab('roles')}>Roles</button>
                         <button style={tabStyle('permissions')} onClick={() => setActiveTab('permissions')}>Permission Matrix</button>
                     </div>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.3)' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: `0 2px 8px ${accentColor}4d` }}>
                         <Plus size={15} /> Create Role
                     </button>
                 </div>
@@ -92,7 +99,7 @@ export default function AdminsPage() {
                                             return (
                                                 <td key={role.id}>
                                                     {has
-                                                        ? <div style={{ width: 22, height: 22, borderRadius: 6, background: '#eaf4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}><Check size={13} color="#6c9e4e" /></div>
+                                                        ? <div style={{ width: 22, height: 22, borderRadius: 6, background: lightBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}><Check size={13} color={accentColor} /></div>
                                                         : <div style={{ width: 22, height: 22, borderRadius: 6, background: '#f3f4f6', margin: '0 auto' }} />}
                                                 </td>
                                             );

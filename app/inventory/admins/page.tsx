@@ -1,6 +1,5 @@
-import React from 'react';
-import AdminsPageClient from '../../../components/inventory/AdminsPageClient';
+import AdminsPageContent from '@/components/platform/AdminsPageContent';
 
-export default function AdminsPage() {
-    return <AdminsPageClient />;
+export default function InventoryAdminsPage() {
+    return <AdminsPageContent product="inventory" />;
 }

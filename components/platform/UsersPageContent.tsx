@@ -1,17 +1,24 @@
 'use client';
 import React, { useState } from 'react';
-import Topbar from '../../../components/Topbar';
-import StatusBadge from '../../../components/StatusBadge';
-import { ADMIN_USERS } from '../../lib/data';
-import { formatDate, formatDateTime } from '../../lib/utils';
-import { Search, Edit2, Trash2, Key, LogOut, Plus, Filter } from 'lucide-react';
-import type { AdminUser } from '../../lib/types';
+import Topbar from '../Topbar';
+import StatusBadge from '../StatusBadge';
+import { ADMIN_USERS } from '@/app/lib/data';
+import { formatDate, formatDateTime } from '@/app/lib/utils';
+import { Search, Edit2, Trash2, Key, LogOut, Plus } from 'lucide-react';
+import type { AdminUser } from '@/app/lib/types';
 
-export default function UsersPage() {
+interface Props {
+    product: 'inventory' | 'studio' | 'admin';
+}
+
+export default function UsersPageContent({ product }: Props) {
     const [users, setUsers] = useState<AdminUser[]>(ADMIN_USERS);
     const [search, setSearch] = useState('');
     const [filterRole, setFilterRole] = useState('All');
     const [filterArea, setFilterArea] = useState('All');
+
+    const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
+    const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
 
     const filtered = users.filter(u => {
         const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
@@ -25,12 +32,12 @@ export default function UsersPage() {
 
     return (
         <div>
-            <Topbar title="Admin Users" subtitle="Manage admin access and roles" product="admin" />
+            <Topbar title="Admin Users" subtitle="Manage admin access and roles" product={product} />
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Stats row */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
-                        { label: 'Total Users', value: users.length, color: '#6c9e4e' },
+                        { label: 'Total Users', value: users.length, color: accentColor },
                         { label: 'Active', value: users.filter(u => u.status === 'Active').length, color: '#22c55e' },
                         { label: 'Suspended', value: users.filter(u => u.status === 'Suspended').length, color: '#f97316' },
                     ].map(s => (
@@ -57,7 +64,7 @@ export default function UsersPage() {
                             <option>All</option>
                             {['Inventory', 'Studio', 'Both'].map(a => <option key={a}>{a}</option>)}
                         </select>
-                        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: accentColor, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                             <Plus size={14} /> Invite Admin
                         </button>
                     </div>
@@ -74,7 +81,7 @@ export default function UsersPage() {
                             <tbody>
                                 {filtered.map((u, i) => (
                                     <tr key={u.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s' }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#f0f9f0')}
+                                        onMouseEnter={e => (e.currentTarget.style.background = lightBg)}
                                         onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -96,7 +103,7 @@ export default function UsersPage() {
                                         <td style={{ fontSize: 12, color: '#6b7280' }}>{formatDate(u.createdAt)}</td>
                                         <td>
                                             <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                                <button title="Edit Role" style={{ background: '#f0f9f0', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', color: '#6c9e4e' }}><Edit2 size={13} /></button>
+                                                <button title="Edit Role" style={{ background: lightBg, border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', color: accentColor }}><Edit2 size={13} /></button>
                                                 <button title="Reset Password" style={{ background: '#f0f9ff', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', color: '#0284c7' }}><Key size={13} /></button>
                                                 <button title="Force Logout" style={{ background: '#fff7ed', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', color: '#ea580c' }}><LogOut size={13} /></button>
                                                 <button title="Remove Access" style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: 6, cursor: 'pointer', color: '#dc2626' }}><Trash2 size={13} /></button>

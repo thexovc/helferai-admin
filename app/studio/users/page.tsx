@@ -1,6 +1,5 @@
-import React from 'react';
-import UsersPageClient from '../../../components/studio/UsersPageClient';
+import UsersPageContent from '@/components/platform/UsersPageContent';
 
-export default function UsersPage() {
-    return <UsersPageClient />;
+export default function StudioUsersPage() {
+    return <UsersPageContent product="studio" />;
 }

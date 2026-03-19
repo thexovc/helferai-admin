@@ -23,7 +23,7 @@ interface NavGroup {
 }
 
 interface Props {
-    product: 'inventory' | 'studio' | 'admin';
+    product: 'inventory' | 'studio';
 }
 
 const inventoryNav: NavGroup[] = [
@@ -81,12 +81,13 @@ const inventoryNav: NavGroup[] = [
     },
     {
         title: 'Platform', items: [
-            { href: '/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
-            { href: '/users', icon: <Users size={18} />, label: 'Users' },
-            { href: '/settings', icon: <Settings size={18} />, label: 'Settings' },
+            { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
+            { href: '/inventory/users', icon: <Users size={18} />, label: 'Users' },
+            { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
 ];
+
 
 const studioNav: NavGroup[] = [
     {
@@ -104,19 +105,9 @@ const studioNav: NavGroup[] = [
     },
     {
         title: 'Platform', items: [
-            { href: '/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
-            { href: '/users', icon: <Users size={18} />, label: 'Admin Users' },
-            { href: '/settings', icon: <Settings size={18} />, label: 'Settings' },
-        ],
-    },
-];
-
-const adminNav: NavGroup[] = [
-    {
-        title: 'Global', items: [
-            { href: '/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
-            { href: '/users', icon: <Users size={18} />, label: 'Users' },
-            { href: '/settings', icon: <Settings size={18} />, label: 'Settings' },
+            { href: '/studio/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
+            { href: '/studio/users', icon: <Users size={18} />, label: 'Admin Users' },
+            { href: '/studio/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
 ];
@@ -125,7 +116,7 @@ export default function Sidebar({ product }: Props) {
     const { mobileOpen, setMobileOpen } = useLayout();
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
-    const nav = product === 'inventory' ? inventoryNav : product === 'studio' ? studioNav : adminNav;
+    const nav = product === 'inventory' ? inventoryNav : studioNav;
     const isInventory = product === 'inventory';
     const accentColor = isInventory ? '#6c9e4e' : '#7c5cbf';
     const lightBg = isInventory ? '#eaf4e3' : '#f0ebff';
@@ -156,7 +147,7 @@ export default function Sidebar({ product }: Props) {
                                 HelferAI
                             </div>
                             <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                {isInventory ? 'Inventory Admin' : product === 'studio' ? 'Studio Admin' : 'Admin Portal'}
+                                {isInventory ? 'Inventory Admin' : 'Studio Admin'}
                             </div>
                         </div>
                     )}

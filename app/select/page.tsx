@@ -64,16 +64,6 @@ export default function SelectPage() {
                 </Link>
             </div>
 
-            {/* Global admin links */}
-            <div style={{ marginTop: 36, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-                {[{ href: '/admins', label: 'Manage Roles & Permissions' }, { href: '/users', label: 'Admin Users' }, { href: '/settings', label: 'Settings' }].map(item => (
-                    <Link key={item.href} href={item.href} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.8)', border: '1px solid #e5e7eb', borderRadius: 10, color: '#374151', textDecoration: 'none', fontSize: 13, fontWeight: 600, backdropFilter: 'blur(8px)', transition: 'all 0.2s' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#fff')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.8)')}>
-                        {item.label}
-                    </Link>
-                ))}
-            </div>
         </div>
     );
 }
