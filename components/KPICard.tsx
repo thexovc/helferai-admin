@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Props {
     label: string;
-    value: string;
+    value: string | number;
     trend?: string;
     trendUp?: boolean;
     subtitle?: string;

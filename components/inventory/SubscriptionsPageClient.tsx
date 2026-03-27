@@ -1,11 +1,13 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '../Topbar';
 import { formatCurrency, formatDate, getDaysRemainingColor } from '@/app/lib/utils';
-import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus, Filter, ShieldCheck, Download, MoreVertical } from 'lucide-react';
+import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus, Edit2, Trash2, Building2, Calendar } from 'lucide-react';
 import { useInventorySubscriptions } from '@/api/inventory/inventory.queries';
 import Pagination from '../Pagination';
+import { toast } from 'sonner';
+import Modal from '../Modal';
 
 const PLAN_OPTIONS = ['All', 'Enterprise', 'Pro', 'Basic', 'Basic Helfer'];
 const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled'];
@@ -19,15 +21,103 @@ const statusStyle: Record<string, { bg: string; color: string }> = {
 };
 
 export default function SubscriptionsPageClient() {
-    const [page, setPage] = React.useState(1);
-    const [pageSize, setPageSize] = React.useState(10);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const { data: subscriptionsResponse, isLoading } = useInventorySubscriptions(page, pageSize);
-    const subscriptions = subscriptionsResponse?.data || [];
-    const meta = subscriptionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-    const [search, setSearch] = React.useState('');
+    const [subscriptions, setSubscriptions] = useState<any[]>([]);
+    const [search, setSearch] = useState('');
     const [planFilter, setPlanFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [billingFilter, setBillingFilter] = useState('All');
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingSub, setEditingSub] = useState<any | null>(null);
+    const [formData, setFormData] = useState({
+        businessName: '',
+        businessEmail: '',
+        plan: 'Basic',
+        amountPaying: 0,
+        billingCycle: 'Monthly',
+        status: 'Active',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        autoRenew: true,
+        paymentMethod: 'Paystack'
+    });
+
+    useEffect(() => {
+        if (subscriptionsResponse?.data) {
+            setSubscriptions(subscriptionsResponse.data);
+        }
+    }, [subscriptionsResponse]);
+
+    const handleOpenModal = (sub?: any) => {
+        if (sub) {
+            setEditingSub(sub);
+            setFormData({
+                businessName: sub.businessName,
+                businessEmail: sub.businessEmail,
+                plan: sub.plan,
+                amountPaying: sub.amountPaying,
+                billingCycle: sub.billingCycle,
+                status: sub.status,
+                startDate: sub.startDate.split('T')[0],
+                endDate: sub.endDate.split('T')[0],
+                autoRenew: sub.autoRenew,
+                paymentMethod: sub.paymentMethod || 'Paystack'
+            });
+        } else {
+            setEditingSub(null);
+            setFormData({
+                businessName: '',
+                businessEmail: '',
+                plan: 'Basic',
+                amountPaying: 15000,
+                billingCycle: 'Monthly',
+                status: 'Active',
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                autoRenew: true,
+                paymentMethod: 'Paystack'
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSaveSubscription = () => {
+        if (!formData.businessName || !formData.businessEmail) {
+            toast.error('Business details are required');
+            return;
+        }
+
+        if (editingSub) {
+            setSubscriptions(prev => prev.map(s => s.id === editingSub.id ? { ...s, ...formData, daysRemaining: Math.ceil((new Date(formData.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) } : s));
+            toast.success(`Subscription for "${formData.businessName}" updated successfully`);
+        } else {
+            const newSub = {
+                id: `sub-${Date.now()}`,
+                ...formData,
+                businessId: `b-${Date.now()}`,
+                daysRemaining: Math.ceil((new Date(formData.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+                createdAt: new Date().toISOString()
+            };
+            setSubscriptions(prev => [newSub, ...prev]);
+            toast.success(`Subscription for "${formData.businessName}" created successfully`);
+        }
+        setIsModalOpen(false);
+    };
+
+    const handleAction = (type: 'edit' | 'cancel', sub: any) => {
+        if (type === 'cancel') {
+            if (confirm(`Are you sure you want to cancel the subscription for ${sub.businessName}?`)) {
+                setSubscriptions(prev => prev.map(s => s.id === sub.id ? { ...s, status: 'Cancelled' } : s));
+                toast.success(`Subscription for ${sub.businessName} has been cancelled`);
+            }
+        } else {
+            handleOpenModal(sub);
+        }
+    };
 
     const filtered = subscriptions.filter(s => {
         const matchSearch =
@@ -78,7 +168,7 @@ export default function SubscriptionsPageClient() {
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 8 }}>{k.icon}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{isLoading ? '...' : k.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{isLoading && subscriptions.length === 0 ? '...' : k.value}</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e' }}>{k.label}</div>
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{k.sub}</div>
                         </div>
@@ -90,7 +180,7 @@ export default function SubscriptionsPageClient() {
                     {/* Toolbar */}
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a2e', flex: 1 }}>
-                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({isLoading ? '...' : meta.total})</span>
+                            All Subscriptions <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 13 }}>({isLoading && subscriptions.length === 0 ? '...' : filtered.length})</span>
                         </h3>
 
                         {/* Search */}
@@ -116,33 +206,35 @@ export default function SubscriptionsPageClient() {
                             </select>
                         ))}
 
-                        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 34, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <button
+                            onClick={() => handleOpenModal()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 34, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                             <Plus size={14} /> Add Subscription
                         </button>
                     </div>
 
                     {/* Table */}
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
                             <thead>
                                 <tr>
-                                    {['Business', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status'].map(h => (
+                                    {['Business', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status', 'Actions'].map(h => (
                                         <th key={h} style={thStyle}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {isLoading ? (
+                                {isLoading && subscriptions.length === 0 ? (
                                     [1, 2, 3, 4, 5].map(i => (
                                         <tr key={i}>
-                                            <td colSpan={10} style={{ padding: '12px 14px' }}>
+                                            <td colSpan={11} style={{ padding: '12px 14px' }}>
                                                 <div style={{ height: 20, background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div>
                                             </td>
                                         </tr>
                                     ))
                                 ) : filtered.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} style={{ padding: '48px 20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                                        <td colSpan={11} style={{ padding: '48px 20px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
                                             No subscriptions match your filters.
                                         </td>
                                     </tr>
@@ -151,9 +243,7 @@ export default function SubscriptionsPageClient() {
                                     const sc = statusStyle[s.status] || { bg: '#f3f4f6', color: '#6b7280' };
                                     return (
                                         <tr key={s.id}
-                                            style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s', cursor: 'pointer' }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = '#f0f9f0')}
-                                            onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
+                                            style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s' }}>
 
                                             {/* Business */}
                                             <td style={tdStyle}>
@@ -207,6 +297,18 @@ export default function SubscriptionsPageClient() {
                                                     {s.status}
                                                 </span>
                                             </td>
+
+                                            {/* Actions */}
+                                            <td style={tdStyle}>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button
+                                                        onClick={() => handleAction('edit', s)}
+                                                        style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 5, borderRadius: 6, display: 'flex' }} title="Edit"><Edit2 size={13} /></button>
+                                                    <button
+                                                        onClick={() => handleAction('cancel', s)}
+                                                        style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 5, borderRadius: 6, display: 'flex' }} title="Cancel"><Trash2 size={13} /></button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -216,10 +318,120 @@ export default function SubscriptionsPageClient() {
 
                     {/* Footer */}
                     <div style={{ padding: '12px 20px', borderTop: '1px solid #f5f5f5', fontSize: 12, color: '#9ca3af', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Showing <b style={{ color: '#1a1a2e' }}>{isLoading ? '...' : filtered.length}</b> of {isLoading ? '...' : meta.total} subscriptions</span>
+                        <span>Showing <b style={{ color: '#1a1a2e' }}>{isLoading && subscriptions.length === 0 ? '...' : filtered.length}</b> of {isLoading && subscriptions.length === 0 ? '...' : (subscriptionsResponse?.meta?.total || subscriptions.length)} subscriptions</span>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={Math.ceil((subscriptionsResponse?.meta?.total || subscriptions.length) / pageSize)}
+                            onPageChange={setPage}
+                            totalItems={subscriptionsResponse?.meta?.total || subscriptions.length}
+                            pageSize={pageSize}
+                        />
                     </div>
                 </div>
             </div>
+
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={editingSub ? 'Edit Subscription' : 'Add New Subscription'}
+                footer={
+                    <>
+                        <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleSaveSubscription} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {editingSub ? 'Save Changes' : 'Create Subscription'}
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            <Building2 size={14} /> Business Name
+                        </label>
+                        <input
+                            value={formData.businessName}
+                            onChange={e => setFormData(prev => ({ ...prev, businessName: e.target.value }))}
+                            placeholder="e.g. Acme Corp"
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            Owner Email
+                        </label>
+                        <input
+                            value={formData.businessEmail}
+                            onChange={e => setFormData(prev => ({ ...prev, businessEmail: e.target.value }))}
+                            placeholder="owner@example.com"
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Plan</label>
+                            <select
+                                value={formData.plan}
+                                onChange={e => setFormData(prev => ({ ...prev, plan: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Basic', 'Pro', 'Enterprise', 'Basic Helfer'].map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Billing Cycle</label>
+                            <select
+                                value={formData.billingCycle}
+                                onChange={e => setFormData(prev => ({ ...prev, billingCycle: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Monthly', 'Annual'].map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                                <Calendar size={14} /> Start Date
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.startDate}
+                                onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                                <Calendar size={14} /> End Date
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.endDate}
+                                onChange={e => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Amount (₦)</label>
+                            <input
+                                type="number"
+                                value={formData.amountPaying}
+                                onChange={e => setFormData(prev => ({ ...prev, amountPaying: Number(e.target.value) }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
+                            <select
+                                value={formData.status}
+                                onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

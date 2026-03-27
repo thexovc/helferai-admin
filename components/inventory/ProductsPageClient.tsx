@@ -1,20 +1,90 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, Box, MoreVertical, ShoppingBag } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ShoppingBag, Tag, Package, DollarSign } from 'lucide-react';
 import { useInventoryProducts } from '@/api/inventory/inventory.queries';
 import Pagination from '../Pagination';
 import { formatCurrency } from '@/app/lib/utils';
-
-
+import { toast } from 'sonner';
+import Modal from '../Modal';
 
 export default function ProductsPageClient() {
-    const [page, setPage] = React.useState(1);
-    const [pageSize, setPageSize] = React.useState(10);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const { data: productsResponse, isLoading } = useInventoryProducts(page, pageSize);
-    const products = productsResponse?.data || [];
-    const meta = productsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-    const [search, setSearch] = React.useState('');
+    const [products, setProducts] = useState<any[]>([]);
+    const [search, setSearch] = useState('');
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<any | null>(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        sku: '',
+        category: '',
+        price: 0,
+        stockLevel: 0,
+        status: 'Active'
+    });
+
+    useEffect(() => {
+        if (productsResponse?.data) {
+            setProducts(productsResponse.data);
+        }
+    }, [productsResponse]);
+
+    const handleOpenModal = (product?: any) => {
+        if (product) {
+            setEditingProduct(product);
+            setFormData({
+                name: product.name,
+                sku: product.sku,
+                category: product.category,
+                price: product.price,
+                stockLevel: product.stockLevel,
+                status: product.status
+            });
+        } else {
+            setEditingProduct(null);
+            setFormData({
+                name: '',
+                sku: `SKU-${Math.floor(Math.random() * 100000)}`,
+                category: 'General',
+                price: 0,
+                stockLevel: 0,
+                status: 'Active'
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSaveProduct = () => {
+        if (!formData.name || !formData.category) {
+            toast.error('Product name and category are required');
+            return;
+        }
+
+        if (editingProduct) {
+            setProducts(prev => prev.map(p => p.sku === editingProduct.sku ? { ...p, ...formData } : p));
+            toast.success(`Product "${formData.name}" updated successfully`);
+        } else {
+            const newProduct = {
+                ...formData,
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString()
+            };
+            setProducts(prev => [newProduct, ...prev]);
+            toast.success(`Product "${formData.name}" created successfully`);
+        }
+        setIsModalOpen(false);
+    };
+
+    const handleDeleteProduct = (p: any) => {
+        if (confirm(`Are you sure you want to delete ${p.name}? This will remove it from inventory.`)) {
+            setProducts(prev => prev.filter(item => item.sku !== p.sku));
+            toast.success(`${p.name} deleted successfully`);
+        }
+    };
 
     const filtered = products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,6 +108,11 @@ export default function ProductsPageClient() {
                             <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and organize your products.</p>
                         </div>
                     </div>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(108,158,78,0.2)' }}>
+                        <Plus size={18} /> Add Product
+                    </button>
                 </div>
 
                 {/* Filters Row */}
@@ -68,11 +143,11 @@ export default function ProductsPageClient() {
                                 <th>Price</th>
                                 <th>Stock Level</th>
                                 <th>Status</th>
-                                <th style={{ width: 60 }}>Actions</th>
+                                <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading ? (
+                            {isLoading && products.length === 0 ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item}>
                                         <td colSpan={7}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
@@ -107,10 +182,19 @@ export default function ProductsPageClient() {
                                                 {p.status}
                                             </span>
                                         </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
-                                                <MoreVertical size={16} />
-                                            </button>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <button
+                                                    onClick={() => handleOpenModal(p)}
+                                                    style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Edit">
+                                                    <Edit2 size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteProduct(p)}
+                                                    style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Delete">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -118,16 +202,100 @@ export default function ProductsPageClient() {
                         </tbody>
                     </table>
 
-                    <Pagination
-                        currentPage={page}
-                        totalPages={Math.ceil(meta.total / pageSize)}
-                        onPageChange={setPage}
-                        totalItems={meta.total}
-                        pageSize={pageSize}
-                    />
+                    <div style={{ padding: '12px 20px' }}>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={Math.ceil((productsResponse?.meta?.total || products.length) / pageSize)}
+                            onPageChange={setPage}
+                            totalItems={productsResponse?.meta?.total || products.length}
+                            pageSize={pageSize}
+                        />
+                    </div>
                 </div>
-
             </div>
+
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={editingProduct ? 'Edit Product' : 'Add New Product'}
+                footer={
+                    <>
+                        <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleSaveProduct} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {editingProduct ? 'Save Changes' : 'Create Product'}
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            <Package size={14} /> Product Name
+                        </label>
+                        <input
+                            value={formData.name}
+                            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g. Wireless Mouse"
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                                SKU
+                            </label>
+                            <input
+                                value={formData.sku}
+                                onChange={e => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f3f4f6', color: '#6b7280' }}
+                                disabled
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                                <Tag size={14} /> Category
+                            </label>
+                            <input
+                                value={formData.category}
+                                onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                                placeholder="e.g. Electronics"
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                                <DollarSign size={14} /> Price (₦)
+                            </label>
+                            <input
+                                type="number"
+                                value={formData.price}
+                                onChange={e => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Stock Level</label>
+                            <input
+                                type="number"
+                                value={formData.stockLevel}
+                                onChange={e => setFormData(prev => ({ ...prev, stockLevel: Number(e.target.value) }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
+                        <select
+                            value={formData.status}
+                            onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                            {['Active', 'Inactive', 'Discontinued'].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

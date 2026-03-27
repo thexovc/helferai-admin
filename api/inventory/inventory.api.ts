@@ -3,7 +3,7 @@ import * as T from './inventory.types';
 
 export const inventoryApi = {
   getKpis: () => inventoryClient.get<T.KPIMetrics>('/admin/api/inventory/dashboard/kpis'),
-  getCharts: () => inventoryClient.get<T.ChartData[]>('/admin/api/inventory/dashboard/charts'),
+  getCharts: () => inventoryClient.get<T.InventoryCharts>('/admin/api/inventory/dashboard/charts'),
   getBusinesses: (page = 1, pageSize = 10) => 
     inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}`),
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),

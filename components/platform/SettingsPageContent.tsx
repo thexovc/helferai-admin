@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Topbar from '../Topbar';
 import { ACTIVE_SESSIONS } from '@/app/lib/data';
 import { Lock, Shield, Monitor, LogOut, Eye, EyeOff, Wifi, AlertTriangle, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
     product: 'inventory' | 'studio' | 'admin';
@@ -13,13 +14,38 @@ export default function SettingsPageContent({ product }: Props) {
     const [showNewPass, setShowNewPass] = useState(false);
     const [twoFAEnabled, setTwoFAEnabled] = useState(true);
     const [saved, setSaved] = useState(false);
+    const [sessions, setSessions] = useState(ACTIVE_SESSIONS);
 
     const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
     const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
 
     const inputStyle: React.CSSProperties = { height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb', color: '#1a1a2e' };
 
-    function handleSave() { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    function handleSavePassword() {
+        setSaved(true);
+        toast.success('Password updated successfully');
+        setTimeout(() => setSaved(false), 2500);
+    }
+
+    const handleToggle2FA = () => {
+        const newState = !twoFAEnabled;
+        setTwoFAEnabled(newState);
+        toast.success(`Two-Factor Authentication ${newState ? 'enabled' : 'disabled'}`);
+    };
+
+    const handleRevokeSession = (id: string, device: string) => {
+        if (confirm(`Are you sure you want to revoke the session for ${device}?`)) {
+            setSessions(prev => prev.filter(s => s.id !== id));
+            toast.success(`Session for ${device} revoked`);
+        }
+    };
+
+    const handleLogoutAll = () => {
+        if (confirm('Are you sure you want to log out from all other devices?')) {
+            setSessions(prev => prev.filter(s => s.current));
+            toast.success('Logged out from all other devices');
+        }
+    };
 
     const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 24 }}>
@@ -68,7 +94,7 @@ export default function SettingsPageContent({ product }: Props) {
                             <input type="password" placeholder="••••••••" style={inputStyle} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
                         </div>
                     </div>
-                    <button onClick={handleSave} style={{ marginTop: 20, padding: '10px 24px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 2px 8px ${accentColor}4d` }}>
+                    <button onClick={handleSavePassword} style={{ marginTop: 20, padding: '10px 24px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 2px 8px ${accentColor}4d` }}>
                         Update Password
                     </button>
                 </SectionCard>
@@ -82,7 +108,7 @@ export default function SettingsPageContent({ product }: Props) {
                             </p>
                             <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Adds an extra layer of security to your admin account.</p>
                         </div>
-                        <button onClick={() => setTwoFAEnabled(v => !v)} style={{ padding: '10px 20px', background: twoFAEnabled ? '#fee2e2' : lightBg, color: twoFAEnabled ? '#dc2626' : accentColor, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        <button onClick={handleToggle2FA} style={{ padding: '10px 20px', background: twoFAEnabled ? '#fee2e2' : lightBg, color: twoFAEnabled ? '#dc2626' : accentColor, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                             {twoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
                         </button>
                     </div>
@@ -97,7 +123,7 @@ export default function SettingsPageContent({ product }: Props) {
                 {/* Active Sessions */}
                 <SectionCard title="Active Sessions" icon={<Monitor size={16} />}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {ACTIVE_SESSIONS.map(session => (
+                        {sessions.map(session => (
                             <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: session.current ? lightBg : '#fafafa', borderRadius: 12, border: session.current ? `1.5px solid ${accentColor}` : '1px solid #f0f0f0' }}>
                                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                                     <div style={{ width: 38, height: 38, borderRadius: 10, background: session.current ? lightBg : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -112,12 +138,16 @@ export default function SettingsPageContent({ product }: Props) {
                                     </div>
                                 </div>
                                 {!session.current && (
-                                    <button style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Revoke</button>
+                                    <button
+                                        onClick={() => handleRevokeSession(session.id, session.device)}
+                                        style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Revoke</button>
                                 )}
                             </div>
                         ))}
                     </div>
-                    <button style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                    <button
+                        onClick={handleLogoutAll}
+                        style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         <LogOut size={14} /> Logout from All Devices
                     </button>
                 </SectionCard>

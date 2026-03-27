@@ -1,4 +1,4 @@
-export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled';
+export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended';
 export type BillingCycle = 'Monthly' | 'Annual';
 
 export interface PaginatedResponse<T> {
@@ -40,6 +40,25 @@ export interface Business {
 }
 
 
+export interface KPIValue {
+  value: number;
+  trend: string;
+  trendUp: boolean;
+}
+
+export interface InventoryOverview {
+  totalBusiness?: KPIValue;
+  totalSubscribingBusiness?: KPIValue;
+  trialUsers?: KPIValue;
+  expiredSubscription?: KPIValue;
+  cancelledBusinesses?: KPIValue;
+  newBusinessThisMonth?: KPIValue;
+  newPayingBusinesses?: KPIValue;
+  conversionRate?: KPIValue;
+  activeToday?: KPIValue;
+  activeVsInactiveRatio?: KPIValue;
+}
+
 export interface KPIMetrics {
   mrr: { value: number; trend: string; trendUp: boolean };
   arr: { value: number; trend: string; trendUp: boolean };
@@ -51,6 +70,7 @@ export interface KPIMetrics {
   renewalForecast: Array<{ month: string; amount: number }>;
   newThisMonth?: { value: number };
   newPaying?: { value: number };
+  overview?: InventoryOverview;
 }
 
 export interface ChartData {
@@ -58,6 +78,18 @@ export interface ChartData {
   mrr: number;
   revenue: number;
   arpu: number;
+  totalBusiness?: number;
+  subscribing?: number;
+}
+
+export interface RenewalTimelineItem {
+  week: string;
+  amount: number;
+}
+
+export interface InventoryCharts {
+  monthlyTrends: ChartData[];
+  pendingRenewalsTimeline: RenewalTimelineItem[];
 }
 
 export interface Transaction {

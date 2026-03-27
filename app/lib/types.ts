@@ -1,4 +1,4 @@
-export type AdminRole = 'SuperAdmin' | 'Admin' | 'Analyst' | 'Support' | 'Viewer';
+export type AdminRole = string;
 export type AdminArea = 'Inventory' | 'Studio' | 'Both';
 export type UserStatus = 'Active' | 'Suspended' | 'Inactive';
 export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled';

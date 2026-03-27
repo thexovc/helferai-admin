@@ -1,13 +1,14 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
-import StatusBadge from '../../../components/StatusBadge';
-import { formatCurrency, formatDate, getDaysRemainingColor } from '../../lib/utils';
+import { formatCurrency, formatDate } from '../../lib/utils';
 import { SkeletonPulse, KPISkeleton, TableSkeleton } from '@/components/Skeleton';
-import { Search, Building2, CheckCircle } from 'lucide-react';
+import { Search, Building2, CheckCircle, Plus, Edit2, Trash2, Globe, Mail } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 import { useInventoryBusinesses } from '@/api/inventory';
+import { toast } from 'sonner';
+import Modal from '@/components/Modal';
 
 const SORT_FILTERS = [
     'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',
@@ -15,16 +16,91 @@ const SORT_FILTERS = [
     'Inactive 30 Days', 'Downgraded Recently',
 ];
 
-
 export default function BusinessesPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: businessesData, isLoading } = useInventoryBusinesses(page, pageSize);
+    const { data: businessesResponse, isLoading } = useInventoryBusinesses(page, pageSize);
+    const [businesses, setBusinesses] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
-    if (isLoading || !businessesData) {
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingBusiness, setEditingBusiness] = useState<any | null>(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        status: 'Active',
+        currentPlan: 'Basic',
+        billingCycle: 'Monthly',
+        amountPaying: 0,
+        daysRemaining: 30
+    });
+
+    useEffect(() => {
+        if (businessesResponse?.data) {
+            setBusinesses(businessesResponse.data);
+        }
+    }, [businessesResponse]);
+
+    const handleOpenModal = (business?: any) => {
+        if (business) {
+            setEditingBusiness(business);
+            setFormData({
+                name: business.name,
+                email: business.email,
+                status: business.status,
+                currentPlan: business.currentPlan,
+                billingCycle: business.billingCycle,
+                amountPaying: business.amountPaying,
+                daysRemaining: business.daysRemaining
+            });
+        } else {
+            setEditingBusiness(null);
+            setFormData({
+                name: '',
+                email: '',
+                status: 'Active',
+                currentPlan: 'Basic',
+                billingCycle: 'Monthly',
+                amountPaying: 15000,
+                daysRemaining: 30
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleSaveBusiness = () => {
+        if (!formData.name || !formData.email) {
+            toast.error('Business name and email are required');
+            return;
+        }
+
+        if (editingBusiness) {
+            setBusinesses(prev => prev.map(b => b.id === editingBusiness.id ? { ...b, ...formData } : b));
+            toast.success(`Business "${formData.name}" updated successfully`);
+        } else {
+            const newBusiness = {
+                id: `b-${Date.now()}`,
+                ...formData,
+                autoRenew: true,
+                createdAt: new Date().toISOString()
+            };
+            setBusinesses(prev => [newBusiness, ...prev]);
+            toast.success(`Business "${formData.name}" created successfully`);
+        }
+        setIsModalOpen(false);
+    };
+
+    const handleDeleteBusiness = (id: string, name: string) => {
+        if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+            setBusinesses(prev => prev.filter(b => b.id !== id));
+            toast.success(`Business ${name} has been deleted`);
+        }
+    };
+
+    if (isLoading && businesses.length === 0) {
         return (
             <div>
                 <Topbar title="Business Management" subtitle="Manage all customer businesses" product="inventory" />
@@ -41,11 +117,9 @@ export default function BusinessesPage() {
         );
     }
 
-    const data = businessesData?.data || [];
-    const meta = businessesData?.meta || { total: 0, page: 1, pageSize: 10 };
+    const meta = businessesResponse?.meta || { total: businesses.length, page: 1, pageSize: 10 };
 
-
-    const filtered = data.filter(b => {
+    const filtered = businesses.filter(b => {
         const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) || b.email.toLowerCase().includes(search.toLowerCase());
         const matchStatus = statusFilter === 'All' || b.status === statusFilter;
         let matchFilter = true;
@@ -53,13 +127,9 @@ export default function BusinessesPage() {
         if (activeFilter === 'Expiring in 30 Days') matchFilter = b.daysRemaining >= 0 && b.daysRemaining <= 30;
         if (activeFilter === 'Trial Ending in 3 Days') matchFilter = b.status === 'Trial' && b.daysRemaining <= 3;
         if (activeFilter === 'Annual Plan') matchFilter = b.billingCycle === 'Annual';
-        if (activeFilter === 'Auto Renew Off') matchFilter = !b.autoRenew;
         if (activeFilter === 'High Paying') matchFilter = b.amountPaying > 80000;
         return matchSearch && matchStatus && matchFilter;
     }).sort((a, b) => a.daysRemaining - b.daysRemaining);
-
-    const total = meta.total;
-    const active = data.filter(b => b.status === 'Active').length;
 
     return (
         <div>
@@ -68,10 +138,10 @@ export default function BusinessesPage() {
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
-                        { label: 'Total Businesses', value: total, color: '#6c9e4e' },
-                        { label: 'Active', value: active, color: '#22c55e' },
-                        { label: 'Trial', value: data.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
-                        { label: 'Expired', value: data.filter(b => b.status === 'Expired').length, color: '#ef4444' },
+                        { label: 'Total Businesses', value: businesses.length, color: '#6c9e4e' },
+                        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, color: '#22c55e' },
+                        { label: 'Trial', value: businesses.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
+                        { label: 'Expired', value: businesses.filter(b => b.status === 'Expired').length, color: '#ef4444' },
                     ].map(s => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</span>
@@ -105,13 +175,18 @@ export default function BusinessesPage() {
                             <option>All</option>
                             {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s}>{s}</option>)}
                         </select>
+                        <button
+                            onClick={() => handleOpenModal()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            <Plus size={14} /> Add Business
+                        </button>
                     </div>
 
                     <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
                         <table style={{ minWidth: 900 }}>
                             <thead>
                                 <tr>
-                                    {['Business Name', 'Owner', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle'].map(h => (
+                                    {['Business Name', 'Owner', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>
@@ -133,8 +208,8 @@ export default function BusinessesPage() {
                                         <td>
                                             <span style={{
                                                 padding: '4px 10px',
-                                                background: b.status === 'Active' ? '#dcfce7' : '#f3f4f6',
-                                                color: b.status === 'Active' ? '#15803d' : '#6b7280',
+                                                background: b.status === 'Active' ? '#dcfce7' : b.status === 'Trial' ? '#fef9c3' : '#fee2e2',
+                                                color: b.status === 'Active' ? '#15803d' : b.status === 'Trial' ? '#a16207' : '#dc2626',
                                                 borderRadius: 99, fontSize: 11, fontWeight: 700
                                             }}>
                                                 {b.status}
@@ -151,16 +226,111 @@ export default function BusinessesPage() {
                                         <td>
                                             <span style={{ padding: '3px 8px', background: b.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: b.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{b.billingCycle}</span>
                                         </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button
+                                                    onClick={() => handleOpenModal(b)}
+                                                    style={{ border: 'none', background: '#f0f9ff', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }} title="Edit"><Edit2 size={14} /></button>
+                                                <button
+                                                    onClick={() => handleDeleteBusiness(b.id, b.name)}
+                                                    style={{ border: 'none', background: '#fee2e2', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }} title="Delete"><Trash2 size={14} /></button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    <div style={{ padding: '12px 20px', borderTop: '1px solid #f5f5f5', fontSize: 12, color: '#9ca3af' }}>
-                        Showing {filtered.length} of {total} businesses · Default sort: Days Remaining ASC
+                    <div style={{ padding: '12px 20px' }}>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={Math.ceil(meta.total / pageSize)}
+                            onPageChange={setPage}
+                            totalItems={meta.total}
+                            pageSize={pageSize}
+                        />
                     </div>
                 </div>
             </div>
+
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={editingBusiness ? 'Edit Business' : 'Add New Business'}
+                footer={
+                    <>
+                        <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={handleSaveBusiness} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {editingBusiness ? 'Save Changes' : 'Create Business'}
+                        </button>
+                    </>
+                }
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            <Building2 size={14} /> Business Name
+                        </label>
+                        <input
+                            value={formData.name}
+                            onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="e.g. Acme Corp"
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            <Mail size={14} /> Owner Email
+                        </label>
+                        <input
+                            value={formData.email}
+                            onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="owner@example.com"
+                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Current Plan</label>
+                            <select
+                                value={formData.currentPlan}
+                                onChange={e => setFormData(prev => ({ ...prev, currentPlan: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Basic', 'Pro', 'Enterprise', 'Trial'].map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Billing Cycle</label>
+                            <select
+                                value={formData.billingCycle}
+                                onChange={e => setFormData(prev => ({ ...prev, billingCycle: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Monthly', 'Annual'].map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Amount Paying (₦)</label>
+                            <input
+                                type="number"
+                                value={formData.amountPaying}
+                                onChange={e => setFormData(prev => ({ ...prev, amountPaying: Number(e.target.value) }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
+                            <select
+                                value={formData.status}
+                                onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
+                                {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

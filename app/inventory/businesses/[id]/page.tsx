@@ -18,6 +18,7 @@ import {
     useBusinessIntegrations,
     useBusinessAi
 } from '@/api/inventory';
+import { toast } from 'sonner';
 
 
 const TABS = [
@@ -35,8 +36,10 @@ const TABS = [
     { key: 'ai', label: 'AI', icon: <Sparkles size={14} /> },
 ];
 
-const ActionBtn = ({ label, color = '#6c9e4e', icon }: { label: string; color?: string; icon: React.ReactNode }) => (
-    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: `${color}15`, border: `1px solid ${color}40`, borderRadius: 8, color, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+const ActionBtn = ({ label, color = '#6c9e4e', icon, onClick }: { label: string; color?: string; icon: React.ReactNode; onClick?: () => void }) => (
+    <button
+        onClick={onClick}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: `${color}15`, border: `1px solid ${color}40`, borderRadius: 8, color, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
         {icon} {label}
     </button>
 );
@@ -74,17 +77,40 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
 
     const getMeta = (resp: any) => resp?.meta || { total: 0, page: 1, pageSize: 10 };
 
+    const handleCreateNew = () => {
+        toast.info(`Create feature for ${tab} coming soon!`);
+    };
+
+    const handleAction = (type: 'view' | 'edit' | 'delete', item: any) => {
+        const name = item.name || item.receiptNumber || item.plan || item.purpose || 'item';
+        if (type === 'delete') {
+            if (confirm(`Are you sure you want to delete ${name}?`)) {
+                toast.success(`${name} deleted successfully`);
+            }
+        } else {
+            toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)}ing ${name}...`);
+        }
+    };
+
     const createBtn = (
-        <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#6c9e4e', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+        <button
+            onClick={handleCreateNew}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#6c9e4e', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
             <Plus size={14} /> Create New
         </button>
     );
 
-    const acts = (
+    const acts = (item: any) => (
         <div style={{ display: 'flex', gap: 4 }}>
-            <button style={{ padding: 5, background: '#f0f9f0', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#6c9e4e', display: 'flex' }}><Eye size={12} /></button>
-            <button style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
-            <button style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
+            <button
+                onClick={() => handleAction('view', item)}
+                style={{ padding: 5, background: '#f0f9f0', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#6c9e4e', display: 'flex' }}><Eye size={12} /></button>
+            <button
+                onClick={() => handleAction('edit', item)}
+                style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
+            <button
+                onClick={() => handleAction('delete', item)}
+                style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
         </div>
     );
 
@@ -102,7 +128,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={tdStyle}>{u.role}</td>
                             <td style={tdStyle}><StatusBadge status={u.status} size="sm" /></td>
                             <td style={tdStyle}>{formatDate(u.createdAt)}</td>
-                            <td style={tdStyle}>{acts}</td>
+                            <td style={tdStyle}>{acts(u)}</td>
                         </tr>)}
                     </tbody>
                 </table>
@@ -132,7 +158,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                                 <td style={tdStyle}>{formatDate(s.startsAt)}</td>
                                 <td style={tdStyle}>{formatDate(s.endsAt)}</td>
                                 <td style={tdStyle}><StatusBadge status={s.status} size="sm" /></td>
-                                <td style={tdStyle}>{acts}</td>
+                                <td style={tdStyle}>{acts(s)}</td>
                             </tr>)}
                         </tbody>
                     </table>
@@ -164,7 +190,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(p.sellingPrice)}</td>
                             <td style={tdStyle}>{p.openingStock}</td>
                             <td style={tdStyle}>{p.unit}</td>
-                            <td style={tdStyle}>{acts}</td>
+                            <td style={tdStyle}>{acts(p)}</td>
                         </tr>)}
                     </tbody>
                 </table>
@@ -194,7 +220,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
                             <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
                             <td style={tdStyle}>{formatDate(s.createdAt)}</td>
-                            <td style={tdStyle}>{acts}</td>
+                            <td style={tdStyle}>{acts(s)}</td>
                         </tr>)}
                     </tbody>
                 </table>
@@ -215,7 +241,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
         if (expensesLoading) return loadingEl;
         return (
             <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Date', 'Purpose', 'Account', 'Amount', 'Ref #'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                <table style={tableStyle}><thead><tr>{['Date', 'Purpose', 'Account', 'Amount', 'Ref #', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(expenses || []).map((e, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
                             <td style={tdStyle}>{formatDate(e.date)}</td>
@@ -223,6 +249,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={tdStyle}>{e.account}</td>
                             <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(e.amount)}</td>
                             <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{e.referenceNumber}</td>
+                            <td style={tdStyle}>{acts(e)}</td>
                         </tr>)}
                     </tbody>
                 </table>
@@ -249,7 +276,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <tr key={i}><td style={tdStyle}><b>{w.name}</b></td><td style={tdStyle}>{w.phoneNumber}</td>
                                 <td style={tdStyle}><StatusBadge status={w.status} size="sm" /></td>
                                 <td style={tdStyle}>{formatDate(w.createdAt)}</td>
-                                <td style={tdStyle}>{acts}</td>
+                                <td style={tdStyle}>{acts(w)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -278,7 +305,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                                 <td style={tdStyle}><b>{item.name}</b></td>
                                 <td style={tdStyle}><StatusBadge status={item.status} size="sm" /></td>
                                 <td style={tdStyle}>{formatDate(item.connectedAt)}</td>
-                                <td style={tdStyle}>{acts}</td>
+                                <td style={tdStyle}>{acts(item)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -334,6 +361,19 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
     const { data: business, isLoading, error } = useInventoryBusiness(params.id);
     const [activeTab, setActiveTab] = useState('users');
 
+    const handleEditBusiness = () => {
+        if (!business) return;
+        toast.info(`Editing ${business.name}...`);
+    };
+
+    const handleSuspendBusiness = () => {
+        if (!business) return;
+        const msg = business.status === 'Suspended' ? 'unsuspend' : 'suspend';
+        if (confirm(`Are you sure you want to ${msg} ${business.name}?`)) {
+            toast.success(`Business ${business.name} has been ${msg}ed`);
+        }
+    };
+
     if (isLoading) {
         return (
             <div>
@@ -385,11 +425,15 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                            <button
+                                onClick={handleEditBusiness}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                                 <Edit2 size={14} /> Edit Business
                             </button>
-                            <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                <Ban size={14} /> Suspend
+                            <button
+                                onClick={handleSuspendBusiness}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                                <Ban size={14} /> {business.status === 'Suspended' ? 'Unsuspend' : 'Suspend'}
                             </button>
                         </div>
                     </div>

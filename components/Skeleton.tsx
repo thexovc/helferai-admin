@@ -86,7 +86,7 @@ export const ChartSkeleton = () => (
                 <SkeletonPulse
                     key={i}
                     width={`${100 / 12}%`}
-                    height={`${20 + Math.random() * 60}%`}
+                    height={`${25 + (i * 7) % 65}%`}
                     borderRadius="4px 4px 0 0"
                 />
             ))}
