@@ -1,59 +1,48 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { formatCurrency, formatDate } from '@/app/lib/utils';
-import { SkeletonPulse, KPISkeleton, ChartSkeleton, TableSkeleton } from '../Skeleton';
-// Modular API imports handled in previous step
-
+import { useInventoryTransactions, useInventoryKpis, useInventoryCharts } from '@/api/inventory/inventory.queries';
+import * as T from '@/api/inventory/inventory.types';
+import {
+    DollarSign, TrendingUp, CreditCard, ArrowUpRight, Search, CheckCircle,
+    AlertCircle, Clock, RefreshCw, BarChart as BarIcon, PieChart as PieIcon,
+    Download, ChevronDown, Filter, MoreHorizontal
+} from 'lucide-react';
+import { KPISkeleton, ChartSkeleton, TableSkeleton } from '../Skeleton';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, Legend, AreaChart, Area
+    Cell, Legend, AreaChart, Area
 } from 'recharts';
-import { DollarSign, TrendingUp, CreditCard, ArrowUpRight, Search, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import DashboardCard from './DashboardCard';
+import RevenueEvent from './RevenueEvent';
+import Pagination from '../Pagination';
 
-const accent = '#6c9e4e';
 const fmtK = (v: number) => v >= 1000000 ? `₦${(v / 1000000).toFixed(1)}M` : `₦${(v / 1000).toFixed(0)}K`;
 const PLAN_COLORS = ['#6c9e4e', '#7c5cbf', '#3b82f6', '#f59e0b'];
-
-const statusColors: Record<string, { bg: string; color: string }> = {
-    Paid: { bg: '#dcfce7', color: '#15803d' },
-    Failed: { bg: '#fee2e2', color: '#dc2626' },
-    Pending: { bg: '#fef9c3', color: '#a16207' },
-    Refunded: { bg: '#e0e7ff', color: '#3730a3' },
-};
-
-const typeColors: Record<string, { bg: string; color: string }> = {
-    Subscription: { bg: '#eaf4e3', color: '#5b8441' },
-    Renewal: { bg: '#f0f9ff', color: '#0284c7' },
-    Upgrade: { bg: '#f5f0ff', color: '#7c3aed' },
-};
 
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 8, color: '#fff', fontSize: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
             {payload.map((p: any, i: number) => (
-                <div key={i} style={{ color: p.color }}>{fmtK(p.value)}</div>
+                <div key={i} style={{ color: p.color, fontWeight: 600 }}>{fmtK(p.value)}</div>
             ))}
         </div>
     );
 };
 
-import { useInventoryTransactions, useInventoryKpis, useInventoryCharts } from '@/api/inventory/inventory.queries';
-import Pagination from '../Pagination';
-
 export default function InventoryFinancePageClient() {
     const [page, setPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
+    const [planFilter, setPlanFilter] = React.useState('All');
     const [statusFilter, setStatusFilter] = React.useState('All');
-    const [typeFilter, setTypeFilter] = React.useState('All');
+
+    const [selectedRange, setSelectedRange] = React.useState('30D');
+    const [showDateDropdown, setShowDateDropdown] = React.useState(false);
 
     const { data: transactionsResponse, isLoading: loadingTxns } = useInventoryTransactions(page, pageSize);
-    const transactions = transactionsResponse?.data || [];
-    const meta = transactionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-
     const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
     const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
 
@@ -62,194 +51,230 @@ export default function InventoryFinancePageClient() {
     if (isLoading || !transactionsResponse || !kpis || !charts) {
         return (
             <div>
-                <Topbar title="Finance" subtitle="Revenue, payments & subscription transactions" product="inventory" />
+                <Topbar title="Financial Dashboard" subtitle="Core business performance & growth analysis" product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 24 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 30 }}>
                         {Array(6).fill(0).map((_, i) => <KPISkeleton key={i} />)}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
-                        <ChartSkeleton />
-                        <ChartSkeleton />
-                    </div>
-                    <TableSkeleton rows={5} cols={8} />
                 </div>
             </div>
         );
     }
 
-    const filtered = transactions.filter((t: any) => {
-        const matchSearch = t.businessName.toLowerCase().includes(search.toLowerCase()) || t.plan.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = statusFilter === 'All' || t.status === statusFilter;
-        const matchType = typeFilter === 'All' || t.type === typeFilter;
-        return matchSearch && matchStatus && matchType;
-    });
+    const transactions = transactionsResponse?.data || [];
+    const meta = transactionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const overview = kpis.overview || (kpis as any as T.InventoryOverview);
 
-    const totalRevenue = transactions.filter((t: any) => t.status === 'Paid').reduce((s: number, t: any) => s + t.amount, 0);
-    const failedCount = transactions.filter((t: any) => t.status === 'Failed').length;
-    const pendingCount = transactions.filter((t: any) => t.status === 'Pending').length;
+    // Mock chart data for "Subscription Growth"
+    const subGrowthData = [
+        { month: 'Jan', Basic: 400, Smart: 240, Genius: 240 },
+        { month: 'Feb', Basic: 300, Smart: 139, Genius: 221 },
+        { month: 'Mar', Basic: 200, Smart: 980, Genius: 229 },
+        { month: 'Apr', Basic: 278, Smart: 390, Genius: 200 },
+        { month: 'May', Basic: 189, Smart: 480, Genius: 218 },
+        { month: 'Jun', Basic: 239, Smart: 380, Genius: 250 },
+    ];
 
     const revenueOverTime = (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue }));
-    const revenueByPlan = [
-        { plan: 'Enterprise', value: totalRevenue * 0.6 },
-        { plan: 'Pro', value: totalRevenue * 0.3 },
-        { plan: 'Basic', value: totalRevenue * 0.1 },
-    ];
-    const pmList = [
-        { method: 'Card (Paystack)', count: 24, amount: totalRevenue * 0.7, color: '#6c9e4e' },
-        { method: 'Bank Transfer', count: 8, amount: totalRevenue * 0.2, color: '#3b82f6' },
-        { method: 'USSD', count: 4, amount: totalRevenue * 0.1, color: '#f59e0b' },
-    ];
-    const totalPmTxns = pmList.reduce((acc, pm) => acc + pm.count, 0);
-
 
     return (
-        <div>
-            <Topbar title="Finance" subtitle="Revenue, payments & subscription transactions" product="inventory" />
-            <div style={{ padding: 'var(--content-padding)' }}>
-
-                {/* Top KPI Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 24 }}>
-                    {[
-                        { label: 'Total Revenue', value: formatCurrency(totalRevenue), icon: <DollarSign size={18} />, accent: '#6c9e4e', sub: 'All paid transactions' },
-                        { label: 'MRR', value: `₦${(kpis.mrr.value / 1000000).toFixed(2)}M`, icon: <TrendingUp size={18} />, accent: '#6c9e4e', sub: `${kpis.mrr.trend} vs last month` },
-                        { label: 'ARR', value: `₦${(kpis.arr.value / 1000000).toFixed(1)}M`, icon: <TrendingUp size={18} />, accent: '#22c55e', sub: 'Annual projection' },
-                        { label: 'ARPU', value: `₦${kpis.arpu.value.toLocaleString()}`, icon: <CreditCard size={18} />, accent: '#7c5cbf', sub: `${kpis.arpu.trend} trend` },
-                        { label: 'Failed Payments', value: String(failedCount), icon: <AlertCircle size={18} />, accent: '#ef4444', sub: 'Needs attention' },
-                        { label: 'Pending', value: String(pendingCount), icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Awaiting payment' },
-                    ].map(k => (
-                        <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                <div style={{ width: 36, height: 36, background: `${k.accent}15`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: k.accent }}>{k.icon}</div>
-                                <ArrowUpRight size={14} color="#9ca3af" />
-                            </div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{k.value}</div>
-                            <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{k.label}</div>
-                            <div style={{ fontSize: 11, color: k.accent, fontWeight: 600, marginTop: 2 }}>{k.sub}</div>
-                        </div>
-                    ))}
+        <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 60 }}>
+            {/* Custom Header with Date Selector */}
+            <div style={{
+                padding: '16px var(--content-padding)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 16,
+                background: '#fff',
+                borderBottom: '1px solid #f1f5f9'
+            }}>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: '#1a1a2e' }}>Financial Dashboard</h1>
+                    <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>Core Business Performance & Growth Analysis</p>
                 </div>
-
-                {/* Charts Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    {/* Revenue Over Time */}
-                    <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
-                        <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Revenue Over Time</h3>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <AreaChart data={revenueOverTime}>
-                                <defs>
-                                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={accent} stopOpacity={0.18} />
-                                        <stop offset="95%" stopColor={accent} stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <YAxis tickFormatter={(v: number) => `₦${v / 1000000}M`} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="value" stroke={accent} strokeWidth={2.5} fill="url(#revGrad)" dot={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                        padding: '8px 16px', borderRadius: 8, background: '#f8fafc',
+                        border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10,
+                        fontSize: 13, fontWeight: 700, color: '#1a1a2e', cursor: 'pointer'
+                    }}>
+                        Aug 1, 2023 - Aug 31, 2023 <ChevronDown size={14} color="#94a3b8" />
                     </div>
-
-                    {/* Revenue by Plan Pie */}
-                    <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
-                        <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Revenue by Plan</h3>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <PieChart>
-                                <Pie data={revenueByPlan} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={4} dataKey="value" nameKey="plan">
-                                    {revenueByPlan.map((_: any, i: number) => <Cell key={i} fill={PLAN_COLORS[i % PLAN_COLORS.length]} />)}
-                                </Pie>
-                                <Tooltip formatter={(v: any) => fmtK(Number(v))} />
-                                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Payment Methods Summary */}
-                <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 24 }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Payment Methods Breakdown</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                        {pmList.map((pm: any) => (
-                            <div key={pm.method} style={{ padding: '16px 20px', background: '#f9fafb', borderRadius: 12, border: `1.5px solid ${pm.color}30` }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>{pm.method}</span>
-                                    <span style={{ fontSize: 11, padding: '2px 8px', background: `${pm.color}15`, color: pm.color, borderRadius: 99, fontWeight: 700 }}>{pm.count} txns</span>
-                                </div>
-                                <div style={{ fontSize: 20, fontWeight: 800, color: pm.color }}>{fmtK(pm.amount)}</div>
-                                <div style={{ marginTop: 8, height: 4, background: '#f0f0f0', borderRadius: 99 }}>
-                                    <div style={{ height: 4, background: pm.color, borderRadius: 99, width: `${(pm.count / totalPmTxns) * 100}%` }} />
-                                </div>
-                            </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'Default'].map(p => (
+                            <button key={p} style={{
+                                background: p === '30D' ? '#fff' : 'transparent',
+                                border: p === '30D' ? '1px solid #e2e8f0' : 'none',
+                                padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                                color: p === '30D' ? '#1a1a2e' : '#94a3b8', cursor: 'pointer',
+                                borderRadius: 6
+                            }}>{p}</button>
                         ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Transactions Table */}
-                <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1a1a2e', flex: 1 }}>Recent Transactions</h3>
-                        <div style={{ position: 'relative', minWidth: 220 }}>
-                            <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search transactions…" style={{ paddingLeft: 30, width: '100%', height: 34, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, outline: 'none', color: '#1a1a2e' }} />
+            <div style={{ padding: 'var(--content-padding)' }}>
+                {/* FINANCIAL KPIs */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
+                    <DashboardCard variant="metric" label="MRR" value={`₦${(kpis.mrr.value / 1000).toFixed(1)}k`} trend="+12% ↗" trendUp={true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="ARR" value={`₦${(kpis.arr.value / 1000000).toFixed(2)}M`} trend="+8.4% ↗" trendUp={true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="Revenue Today" value={`₦${kpis.revenueToday.value.toLocaleString()}`} trend="+4% ↗" trendUp={true} subtitle="vs yesterday" />
+                    <DashboardCard variant="metric" label="Rev. This Month" value={`₦${(kpis.revenueMonth.value / 1000).toFixed(1)}k`} trend="+15% ↗" trendUp={true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="ARPU" value={`₦${kpis.arpu.value.toLocaleString()}`} trend="-2% ↘" trendUp={false} subtitle="vs last month" />
+                    <DashboardCard variant="status" label="Pending Renewals" value="142" subValue="Due soon" icon={Clock} accent="#f59e0b" progress={65} />
+                </div>
+
+                {/* CHARTS ROW */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
+                    {/* Monthly Revenue Chart */}
+                    <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Monthly Revenue</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Gross billing performance by month</div>
+                            </div>
+                            <div style={{ color: '#94a3b8' }}><MoreHorizontal size={20} /></div>
                         </div>
-                        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
-                            <option>All</option>
-                            {['Paid', 'Failed', 'Pending', 'Refunded'].map(s => <option key={s}>{s}</option>)}
-                        </select>
-                        <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151' }}>
-                            <option>All</option>
-                            {['Subscription', 'Renewal', 'Upgrade'].map(t => <option key={t}>{t}</option>)}
-                        </select>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={revenueOverTime} barSize={40}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
+                                <YAxis tickFormatter={v => `₦${v / 1000000}M`} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
+                                    {revenueOverTime.map((_, index) => (
+                                        <Cell key={index} fill={index === revenueOverTime.length - 2 ? '#6c9e4e' : '#eaf4e3'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-                    <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
-                        <table style={{ minWidth: 900 }}>
+
+                    {/* Subscription Growth Chart */}
+                    <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Subscription Growth</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Distribution of Business across Tiers</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#64748b' }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: 99, background: '#94a3b8' }} /> Basic
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#64748b' }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: 99, background: '#7c5cbf' }} /> Smart
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: '#64748b' }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: 99, background: '#6c9e4e' }} /> Genius
+                                </div>
+                            </div>
+                        </div>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={subGrowthData} barSize={36}>
+                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                <Tooltip />
+                                <Bar dataKey="Basic" stackId="a" fill="#94a3b8" radius={[0, 0, 0, 0]} />
+                                <Bar dataKey="Smart" stackId="a" fill="#7c5cbf" radius={[0, 0, 0, 0]} />
+                                <Bar dataKey="Genius" stackId="a" fill="#6c9e4e" radius={[10, 10, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* SUBSCRIPTION MANAGEMENT */}
+                <div style={{ background: '#fff', borderRadius: 24, padding: 32, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', marginBottom: 32 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 20 }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>Subscription Management</h3>
+                            <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', fontWeight: 500, marginTop: 4 }}>Oversee and filter active business lifecycles.</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                            <div style={{ position: 'relative', minWidth: 280 }}>
+                                <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search business…" style={{ paddingLeft: 42, paddingRight: 16, width: '100%', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, outline: 'none', color: '#1a1a2e', fontWeight: 500 }} />
+                            </div>
+                            <select value={planFilter} onChange={e => setPlanFilter(e.target.value)} style={{ padding: '0 16px', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, fontWeight: 600, color: '#64748b', outline: 'none' }}>
+                                <option>Plan Type</option>
+                                <option>Enterprise</option>
+                                <option>Smart Helfer</option>
+                                <option>Basic Helfer</option>
+                            </select>
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '0 16px', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, fontWeight: 600, color: '#64748b', outline: 'none' }}>
+                                <option>Status</option>
+                                <option>Active</option>
+                                <option>Expiring Soon</option>
+                                <option>Expired</option>
+                            </select>
+                            <button style={{ background: '#1a1a2e', color: '#fff', border: 'none', height: 44, padding: '0 20px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                                <Filter size={16} /> Filters
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="table-container" style={{ border: 'none', boxShadow: 'none' }}>
+                        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 12px' }}>
                             <thead>
-                                <tr>
-                                    {['Business Name', 'Date', 'Plan', 'Type', 'Payment Method', 'Billing', 'Amount', 'Status'].map(h => (
-                                        <th key={h}>{h}</th>
+                                <tr style={{ background: 'transparent' }}>
+                                    {['BUSINESS NAME', 'CURRENT PLAN', 'START DATE', 'EXPIRY DATE', 'PLAN VALUE', 'STATUS'].map(h => (
+                                        <th key={h} style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', padding: '0 20px', background: 'transparent', textAlign: h === 'PLAN VALUE' ? 'center' : 'left' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((t: any, i: number) => {
-
-                                    const sc = statusColors[t.status];
-                                    const tc = typeColors[t.type];
-                                    return (
-                                        <tr key={t.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s' }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = '#f0f9f0')}
-                                            onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa')}>
-                                            <td style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e' }}>{t.businessName}</td>
-                                            <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{formatDate(t.date)}</td>
-                                            <td style={{ fontSize: 12, fontWeight: 600 }}>{t.plan}</td>
-                                            <td>
-                                                <span style={{ padding: '3px 8px', background: tc.bg, color: tc.color, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{t.type}</span>
-                                            </td>
-                                            <td style={{ fontSize: 12, color: '#374151' }}>{t.paymentMethod}</td>
-                                            <td>
-                                                <span style={{ padding: '3px 8px', background: t.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: t.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{t.billingCycle}</span>
-                                            </td>
-                                            <td style={{ fontSize: 13, fontWeight: 700, color: t.amount > 0 ? '#1a1a2e' : '#9ca3af', whiteSpace: 'nowrap' }}>
-                                                {t.amount > 0 ? formatCurrency(t.amount) : '—'}
-                                            </td>
-                                            <td>
-                                                <span style={{ padding: '3px 10px', background: sc.bg, color: sc.color, borderRadius: 99, fontSize: 11, fontWeight: 700 }}>{t.status}</span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {transactions.map((t: any) => (
+                                    <tr key={t.id} style={{ background: '#fff', transition: 'transform 0.2s', cursor: 'pointer' }}>
+                                        <td style={{ padding: '20px', borderRadius: '16px 0 0 16px', borderTop: '1px solid #f8fafc', borderBottom: '1px solid #f8fafc', borderLeft: '1px solid #f8fafc' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#3730a3' }}>
+                                                    {t.businessName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <span style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{t.businessName}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{t.plan}</td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
+                                        <td style={{ padding: '20px', textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#1a1a2e' }}>
+                                            {t.amount > 0 ? t.amount.toLocaleString() : 'Custom'}
+                                        </td>
+                                        <td style={{ padding: '20px', borderRadius: '0 16px 16px 0', borderTop: '1px solid #f8fafc', borderBottom: '1px solid #f8fafc', borderRight: '1px solid #f8fafc' }}>
+                                            <span style={{
+                                                padding: '6px 14px', borderRadius: 99, fontSize: 11, fontWeight: 800,
+                                                background: t.status === 'Paid' ? '#eaf4e3' : (t.status === 'Pending' ? '#fff7ed' : '#fee2e2'),
+                                                color: t.status === 'Paid' ? '#6c9e4e' : (t.status === 'Pending' ? '#c2410c' : '#b91c1c'),
+                                                display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content'
+                                            }}>
+                                                <div style={{ width: 6, height: 6, borderRadius: 99, background: 'currentColor' }} />
+                                                {t.status === 'Paid' ? 'Active' : (t.status === 'Pending' ? 'Expiring Soon' : 'Expired')}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
-                    <Pagination
-                        currentPage={meta.page}
-                        totalPages={Math.ceil(meta.total / meta.pageSize)}
-                        onPageChange={setPage}
-                        totalItems={meta.total}
-                        pageSize={meta.pageSize}
-                    />
+                    <div style={{ marginTop: 24 }}>
+                        <Pagination currentPage={meta.page} totalPages={Math.ceil(meta.total / meta.pageSize)} onPageChange={setPage} totalItems={meta.total} pageSize={meta.pageSize} />
+                    </div>
                 </div>
+
+                {/* ANOMALOUS REVENUE EVENTS */}
+                <div style={{ background: 'linear-gradient(180deg, #f0f4ff 0%, #ffffff 100%)', borderRadius: 32, padding: '40px', border: '1px solid #e0e7ff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>Anomalous Revenue Events</h3>
+                        <button style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '10px 20px', borderRadius: 12, fontSize: 13, fontWeight: 700, color: '#1a1a2e', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            Audit All Logs
+                        </button>
+                    </div>
+
+                    <RevenueEvent title="Enterprise Tier Expansion" description="Client ID: #88210 - 2 hours ago" amount="+$12,400.00" status="CONFIRMED" iconType="expansion" />
+                    <RevenueEvent title="New Monthly Subscription" description="Client ID: #88392 - 5 hours ago" amount="+$299.00" status="PENDING" iconType="new" />
+                    <RevenueEvent title="Failed Auto-renewal" description="Client ID: #87102 - 8 hours ago" amount="-$1,200.00" status="ALERT" iconType="failed" />
+                </div>
+
             </div>
         </div>
     );

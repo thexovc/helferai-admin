@@ -29,11 +29,8 @@ interface Props {
 const inventoryNav: NavGroup[] = [
     { items: [{ href: '/inventory/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }] },
     {
-        title: 'Inventory', items: [
-            { href: '/inventory/brands', icon: <Tag size={18} />, label: 'Brands' },
-            { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
-            { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
-            { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
+        title: 'Finance', items: [
+            { href: '/inventory/finance', icon: <DollarSign size={18} />, label: 'Finance' },
         ],
     },
     {
@@ -43,6 +40,15 @@ const inventoryNav: NavGroup[] = [
             { href: '/inventory/whatsapp-numbers', icon: <Phone size={18} />, label: 'WhatsApp Numbers' },
         ],
     },
+    {
+        title: 'Inventory', items: [
+            { href: '/inventory/brands', icon: <Tag size={18} />, label: 'Brands' },
+            { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
+            { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
+            { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
+        ],
+    },
+
     {
         title: 'Business Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
@@ -64,11 +70,7 @@ const inventoryNav: NavGroup[] = [
             { href: '/inventory/broadcast-history', icon: <Mail size={18} />, label: 'Broadcast History' },
         ],
     },
-    {
-        title: 'Finance', items: [
-            { href: '/inventory/finance', icon: <DollarSign size={18} />, label: 'Finance' },
-        ],
-    },
+
     {
         title: 'Analytics', items: [
             { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
