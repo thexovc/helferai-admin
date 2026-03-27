@@ -88,7 +88,7 @@ export default function InventoryFinancePageClient() {
     const failedCount = transactions.filter((t: any) => t.status === 'Failed').length;
     const pendingCount = transactions.filter((t: any) => t.status === 'Pending').length;
 
-    const revenueOverTime = charts.map((d: any) => ({ month: d.month, value: d.revenue }));
+    const revenueOverTime = (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue }));
     const revenueByPlan = [
         { plan: 'Enterprise', value: totalRevenue * 0.6 },
         { plan: 'Pro', value: totalRevenue * 0.3 },
