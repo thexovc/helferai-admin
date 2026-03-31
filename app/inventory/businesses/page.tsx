@@ -19,11 +19,36 @@ const SORT_FILTERS = [
 export default function BusinessesPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: businessesResponse, isLoading } = useInventoryBusinesses(page, pageSize);
-    const [businesses, setBusinesses] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+
+    // Mapper for API filters
+    const filterKey = (() => {
+        if (activeFilter) {
+            const map: Record<string, string> = {
+                'Expiring in 5 Days': 'expiring_5d',
+                'Expiring in 30 Days': 'expiring_30d',
+                'Trial Ending in 3 Days': 'trial_ending_3d',
+                'Failed Payments': 'failed_payments',
+                'High Paying': 'high_paying',
+                'Annual Plan': 'annual_plan',
+                'Auto Renew Off': 'auto_renew_off',
+                'Inactive 30 Days': 'inactive_30d',
+                'Recently Upgraded': 'recently_upgraded', // (Currently not handled in API but can be added)
+                'Converted from Trial': 'converted_trial',
+                'Downgraded Recently': 'recently_downgraded'
+            };
+            return map[activeFilter] || '';
+        }
+        if (statusFilter !== 'All') {
+            return statusFilter.toLowerCase();
+        }
+        return '';
+    })();
+
+    const { data: businessesResponse, isLoading } = useInventoryBusinesses(page, pageSize, search, filterKey);
+    const [businesses, setBusinesses] = useState<any[]>([]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,17 +144,7 @@ export default function BusinessesPage() {
 
     const meta = businessesResponse?.meta || { total: businesses.length, page: 1, pageSize: 10 };
 
-    const filtered = businesses.filter(b => {
-        const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) || b.email.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = statusFilter === 'All' || b.status === statusFilter;
-        let matchFilter = true;
-        if (activeFilter === 'Expiring in 5 Days') matchFilter = b.daysRemaining >= 0 && b.daysRemaining <= 5;
-        if (activeFilter === 'Expiring in 30 Days') matchFilter = b.daysRemaining >= 0 && b.daysRemaining <= 30;
-        if (activeFilter === 'Trial Ending in 3 Days') matchFilter = b.status === 'Trial' && b.daysRemaining <= 3;
-        if (activeFilter === 'Annual Plan') matchFilter = b.billingCycle === 'Annual';
-        if (activeFilter === 'High Paying') matchFilter = b.amountPaying > 80000;
-        return matchSearch && matchStatus && matchFilter;
-    }).sort((a, b) => a.daysRemaining - b.daysRemaining);
+    const filtered = businessesResponse?.data || [];
 
     return (
         <div>
@@ -153,7 +168,10 @@ export default function BusinessesPage() {
                 {/* Sort filter pills */}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
                     {SORT_FILTERS.map(f => (
-                        <button key={f} onClick={() => setActiveFilter(activeFilter === f ? '' : f)} style={{
+                        <button key={f} onClick={() => {
+                            setActiveFilter(activeFilter === f ? '' : f);
+                            setPage(1);
+                        }} style={{
                             padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
                             background: activeFilter === f ? '#6c9e4e' : '#fff',
                             color: activeFilter === f ? '#fff' : '#6b7280',
@@ -169,9 +187,9 @@ export default function BusinessesPage() {
                     <div style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
                             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search businesses…" style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }} />
+                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search businesses…" style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }} />
                         </div>
-                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
+                        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
                             <option>All</option>
                             {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s}>{s}</option>)}
                         </select>

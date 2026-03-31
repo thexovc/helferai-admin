@@ -370,3 +370,14 @@ export interface FinanceSummary {
   netProfit: number;
   growth: string;
 }
+
+export interface BusinessMetrics {
+  salesRecords: number;
+  expenseRecords: number;
+  products: number;
+  subEnds: string;
+  daysRemaining: string;
+  totalRevenue: number;
+  totalUsers: number;
+  lastLogin: string;
+}

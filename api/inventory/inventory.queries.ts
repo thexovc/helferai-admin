@@ -57,10 +57,10 @@ export const useInventoryCharts = () => {
   });
 };
 
-export const useInventoryBusinesses = (page = 1, pageSize = 10) => {
+export const useInventoryBusinesses = (page = 1, pageSize = 10, search = '', filter = '') => {
   return useQuery({
-    queryKey: [...inventoryKeys.businesses(), page, pageSize],
-    queryFn: () => inventoryApi.getBusinesses(page, pageSize),
+    queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter],
+    queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter),
   });
 };
 

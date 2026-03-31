@@ -5,9 +5,10 @@ export const inventoryApi = {
   getDashboardData: () => inventoryClient.get<T.UnifiedDashboardData>('/admin/api/inventory/dashboard'),
   getKpis: () => inventoryClient.get<T.KPIMetrics>('/admin/api/inventory/dashboard/kpis'),
   getCharts: () => inventoryClient.get<T.InventoryCharts>('/admin/api/inventory/dashboard/charts'),
-  getBusinesses: (page = 1, pageSize = 10) => 
-    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}`),
+  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '') => 
+    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}`),
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),
+  getBusinessMetrics: (id: string) => inventoryClient.get<T.BusinessMetrics>(`/admin/api/inventory/businesses/${id}/metrics`),
   getTransactions: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Transaction>>(`/admin/api/inventory/finance/transactions?page=${page}&pageSize=${pageSize}`),
   getProducts: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Product>>(`/admin/api/inventory/products?page=${page}&pageSize=${pageSize}`),
   getAiUsage: () => inventoryClient.get<T.AIUsage>('/admin/api/inventory/ai/usage'),
