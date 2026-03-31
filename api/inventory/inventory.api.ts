@@ -2,6 +2,7 @@ import { inventoryClient } from '../api-client';
 import * as T from './inventory.types';
 
 export const inventoryApi = {
+  getDashboardData: () => inventoryClient.get<T.UnifiedDashboardData>('/admin/api/inventory/dashboard'),
   getKpis: () => inventoryClient.get<T.KPIMetrics>('/admin/api/inventory/dashboard/kpis'),
   getCharts: () => inventoryClient.get<T.InventoryCharts>('/admin/api/inventory/dashboard/charts'),
   getBusinesses: (page = 1, pageSize = 10) => 
@@ -35,4 +36,5 @@ export const inventoryApi = {
   getPointConfigs: () => inventoryClient.get<T.PointConfig[]>('/admin/api/inventory/referrals/points/config'),
   getReferralRewards: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.ReferralReward>>(`/admin/api/inventory/referrals/rewards?page=${page}&pageSize=${pageSize}`),
   getFinanceSummary: () => inventoryClient.get<T.FinanceSummary>('/admin/api/inventory/finance/summary'),
+  getFinanceData: () => inventoryClient.get<T.UnifiedFinanceData>('/admin/api/inventory/finance'),
 };

@@ -1,14 +1,14 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { useInventoryTransactions, useInventoryKpis, useInventoryCharts } from '@/api/inventory/inventory.queries';
+import { useInventoryFinance } from '@/api/inventory/inventory.queries';
 import * as T from '@/api/inventory/inventory.types';
 import {
     DollarSign, TrendingUp, CreditCard, ArrowUpRight, Search, CheckCircle,
     AlertCircle, Clock, RefreshCw, BarChart as BarIcon, PieChart as PieIcon,
-    Download, ChevronDown, Filter, MoreHorizontal
+    Download, ChevronDown, Filter, MoreHorizontal, UserCheck, Flame
 } from 'lucide-react';
-import { KPISkeleton, ChartSkeleton, TableSkeleton } from '../Skeleton';
+import { KPISkeleton } from '../Skeleton';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     Cell, Legend, AreaChart, Area
@@ -33,49 +33,38 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function InventoryFinancePageClient() {
+    const { data: financeData, isLoading } = useInventoryFinance();
     const [page, setPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
     const [planFilter, setPlanFilter] = React.useState('All');
     const [statusFilter, setStatusFilter] = React.useState('All');
 
-    const [selectedRange, setSelectedRange] = React.useState('30D');
-    const [showDateDropdown, setShowDateDropdown] = React.useState(false);
-
-    const { data: transactionsResponse, isLoading: loadingTxns } = useInventoryTransactions(page, pageSize);
-    const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
-    const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
-
-    const isLoading = loadingTxns || loadingKpis || loadingCharts;
-
-    if (isLoading || !transactionsResponse || !kpis || !charts) {
+    if (isLoading || !financeData) {
         return (
             <div>
                 <Topbar title="Financial Dashboard" subtitle="Core business performance & growth analysis" product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 30 }}>
-                        {Array(6).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
+                        {Array(6).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
                     </div>
                 </div>
             </div>
         );
     }
 
-    const transactions = transactionsResponse?.data || [];
-    const meta = transactionsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-    const overview = kpis.overview || (kpis as any as T.InventoryOverview);
+    const { kpis, charts, subscriptions, anomalousEvents } = financeData;
+    const overview = kpis;
 
-    // Mock chart data for "Subscription Growth"
-    const subGrowthData = [
-        { month: 'Jan', Basic: 400, Smart: 240, Genius: 240 },
-        { month: 'Feb', Basic: 300, Smart: 139, Genius: 221 },
-        { month: 'Mar', Basic: 200, Smart: 980, Genius: 229 },
-        { month: 'Apr', Basic: 278, Smart: 390, Genius: 200 },
-        { month: 'May', Basic: 189, Smart: 480, Genius: 218 },
-        { month: 'Jun', Basic: 239, Smart: 380, Genius: 250 },
-    ];
+    // Map subscription growth data to match component expectations (Capitalized keys)
+    const subGrowthData = (charts.subscriptionGrowth || []).map((d: any) => ({
+        month: d.month,
+        Basic: d.basic,
+        Smart: d.smart,
+        Genius: d.genius
+    }));
 
-    const revenueOverTime = (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue }));
+    const revenueOverTime = (charts.monthlyRevenue || []).map((d: any) => ({ month: d.month, value: d.amount }));
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 60 }}>
@@ -119,12 +108,12 @@ export default function InventoryFinancePageClient() {
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* FINANCIAL KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="metric" label="MRR" value={`₦${(kpis.mrr.value / 1000).toFixed(1)}k`} trend="+12% ↗" trendUp={true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="ARR" value={`₦${(kpis.arr.value / 1000000).toFixed(2)}M`} trend="+8.4% ↗" trendUp={true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="Revenue Today" value={`₦${kpis.revenueToday.value.toLocaleString()}`} trend="+4% ↗" trendUp={true} subtitle="vs yesterday" />
-                    <DashboardCard variant="metric" label="Rev. This Month" value={`₦${(kpis.revenueMonth.value / 1000).toFixed(1)}k`} trend="+15% ↗" trendUp={true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="ARPU" value={`₦${kpis.arpu.value.toLocaleString()}`} trend="-2% ↘" trendUp={false} subtitle="vs last month" />
-                    <DashboardCard variant="status" label="Pending Renewals" value="142" subValue="Due soon" icon={Clock} accent="#f59e0b" progress={65} />
+                    <DashboardCard variant="metric" label="MRR" value={`₦${(kpis.mrr?.value / 1000).toFixed(1)}k`} trend={kpis.mrr?.trend ?? ''} trendUp={kpis.mrr?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="ARR" value={`₦${(kpis.arr?.value / 1000000).toFixed(2)}M`} trend={kpis.arr?.trend ?? ''} trendUp={kpis.arr?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="Revenue Today" value={`₦${kpis.revenueToday?.value?.toLocaleString()}`} trend={kpis.revenueToday?.trend ?? ''} trendUp={kpis.revenueToday?.trendUp ?? true} subtitle="vs yesterday" />
+                    <DashboardCard variant="metric" label="Rev. This Month" value={`₦${(kpis.revenueMonth?.value / 1000).toFixed(1)}k`} trend={kpis.revenueMonth?.trend ?? ''} trendUp={kpis.revenueMonth?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="ARPU" value={`₦${kpis.arpu?.value?.toLocaleString()}`} trend={kpis.arpu?.trend ?? ''} trendUp={kpis.arpu?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="status" label="Pending Renewals" value={kpis.pendingRenewalsValue?.value?.toLocaleString() ?? '0'} subValue="Due soon" icon={Clock} accent="#f59e0b" progress={65} />
                 </div>
 
                 {/* CHARTS ROW */}
@@ -224,31 +213,31 @@ export default function InventoryFinancePageClient() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {transactions.map((t: any) => (
-                                    <tr key={t.id} style={{ background: '#fff', transition: 'transform 0.2s', cursor: 'pointer' }}>
+                                {subscriptions.map((s: T.FinanceSubscription) => (
+                                    <tr key={s.id} style={{ background: '#fff', transition: 'transform 0.2s', cursor: 'pointer' }}>
                                         <td style={{ padding: '20px', borderRadius: '16px 0 0 16px', borderTop: '1px solid #f8fafc', borderBottom: '1px solid #f8fafc', borderLeft: '1px solid #f8fafc' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#3730a3' }}>
-                                                    {t.businessName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                    {s.businessName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                                                 </div>
-                                                <span style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{t.businessName}</span>
+                                                <span style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{s.businessName}</span>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{t.plan}</td>
-                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
-                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{s.plan}</td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(s.startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
+                                        <td style={{ padding: '20px', fontSize: 13, fontWeight: 600, color: '#64748b' }}>{new Date(s.expiryDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</td>
                                         <td style={{ padding: '20px', textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#1a1a2e' }}>
-                                            {t.amount > 0 ? t.amount.toLocaleString() : 'Custom'}
+                                            ₦{s.value.toLocaleString()}
                                         </td>
                                         <td style={{ padding: '20px', borderRadius: '0 16px 16px 0', borderTop: '1px solid #f8fafc', borderBottom: '1px solid #f8fafc', borderRight: '1px solid #f8fafc' }}>
                                             <span style={{
                                                 padding: '6px 14px', borderRadius: 99, fontSize: 11, fontWeight: 800,
-                                                background: t.status === 'Paid' ? '#eaf4e3' : (t.status === 'Pending' ? '#fff7ed' : '#fee2e2'),
-                                                color: t.status === 'Paid' ? '#6c9e4e' : (t.status === 'Pending' ? '#c2410c' : '#b91c1c'),
+                                                background: s.status === 'Active' ? '#eaf4e3' : (s.status === 'Expiring Soon' ? '#fff7ed' : '#fee2e2'),
+                                                color: s.status === 'Active' ? '#6c9e4e' : (s.status === 'Expiring Soon' ? '#c2410c' : '#b91c1c'),
                                                 display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content'
                                             }}>
                                                 <div style={{ width: 6, height: 6, borderRadius: 99, background: 'currentColor' }} />
-                                                {t.status === 'Paid' ? 'Active' : (t.status === 'Pending' ? 'Expiring Soon' : 'Expired')}
+                                                {s.status}
                                             </span>
                                         </td>
                                     </tr>
@@ -257,7 +246,7 @@ export default function InventoryFinancePageClient() {
                         </table>
                     </div>
                     <div style={{ marginTop: 24 }}>
-                        <Pagination currentPage={meta.page} totalPages={Math.ceil(meta.total / meta.pageSize)} onPageChange={setPage} totalItems={meta.total} pageSize={meta.pageSize} />
+                        {/* Pagination is hidden since we are using a unified snapshot without separate meta for now */}
                     </div>
                 </div>
 
@@ -270,9 +259,16 @@ export default function InventoryFinancePageClient() {
                         </button>
                     </div>
 
-                    <RevenueEvent title="Enterprise Tier Expansion" description="Client ID: #88210 - 2 hours ago" amount="+$12,400.00" status="CONFIRMED" iconType="expansion" />
-                    <RevenueEvent title="New Monthly Subscription" description="Client ID: #88392 - 5 hours ago" amount="+$299.00" status="PENDING" iconType="new" />
-                    <RevenueEvent title="Failed Auto-renewal" description="Client ID: #87102 - 8 hours ago" amount="-$1,200.00" status="ALERT" iconType="failed" />
+                    {anomalousEvents.map((event: T.AnomalousEvent) => (
+                        <RevenueEvent 
+                            key={event.id}
+                            title={event.type} 
+                            description={`Client ID: ${event.clientId} - ${event.time}`} 
+                            amount={(event.amount > 0 ? '+' : '') + '₦' + Math.abs(event.amount).toLocaleString()} 
+                            status={event.status as any} 
+                            iconType={event.status === 'ALERT' ? 'failed' : (event.amount > 1000 ? 'expansion' : 'new')} 
+                        />
+                    ))}
                 </div>
 
             </div>

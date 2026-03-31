@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
-import { Building2, ArrowUpRight, CheckCircle2, UserPlus, Info } from 'lucide-react';
+import { Building2, ArrowUpRight, CheckCircle2, UserPlus, Info, ShoppingCart, Package, Activity } from 'lucide-react';
+import * as T from '@/api/inventory/inventory.types';
 
 interface ActionItemProps {
     businessName: string;
@@ -26,7 +27,26 @@ const ActionItem = ({ businessName, action, time, icon: Icon, color }: ActionIte
     </div>
 );
 
-export default function RecentActions() {
+const getActionStyles = (action: string) => {
+    const act = action.toLowerCase();
+    if (act.includes('sale')) return { icon: ShoppingCart, color: '#22c55e' };
+    if (act.includes('product')) return { icon: Package, color: '#7c5cbf' };
+    if (act.includes('upgrade')) return { icon: ArrowUpRight, color: '#7c5cbf' };
+    if (act.includes('register')) return { icon: UserPlus, color: '#6c9e4e' };
+    if (act.includes('activity')) return { icon: Activity, color: '#3b82f6' };
+    return { icon: Info, color: '#94a3b8' };
+};
+
+const formatRelativeTime = (timestamp: string) => {
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(timestamp).toLocaleDateString();
+};
+
+export default function RecentActions({ actions = [] }: { actions?: T.RecentAction[] }) {
     return (
         <div style={{
             background: '#fff', borderRadius: 20, padding: '32px',
@@ -35,11 +55,23 @@ export default function RecentActions() {
         }}>
             <h3 style={{ margin: '0 0 24px', fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Recent Actions</h3>
 
-            <ActionItem businessName="NexaStream Corp" action="Upgraded to Enterprise Plan" time="2m ago" icon={ArrowUpRight} color="#7c5cbf" />
-            <ActionItem businessName="Lumina Retail" action="New business registered" time="15m ago" icon={UserPlus} color="#6c9e4e" />
-            <ActionItem businessName="Swift Logistics" action="Payment successful (₦45,000)" time="1h ago" icon={CheckCircle2} color="#22c55e" />
-            <ActionItem businessName="Oceanic Blue" action="Trial expired" time="3h ago" icon={Info} color="#ef4444" />
-            <ActionItem businessName="Vantage Solutions" action="Added 5 new products" time="5h ago" icon={Building2} color="#7c5cbf" />
+            {actions.length > 0 ? (
+                actions.map(action => {
+                    const styles = getActionStyles(action.action);
+                    return (
+                        <ActionItem 
+                            key={action.id} 
+                            businessName={action.businessName} 
+                            action={action.action.replace(/_/g, ' ')} 
+                            time={formatRelativeTime(action.timestamp)} 
+                            icon={styles.icon} 
+                            color={styles.color} 
+                        />
+                    );
+                })
+            ) : (
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '40px 0' }}>No recent actions</div>
+            )}
         </div>
     );
 }

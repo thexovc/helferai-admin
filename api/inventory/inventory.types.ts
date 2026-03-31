@@ -60,17 +60,21 @@ export interface InventoryOverview {
 }
 
 export interface KPIMetrics {
-  mrr: { value: number; trend: string; trendUp: boolean };
-  arr: { value: number; trend: string; trendUp: boolean };
-  revenueToday: { value: number; trend: string; trendUp: boolean };
-  revenueMonth: { value: number; trend: string; trendUp: boolean };
-  arpu: { value: number; trend: string; trendUp: boolean };
-  pendingRenewals: { value: number };
-  conversionRate: { value: string; trend: string; trendUp: boolean };
-  renewalForecast: Array<{ month: string; amount: number }>;
-  newThisMonth?: { value: number };
-  newPaying?: { value: number };
-  overview?: InventoryOverview;
+  totalBusiness?: KPIValue;
+  totalSubscribingBusiness?: KPIValue;
+  trialUsers?: { value: number };
+  expiredSubscription?: { value: number };
+  cancelledBusinesses?: { value: number };
+  newBusinessThisMonth?: KPIValue;
+  activeToday?: KPIValue;
+  mrr: KPIValue;
+  arr: KPIValue;
+  revenueToday: KPIValue;
+  revenueMonth: KPIValue;
+  arpu: KPIValue;
+  pendingRenewalsValue?: { value: number };
+  pendingRenewals?: { value: number };
+  conversionRate?: { value: number };
 }
 
 export interface ChartData {
@@ -90,6 +94,51 @@ export interface RenewalTimelineItem {
 export interface InventoryCharts {
   monthlyTrends: ChartData[];
   pendingRenewalsTimeline: RenewalTimelineItem[];
+}
+
+export interface RecentAction {
+  id: string;
+  action: string;
+  resourceType: string;
+  businessName: string;
+  adminName: string;
+  timestamp: string;
+  metadata: any;
+}
+
+export interface UnifiedDashboardData {
+  kpis: KPIMetrics;
+  charts: InventoryCharts;
+  recentActions: RecentAction[];
+}
+
+export interface FinanceSubscription {
+  id: string;
+  businessName: string;
+  plan: string;
+  startDate: string;
+  expiryDate: string;
+  value: number;
+  status: string;
+}
+
+export interface AnomalousEvent {
+  id: number;
+  type: string;
+  clientId: string;
+  time: string;
+  amount: number;
+  status: string;
+}
+
+export interface UnifiedFinanceData {
+  kpis: KPIMetrics;
+  charts: {
+    monthlyRevenue: Array<{ month: string; amount: number }>;
+    subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number }>;
+  };
+  subscriptions: FinanceSubscription[];
+  anomalousEvents: AnomalousEvent[];
 }
 
 export interface Transaction {

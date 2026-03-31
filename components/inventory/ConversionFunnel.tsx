@@ -33,7 +33,15 @@ const FunnelStep = ({ label, value, percentage, progress, color }: FunnelStepPro
     </div>
 );
 
-export default function ConversionFunnel() {
+export default function ConversionFunnel({ data }: { data?: { registered: number; trialing: number; paying: number } }) {
+    const reg = data?.registered ?? 2480;
+    const tri = data?.trialing ?? 1120;
+    const pay = data?.paying ?? 856;
+
+    const triPercent = ((tri / reg) * 100).toFixed(1);
+    const payPercent = ((pay / reg) * 100).toFixed(1);
+    const overallYield = payPercent;
+
     return (
         <div style={{
             background: '#fff', borderRadius: 20, padding: '32px',
@@ -44,15 +52,15 @@ export default function ConversionFunnel() {
             <p style={{ margin: '0 0 32px', fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Registered to Paying conversion path</p>
 
             <div style={{ paddingRight: 40 }}>
-                <FunnelStep label="Registered" value="2,480" progress={100} color="#6c9e4e" />
-                <FunnelStep label="Trialing" value="1,120" progress={45} color="#eaf4e3" percentage="45.2%" />
-                <FunnelStep label="Paying" value="856" progress={34} color="#6c9e4e" percentage="34.5%" />
+                <FunnelStep label="Registered" value={reg.toLocaleString()} progress={100} color="#6c9e4e" />
+                <FunnelStep label="Trialing" value={tri.toLocaleString()} progress={(tri / reg) * 100} color="#eaf4e3" percentage={`${triPercent}%`} />
+                <FunnelStep label="Paying" value={pay.toLocaleString()} progress={(pay / reg) * 100} color="#6c9e4e" percentage={`${payPercent}%`} />
             </div>
 
             <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>Overall Yield</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>34.5%</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{overallYield}%</div>
                 </div>
                 <button style={{
                     background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px 18px',

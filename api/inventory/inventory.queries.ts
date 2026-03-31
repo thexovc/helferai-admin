@@ -5,6 +5,7 @@ export const inventoryKeys = {
   all: ['inventory'] as const,
   kpis: () => [...inventoryKeys.all, 'kpis'] as const,
   charts: () => [...inventoryKeys.all, 'charts'] as const,
+  dashboard: () => [...inventoryKeys.all, 'dashboard'] as const,
   businesses: () => [...inventoryKeys.all, 'businesses'] as const,
   business: (id: string) => [...inventoryKeys.all, 'business', id] as const,
   businessUsers: (id: string) => [...inventoryKeys.business(id), 'users'] as const,
@@ -32,12 +33,20 @@ export const inventoryKeys = {
   pointConfigs: () => [...inventoryKeys.all, 'pointConfigs'] as const,
   referralRewards: () => [...inventoryKeys.all, 'referralRewards'] as const,
   financeSummary: () => [...inventoryKeys.all, 'financeSummary'] as const,
+  finance: () => [...inventoryKeys.all, 'finance'] as const,
 };
 
 export const useInventoryKpis = () => {
   return useQuery({
     queryKey: inventoryKeys.kpis(),
     queryFn: inventoryApi.getKpis,
+  });
+};
+
+export const useInventoryDashboard = () => {
+  return useQuery({
+    queryKey: inventoryKeys.dashboard(),
+    queryFn: inventoryApi.getDashboardData,
   });
 };
 
@@ -179,6 +188,13 @@ export const useInventoryFinanceSummary = () => {
   return useQuery({
     queryKey: inventoryKeys.financeSummary(),
     queryFn: inventoryApi.getFinanceSummary,
+  });
+};
+
+export const useInventoryFinance = () => {
+  return useQuery({
+    queryKey: inventoryKeys.finance(),
+    queryFn: inventoryApi.getFinanceData,
   });
 };
 

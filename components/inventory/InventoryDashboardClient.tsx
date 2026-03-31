@@ -1,16 +1,16 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { useInventoryBusinesses, useInventoryKpis, useInventoryCharts } from '@/api/inventory';
+import { useInventoryDashboard } from '@/api/inventory';
 import * as T from '@/api/inventory/inventory.types';
 import { 
     Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, 
     DollarSign, Repeat, ArrowUpRight, ArrowDownRight, Zap, Download, 
     ChevronDown, UserCheck, Flame, PieChart as PieIcon
 } from 'lucide-react';
-import { KPISkeleton, ChartSkeleton } from '../Skeleton';
+import { KPISkeleton } from '../Skeleton';
 import {
-    LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Area, AreaChart, Cell
 } from 'recharts';
 import DashboardCard from './DashboardCard';
@@ -37,11 +37,7 @@ export default function InventoryDashboardClient() {
     const [startDate, setStartDate] = React.useState('2023-08-01');
     const [endDate, setEndDate] = React.useState('2023-08-31');
 
-    const { data: businesses, isLoading: loadingBusinesses } = useInventoryBusinesses();
-    const { data: kpis, isLoading: loadingKpis } = useInventoryKpis();
-    const { data: charts, isLoading: loadingCharts } = useInventoryCharts();
-
-    const isLoading = loadingBusinesses || loadingKpis || loadingCharts;
+    const { data: dashboard, isLoading } = useInventoryDashboard();
 
     // Toggle dropdown
     const toggleDropdown = () => setShowDateDropdown(!showDateDropdown);
@@ -49,33 +45,32 @@ export default function InventoryDashboardClient() {
     // Handle range selection
     const handleRangeChange = (range: string) => {
         setSelectedRange(range);
-        // In a real app, this would trigger a new data fetch or filter
         if (range !== 'Custom') {
             setShowDateDropdown(false);
         }
     };
 
-    if (isLoading || !businesses || !kpis || !charts) {
+    if (isLoading || !dashboard) {
         return (
             <div>
                 <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
-                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
+                        {Array(4).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
                     </div>
                 </div>
             </div>
         );
     }
 
-    const businessList = businesses.data || [];
-    const overview = kpis.overview || (kpis as any as T.InventoryOverview);
+    const { kpis, charts, recentActions } = dashboard;
+    const overview = kpis; // The response puts them directly under kpis
 
     // Adapt chart data for Recharts
     const chartData = {
         mrrTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.mrr })),
         monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue })),
-        arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu })),
+        arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
         retentionData: [
             { week: 'W1', active: 85, inactive: 15 },
@@ -200,18 +195,18 @@ export default function InventoryDashboardClient() {
                 
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '2,418'} trend="+5.2% ↗" trendUp={true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label="New This Month" value={overview.newBusinessThisMonth?.value ?? '124'} trend="12 +" trendUp={true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="Active Today" value={overview.activeToday?.value ?? '842'} trend="34.8% ⚡" trendUp={true} subtitle="daily active rate" />
-                    <DashboardCard variant="metric" label="New Paying (L30D)" value={overview.newPayingBusinesses?.value ?? '32'} trend="+4% ↗" trendUp={true} subtitle="conversion uptick" />
+                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
+                    <DashboardCard variant="metric" label="New This Month" value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="Active Today" value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="daily active rate" />
+                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle="vs last month" />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '1,842'} subValue="+48 new" icon={Building2} accent="#3b82f6" progress={100} />
-                    <DashboardCard variant="status" label="Active Trials" value={overview.trialUsers?.value ?? '312'} subValue="80% active" icon={Calendar} accent="#a16207" progress={75} />
-                    <DashboardCard variant="status" label="Churned (L30D)" value={overview.cancelledBusinesses?.value ?? '14'} subValue="0.8% rate" icon={XCircle} accent="#ef4444" progress={10} />
-                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '24.6'}%`} subValue="+2.1%" icon={TrendingUp} accent="#22c55e" progress={45} />
+                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={overview.totalSubscribingBusiness?.trend ?? ''} icon={Building2} accent="#3b82f6" progress={100} />
+                    <DashboardCard variant="status" label="Active Trials" value={overview.trialUsers?.value ?? '0'} subValue="Trial active" icon={Calendar} accent="#a16207" progress={75} />
+                    <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={10} />
+                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="conversion rate" icon={TrendingUp} accent="#22c55e" progress={45} />
                 </div>
 
                 {/* CHARTS ROW */}
@@ -257,7 +252,7 @@ export default function InventoryDashboardClient() {
                                 <YAxis tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
-                                    {chartData.monthlyRevenue.map((_, index) => (
+                                    {chartData.monthlyRevenue.map((_item: any, index: number) => (
                                         <Cell key={index} fill={index === chartData.monthlyRevenue.length - 2 ? '#6c9e4e' : '#eaf4e3'} />
                                     ))}
                                 </Bar>
@@ -294,8 +289,12 @@ export default function InventoryDashboardClient() {
 
                 {/* BOTTOM ROW (Funnel and Actions) */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
-                    <ConversionFunnel />
-                    <RecentActions />
+                    <ConversionFunnel data={{
+                        registered: overview.totalBusiness?.value ?? 0,
+                        trialing: overview.trialUsers?.value ?? 0,
+                        paying: overview.totalSubscribingBusiness?.value ?? 0
+                    }} />
+                    <RecentActions actions={recentActions} />
                 </div>
 
             </div>
