@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { inventoryApi } from './inventory.api';
+import * as T from './inventory.types';
 
 export const inventoryKeys = {
   all: ['inventory'] as const,
@@ -58,9 +59,10 @@ export const useInventoryCharts = () => {
 };
 
 export const useInventoryBusinesses = (page = 1, pageSize = 10, search = '', filter = '') => {
-  return useQuery({
+  return useQuery<T.PaginatedResponse<T.Business>>({
     queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter],
     queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter),
+    placeholderData: (previousData) => previousData,
   });
 };
 

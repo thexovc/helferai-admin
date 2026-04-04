@@ -100,3 +100,24 @@ export async function GET(request: NextRequest) {
     },
   });
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const newBusiness: Business = {
+    id: `b-${Date.now()}`,
+    ...body,
+    autoRenew: true,
+    dateJoined: new Date().toISOString().split('T')[0],
+    lastLogin: new Date().toISOString(),
+    daysRemaining: body.daysRemaining || 30,
+    totalRevenue: 0,
+    totalSales: 0,
+    totalExpenses: 0,
+    totalProducts: 0,
+    totalUsers: 1,
+  };
+
+  BUSINESSES.push(newBusiness);
+
+  return NextResponse.json({ success: true, data: newBusiness });
+}

@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { SkeletonPulse, KPISkeleton, TableSkeleton } from '@/components/Skeleton';
 import { Search, Building2, CheckCircle, Plus, Edit2, Trash2, Globe, Mail } from 'lucide-react';
 import Pagination from '@/components/Pagination';
-import { useInventoryBusinesses } from '@/api/inventory';
+import { useInventoryBusinesses, useCreateBusiness, useUpdateBusiness, useDeleteBusiness, SubStatus, BillingCycle } from '@/api/inventory';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 
@@ -20,8 +20,18 @@ export default function BusinessesPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+
+    // Debounce search effect
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500); // 500ms delay
+
+        return () => clearTimeout(handler);
+    }, [search]);
 
     // Mapper for API filters
     const filterKey = (() => {
@@ -47,29 +57,26 @@ export default function BusinessesPage() {
         return '';
     })();
 
-    const { data: businessesResponse, isLoading } = useInventoryBusinesses(page, pageSize, search, filterKey);
-    const [businesses, setBusinesses] = useState<any[]>([]);
+    const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey);
+    const createBusiness = useCreateBusiness();
+    const updateBusiness = useUpdateBusiness();
+    const deleteBusiness = useDeleteBusiness();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingBusiness, setEditingBusiness] = useState<any | null>(null);
+    const [editingBusiness, setEditingBusiness] = useState<import('@/api/inventory').Business | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        status: 'Active',
+        status: 'Active' as SubStatus,
         currentPlan: 'Basic',
-        billingCycle: 'Monthly',
+        billingCycle: 'Monthly' as BillingCycle,
         amountPaying: 0,
         daysRemaining: 30
     });
 
-    useEffect(() => {
-        if (businessesResponse?.data) {
-            setBusinesses(businessesResponse.data);
-        }
-    }, [businessesResponse]);
 
-    const handleOpenModal = (business?: any) => {
+    const handleOpenModal = (business?: import('@/api/inventory').Business) => {
         if (business) {
             setEditingBusiness(business);
             setFormData({
@@ -103,29 +110,30 @@ export default function BusinessesPage() {
         }
 
         if (editingBusiness) {
-            setBusinesses(prev => prev.map(b => b.id === editingBusiness.id ? { ...b, ...formData } : b));
-            toast.success(`Business "${formData.name}" updated successfully`);
+            updateBusiness.mutate(
+                { id: editingBusiness.id, data: formData },
+                {
+                    onSuccess: () => setIsModalOpen(false)
+                }
+            );
         } else {
-            const newBusiness = {
-                id: `b-${Date.now()}`,
-                ...formData,
-                autoRenew: true,
-                createdAt: new Date().toISOString()
-            };
-            setBusinesses(prev => [newBusiness, ...prev]);
-            toast.success(`Business "${formData.name}" created successfully`);
+            createBusiness.mutate(formData, {
+                onSuccess: () => setIsModalOpen(false)
+            });
         }
-        setIsModalOpen(false);
     };
 
     const handleDeleteBusiness = (id: string, name: string) => {
         if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-            setBusinesses(prev => prev.filter(b => b.id !== id));
-            toast.success(`Business ${name} has been deleted`);
+            deleteBusiness.mutate(id);
         }
     };
 
-    if (isLoading && businesses.length === 0) {
+    // Only show full page skeleton if it's the INITIAL load AND we have no data
+    const businesses = businessesResponse?.data || [];
+    const isInitialLoading = isLoading && businesses.length === 0;
+
+    if (isInitialLoading) {
         return (
             <div>
                 <Topbar title="Business Management" subtitle="Manage all customer businesses" product="inventory" />
@@ -142,9 +150,8 @@ export default function BusinessesPage() {
         );
     }
 
-    const meta = businessesResponse?.meta || { total: businesses.length, page: 1, pageSize: 10 };
-
-    const filtered = businessesResponse?.data || [];
+    const meta = businessesResponse?.meta || { total: 0, page: 1, pageSize: 10 };
+    const filtered = businesses;
 
     return (
         <div>
@@ -153,10 +160,10 @@ export default function BusinessesPage() {
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
-                        { label: 'Total Businesses', value: businesses.length, color: '#6c9e4e' },
-                        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, color: '#22c55e' },
-                        { label: 'Trial', value: businesses.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
-                        { label: 'Expired', value: businesses.filter(b => b.status === 'Expired').length, color: '#ef4444' },
+                        { label: 'Total Businesses', value: meta.total, color: '#6c9e4e' },
+                        { label: 'Active', value: filtered.filter(b => b.status === 'Active').length, color: '#22c55e' },
+                        { label: 'Trial', value: filtered.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
+                        { label: 'Expired', value: filtered.filter(b => b.status === 'Expired').length, color: '#ef4444' },
                     ].map(s => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</span>
@@ -186,8 +193,8 @@ export default function BusinessesPage() {
                 <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
                     <div style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search businesses…" style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: isFetching ? '#6c9e4e' : '#9ca3af' }} />
+                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search businesses…" style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: `1px solid ${isFetching ? '#6c9e4e' : '#e5e7eb'}`, background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }} />
                         </div>
                         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
                             <option>All</option>
@@ -278,8 +285,11 @@ export default function BusinessesPage() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSaveBusiness} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            {editingBusiness ? 'Save Changes' : 'Create Business'}
+                        <button 
+                            disabled={createBusiness.isPaused || updateBusiness.isPending || createBusiness.isPending}
+                            onClick={handleSaveBusiness} 
+                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)', opacity: (createBusiness.isPending || updateBusiness.isPending) ? 0.7 : 1 }}>
+                            {(createBusiness.isPending || updateBusiness.isPending) ? 'Saving...' : (editingBusiness ? 'Save Changes' : 'Create Business')}
                         </button>
                     </>
                 }
@@ -321,7 +331,7 @@ export default function BusinessesPage() {
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Billing Cycle</label>
                             <select
                                 value={formData.billingCycle}
-                                onChange={e => setFormData(prev => ({ ...prev, billingCycle: e.target.value }))}
+                                onChange={e => setFormData(prev => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
                                 style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
                                 {['Monthly', 'Annual'].map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -341,7 +351,7 @@ export default function BusinessesPage() {
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
                             <select
                                 value={formData.status}
-                                onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                                onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as SubStatus }))}
                                 style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
                                 {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
