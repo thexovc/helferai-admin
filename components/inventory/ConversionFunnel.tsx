@@ -60,7 +60,7 @@ export default function ConversionFunnel({ data }: { data?: { registered: number
             <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600, marginBottom: 4 }}>Overall Yield</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{overallYield}%</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{typeof overallYield === 'number' && !isNaN(overallYield) ? overallYield : '--'}%</div>
                 </div>
                 <button style={{
                     background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px 18px',

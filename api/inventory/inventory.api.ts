@@ -2,10 +2,28 @@ import { inventoryClient } from '../api-client';
 import * as T from './inventory.types';
 
 export const inventoryApi = {
-  getDashboardData: () => inventoryClient.get<T.UnifiedDashboardData>('/admin/api/inventory/dashboard'),
-  getKpis: () => inventoryClient.get<T.KPIMetrics>('/admin/api/inventory/dashboard/kpis'),
-  getCharts: () => inventoryClient.get<T.InventoryCharts>('/admin/api/inventory/dashboard/charts'),
-  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '') => 
+  getDashboardData: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString();
+    return inventoryClient.get<T.UnifiedDashboardData>(`/admin/api/inventory/dashboard${query ? `?${query}` : ''}`);
+  },
+  getKpis: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString();
+    return inventoryClient.get<T.KPIMetrics>(`/admin/api/inventory/dashboard/kpis${query ? `?${query}` : ''}`);
+  },
+  getCharts: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString();
+    return inventoryClient.get<T.InventoryCharts>(`/admin/api/inventory/dashboard/charts${query ? `?${query}` : ''}`);
+  },
+  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '') =>
     inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}`),
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),
   getBusinessMetrics: (id: string) => inventoryClient.get<T.BusinessMetrics>(`/admin/api/inventory/businesses/${id}/metrics`),
@@ -20,7 +38,7 @@ export const inventoryApi = {
   getIntegrations: () => inventoryClient.get<T.Integration[]>('/admin/api/inventory/integrations'),
   getTestimonials: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Testimonial>>(`/admin/api/inventory/testimonials?page=${page}&pageSize=${pageSize}`),
   getActivityLogs: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.ActivityLog>>(`/admin/api/inventory/activity-logs?page=${page}&pageSize=${pageSize}`),
-  
+
   // Business Specific Sub-resources
   getBusinessUsers: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessUser>>(`/admin/api/inventory/businesses/${id}/users?page=${page}&pageSize=${pageSize}`),
   getBusinessSubscriptions: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessSubscription>>(`/admin/api/inventory/businesses/${id}/subscriptions?page=${page}&pageSize=${pageSize}`),
@@ -35,10 +53,55 @@ export const inventoryApi = {
   getCategories: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Category>>(`/admin/api/inventory/categories?page=${page}&pageSize=${pageSize}`),
   getUnits: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Unit>>(`/admin/api/inventory/units?page=${page}&pageSize=${pageSize}`),
   getWhatsappNumbers: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.WhatsappNumber>>(`/admin/api/inventory/whatsapp-numbers?page=${page}&pageSize=${pageSize}`),
-  getSubscriptions: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Subscription>>(`/admin/api/inventory/subscriptions?page=${page}&pageSize=${pageSize}`),
+  getSubscriptions: (
+    page = 1,
+    pageSize = 10,
+    filters?: {
+      search?: string;
+      plan?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    },
+  ) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+
+    if (filters?.search?.trim()) params.set('search', filters.search.trim());
+    if (filters?.plan?.trim()) params.set('plan', filters.plan.trim());
+    if (filters?.status?.trim()) params.set('status', filters.status.trim());
+    if (filters?.startDate?.trim()) params.set('startDate', filters.startDate.trim());
+    if (filters?.endDate?.trim()) params.set('endDate', filters.endDate.trim());
+
+    return inventoryClient.get<T.PaginatedResponse<T.Subscription>>(
+      `/admin/api/inventory/subscriptions?${params.toString()}`,
+    );
+  },
   getReferralTiers: () => inventoryClient.get<T.ReferralTier[]>('/admin/api/inventory/referrals/tiers'),
   getPointConfigs: () => inventoryClient.get<T.PointConfig[]>('/admin/api/inventory/referrals/points/config'),
   getReferralRewards: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.ReferralReward>>(`/admin/api/inventory/referrals/rewards?page=${page}&pageSize=${pageSize}`),
   getFinanceSummary: () => inventoryClient.get<T.FinanceSummary>('/admin/api/inventory/finance/summary'),
-  getFinanceData: () => inventoryClient.get<T.UnifiedFinanceData>('/admin/api/inventory/finance'),
+  getFinanceData: (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const query = params.toString();
+    return inventoryClient.get<T.UnifiedFinanceData>(`/admin/api/inventory/finance${query ? `?${query}` : ''}`);
+  },
+  getFinanceSubscriptions: (paramsObj: any) => {
+    const params = new URLSearchParams();
+    if (paramsObj.search) params.append('search', paramsObj.search);
+    if (paramsObj.planFilter && paramsObj.planFilter !== 'All') params.append('planFilter', paramsObj.planFilter);
+    if (paramsObj.statusFilter && paramsObj.statusFilter !== 'All') params.append('statusFilter', paramsObj.statusFilter);
+    if (paramsObj.startDateFrom) params.append('startDateFrom', paramsObj.startDateFrom);
+    if (paramsObj.startDateTo) params.append('startDateTo', paramsObj.startDateTo);
+    if (paramsObj.expiryDateFrom) params.append('expiryDateFrom', paramsObj.expiryDateFrom);
+    if (paramsObj.expiryDateTo) params.append('expiryDateTo', paramsObj.expiryDateTo);
+    if (paramsObj.page) params.append('page', String(paramsObj.page));
+    if (paramsObj.pageSize) params.append('pageSize', String(paramsObj.pageSize));
+    const query = params.toString();
+    return inventoryClient.get<T.PaginatedResponse<T.FinanceSubscription>>(`/admin/api/inventory/finance/subscriptions${query ? `?${query}` : ''}`);
+  },
 };

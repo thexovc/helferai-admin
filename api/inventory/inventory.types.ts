@@ -7,6 +7,7 @@ export interface PaginatedResponse<T> {
     total: number;
     page: number;
     pageSize: number;
+    totalPages?: number;
   };
 }
 
@@ -94,6 +95,14 @@ export interface RenewalTimelineItem {
 export interface InventoryCharts {
   monthlyTrends: ChartData[];
   pendingRenewalsTimeline: RenewalTimelineItem[];
+  retentionChurn?: Array<{ week: string; active: number; inactive: number }>;
+  conversionFunnel?: {
+    registered: number;
+    trialing: number;
+    paying: number;
+    trialConversionRate: number;
+    payingConversionRate: number;
+  };
 }
 
 export interface RecentAction {
