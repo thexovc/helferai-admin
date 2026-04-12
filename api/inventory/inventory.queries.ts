@@ -4,9 +4,9 @@ import * as T from './inventory.types';
 
 export const inventoryKeys = {
   all: ['inventory'] as const,
-  kpis: () => [...inventoryKeys.all, 'kpis'] as const,
-  charts: () => [...inventoryKeys.all, 'charts'] as const,
-  dashboard: () => [...inventoryKeys.all, 'dashboard'] as const,
+  kpis: (startDate?: string, endDate?: string) => [...inventoryKeys.all, 'kpis', { startDate, endDate }] as const,
+  charts: (startDate?: string, endDate?: string) => [...inventoryKeys.all, 'charts', { startDate, endDate }] as const,
+  dashboard: (startDate?: string, endDate?: string) => [...inventoryKeys.all, 'dashboard', { startDate, endDate }] as const,
   businesses: () => [...inventoryKeys.all, 'businesses'] as const,
   business: (id: string) => [...inventoryKeys.all, 'business', id] as const,
   businessUsers: (id: string) => [...inventoryKeys.business(id), 'users'] as const,
@@ -34,27 +34,28 @@ export const inventoryKeys = {
   pointConfigs: () => [...inventoryKeys.all, 'pointConfigs'] as const,
   referralRewards: () => [...inventoryKeys.all, 'referralRewards'] as const,
   financeSummary: () => [...inventoryKeys.all, 'financeSummary'] as const,
-  finance: () => [...inventoryKeys.all, 'finance'] as const,
+  finance: (startDate?: string, endDate?: string) => [...inventoryKeys.all, 'finance', { startDate, endDate }] as const,
+  financeSubscriptions: (params: any) => [...inventoryKeys.all, 'financeSubscriptions', params] as const,
 };
 
-export const useInventoryKpis = () => {
+export const useInventoryKpis = (startDate?: string, endDate?: string) => {
   return useQuery({
-    queryKey: inventoryKeys.kpis(),
-    queryFn: inventoryApi.getKpis,
+    queryKey: inventoryKeys.kpis(startDate, endDate),
+    queryFn: () => inventoryApi.getKpis(startDate, endDate),
   });
 };
 
-export const useInventoryDashboard = () => {
+export const useInventoryDashboard = (startDate?: string, endDate?: string) => {
   return useQuery({
-    queryKey: inventoryKeys.dashboard(),
-    queryFn: inventoryApi.getDashboardData,
+    queryKey: inventoryKeys.dashboard(startDate, endDate),
+    queryFn: () => inventoryApi.getDashboardData(startDate, endDate),
   });
 };
 
-export const useInventoryCharts = () => {
+export const useInventoryCharts = (startDate?: string, endDate?: string) => {
   return useQuery({
-    queryKey: inventoryKeys.charts(),
-    queryFn: inventoryApi.getCharts,
+    queryKey: inventoryKeys.charts(startDate, endDate),
+    queryFn: () => inventoryApi.getCharts(startDate, endDate),
   });
 };
 
@@ -158,10 +159,22 @@ export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10) => {
   });
 };
 
-export const useInventorySubscriptions = (page = 1, pageSize = 10) => {
+interface SubscriptionFilters {
+  search?: string;
+  plan?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useInventorySubscriptions = (
+  page = 1,
+  pageSize = 10,
+  filters?: SubscriptionFilters,
+) => {
   return useQuery({
-    queryKey: [...inventoryKeys.subscriptions(), page, pageSize],
-    queryFn: () => inventoryApi.getSubscriptions(page, pageSize),
+    queryKey: [...inventoryKeys.subscriptions(), page, pageSize, filters],
+    queryFn: () => inventoryApi.getSubscriptions(page, pageSize, filters),
   });
 };
 
@@ -193,10 +206,11 @@ export const useInventoryFinanceSummary = () => {
   });
 };
 
-export const useInventoryFinance = () => {
-  return useQuery({
-    queryKey: inventoryKeys.finance(),
-    queryFn: inventoryApi.getFinanceData,
+export const useInventoryFinance = (startDate?: string, endDate?: string) => {
+  return useQuery<T.UnifiedFinanceData>({
+    queryKey: inventoryKeys.finance(startDate, endDate),
+    queryFn: () => inventoryApi.getFinanceData(startDate, endDate),
+    staleTime: 2 * 60 * 1000,
   });
 };
 
@@ -261,5 +275,14 @@ export const useBusinessAi = (id: string) => {
     queryKey: [...inventoryKeys.business(id), 'ai'],
     queryFn: () => inventoryApi.getBusinessAi(id),
     enabled: !!id,
+  });
+};
+
+export const useInventoryFinanceSubscriptions = (params: any) => {
+  return useQuery<T.PaginatedResponse<T.FinanceSubscription>>({
+    queryKey: inventoryKeys.financeSubscriptions(params),
+    queryFn: () => inventoryApi.getFinanceSubscriptions(params),
+    staleTime: 60 * 1000,
+    placeholderData: previousData => previousData,
   });
 };
