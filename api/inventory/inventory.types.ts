@@ -280,7 +280,7 @@ export interface Integration {
   activeUsers: number;
   provider: string;
   authStatus: string;
-  lastSync: string;
+  lastSync: string | null;
 }
 
 

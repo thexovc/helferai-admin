@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from './inventory.api';
 import * as T from './inventory.types';
 
@@ -22,7 +22,7 @@ export const inventoryKeys = {
   aiUsage: () => [...inventoryKeys.all, 'aiUsage'] as const,
   broadcasts: () => [...inventoryKeys.all, 'broadcasts'] as const,
   referrals: () => [...inventoryKeys.all, 'referrals'] as const,
-  integrations: () => [...inventoryKeys.all, 'integrations'] as const,
+  integrations: (params?: any) => [...inventoryKeys.all, 'integrations', params] as const,
   testimonials: () => [...inventoryKeys.all, 'testimonials'] as const,
   activityLogs: () => [...inventoryKeys.all, 'activityLogs'] as const,
   brands: () => [...inventoryKeys.all, 'brands'] as const,
@@ -110,10 +110,10 @@ export const useInventoryReferrals = () => {
   });
 };
 
-export const useInventoryIntegrations = () => {
+export const useInventoryIntegrations = (params?: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number }) => {
   return useQuery({
-    queryKey: inventoryKeys.integrations(),
-    queryFn: inventoryApi.getIntegrations,
+    queryKey: inventoryKeys.integrations(params),
+    queryFn: () => inventoryApi.getIntegrations(params),
   });
 };
 
@@ -131,17 +131,48 @@ export const useInventoryActivityLogs = (page = 1, pageSize = 10) => {
   });
 };
 
-export const useInventoryBrands = (page = 1, pageSize = 10) => {
+export const useInventoryBrands = (page = 1, pageSize = 10, search = '', sortBy?: string, sortOrder?: string, status?: string, startDate?: string, endDate?: string) => {
   return useQuery({
-    queryKey: [...inventoryKeys.brands(), page, pageSize],
-    queryFn: () => inventoryApi.getBrands(page, pageSize),
+    queryKey: [...inventoryKeys.brands(), page, pageSize, search, sortBy, sortOrder, status, startDate, endDate],
+    queryFn: () => inventoryApi.getBrands(page, pageSize, search, sortBy, sortOrder, status, startDate, endDate),
   });
 };
 
-export const useInventoryCategories = (page = 1, pageSize = 10) => {
+export const useCreateBrand = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryApi.createBrand,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.brands() });
+    },
+  });
+};
+
+export const useUpdateBrand = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; manufacturer?: string } }) =>
+      inventoryApi.updateBrand(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.brands() });
+    },
+  });
+};
+
+export const useDeleteBrand = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryApi.deleteBrand,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.brands() });
+    },
+  });
+};
+
+export const useInventoryCategories = (page = 1, pageSize = 10, search = '', sortBy?: string, sortOrder?: string, status?: string) => {
   return useQuery({
-    queryKey: [...inventoryKeys.categories(), page, pageSize],
-    queryFn: () => inventoryApi.getCategories(page, pageSize),
+    queryKey: [...inventoryKeys.categories(), page, pageSize, search, sortBy, sortOrder, status],
+    queryFn: () => inventoryApi.getCategories(page, pageSize, search, sortBy, sortOrder, status),
   });
 };
 
@@ -284,5 +315,25 @@ export const useInventoryFinanceSubscriptions = (params: any) => {
     queryFn: () => inventoryApi.getFinanceSubscriptions(params),
     staleTime: 60 * 1000,
     placeholderData: previousData => previousData,
+  });
+};
+
+export const useUpdateCategory = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<T.Category> }) => inventoryApi.updateCategory(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.categories() });
+    },
+  });
+};
+
+export const useDeleteCategory = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => inventoryApi.deleteCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.categories() });
+    },
   });
 };

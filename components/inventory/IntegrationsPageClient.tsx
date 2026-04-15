@@ -4,16 +4,35 @@ import Topbar from '../Topbar';
 import { Search, Puzzle, MoreVertical } from 'lucide-react';
 import { useInventoryIntegrations } from '@/api/inventory';
 import { formatDateTime } from '@/app/lib/utils';
+import Pagination from '../Pagination';
 
 
 export default function IntegrationsPageClient() {
-    const { data: integrations, isLoading } = useInventoryIntegrations();
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = React.useState('');
+    const [debouncedSearch, setDebouncedSearch] = React.useState('');
+    const [statusFilter, setStatusFilter] = React.useState('All');
+    const [authStatusFilter, setAuthStatusFilter] = React.useState('All');
 
-    const filtered = (integrations || []).filter(i =>
-        i.name.toLowerCase().includes(search.toLowerCase()) ||
-        i.provider.toLowerCase().includes(search.toLowerCase())
-    );
+    // Debounce search input
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const { data: integrationsResponse, isLoading } = useInventoryIntegrations({
+        search: debouncedSearch,
+        status: statusFilter,
+        authStatus: authStatusFilter,
+        page,
+        pageSize
+    });
+
+    const displayData = integrationsResponse?.data || [];
 
     return (
         <div>
@@ -48,6 +67,26 @@ export default function IntegrationsPageClient() {
                             }}
                         />
                     </div>
+
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{ height: 44, padding: '0 16px', borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', minWidth: 140 }}
+                    >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+
+                    <select
+                        value={authStatusFilter}
+                        onChange={(e) => setAuthStatusFilter(e.target.value)}
+                        style={{ height: 44, padding: '0 16px', borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', minWidth: 160 }}
+                    >
+                        <option value="All">All Auth Status</option>
+                        <option value="Connected">Connected</option>
+                        <option value="Disconnected">Disconnected</option>
+                    </select>
                 </div>
 
                 {/* Data Table */}
@@ -70,12 +109,12 @@ export default function IntegrationsPageClient() {
                                         <td colSpan={6}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : displayData.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No integrations found</td>
                                 </tr>
                             ) : (
-                                filtered.map((i: any) => (
+                                displayData.map((i: any) => (
                                     <tr key={i.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                         <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{i.name}</td>
                                         <td style={{ color: '#374151' }}>{i.provider}</td>
@@ -111,14 +150,15 @@ export default function IntegrationsPageClient() {
                         </tbody>
                     </table>
 
-
                     {/* Pagination Footer */}
-                    <div style={{ padding: '16px 20px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
-                        <span style={{ fontSize: 13, color: '#6b7280' }}>Showing 1 to 5 of 24 entries</span>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#9ca3af', cursor: 'pointer' }} disabled>Previous</button>
-                            <button style={{ padding: '6px 12px', border: '1px solid #e5e7eb', background: '#fff', borderRadius: 6, fontSize: 13, color: '#1a1a2e', cursor: 'pointer' }}>Next</button>
-                        </div>
+                    <div style={{ padding: '12px 20px' }}>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={integrationsResponse?.meta?.totalPages || 1}
+                            onPageChange={setPage}
+                            totalItems={integrationsResponse?.meta?.total || 0}
+                            pageSize={pageSize}
+                        />
                     </div>
                 </div>
 
