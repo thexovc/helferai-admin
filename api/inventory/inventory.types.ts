@@ -70,6 +70,7 @@ export interface KPIMetrics {
   activeToday?: KPIValue;
   mrr: KPIValue;
   arr: KPIValue;
+  rr: KPIValue;
   revenueToday: KPIValue;
   revenueMonth: KPIValue;
   arpu: KPIValue;

@@ -34,8 +34,18 @@ export const inventoryApi = {
   getProducts: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Product>>(`/admin/api/inventory/products?page=${page}&pageSize=${pageSize}`),
   getAiUsage: () => inventoryClient.get<T.AIUsage>('/admin/api/inventory/ai/usage'),
   getBroadcastHistory: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Broadcast>>(`/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}`),
-  getReferralAnalytics: () => inventoryClient.get<T.ReferralAnalytics>('/admin/api/inventory/referrals/analytics'),
-  getIntegrations: (params?: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number }) => {
+  getReferralAnalytics: (params?: { search?: string; pointsFilter?: string; page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.pointsFilter) query.set('pointsFilter', params.pointsFilter);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+
+    const queryString = query.toString();
+    return inventoryClient
+      .get(`/admin/api/inventory/referrals/analytics${queryString ? `?${queryString}` : ''}`)
+      .then((res: unknown) => (res as { data: { data: any } }).data.data);
+  }, getIntegrations: (params?: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number }) => {
     const query = new URLSearchParams();
     if (params?.search) query.append('search', params.search);
     if (params?.status && params.status !== 'All') query.append('status', params.status);
@@ -69,7 +79,7 @@ export const inventoryApi = {
     if (status) params.append('status', status);
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
-    
+
     return inventoryClient.get<T.PaginatedResponse<T.Brand>>(`/admin/api/inventory/brands?${params.toString()}`);
   },
   createBrand: (data: { name: string; manufacturer?: string }) => inventoryClient.post<T.Brand>('/admin/api/inventory/brands', data),
@@ -84,7 +94,7 @@ export const inventoryApi = {
     if (sortBy) params.append('sort_by', sortBy);
     if (sortOrder) params.append('sort_order', sortOrder);
     if (status) params.append('status', status);
-    
+
     return inventoryClient.get<T.PaginatedResponse<T.Category>>(`/admin/api/inventory/categories?${params.toString()}`);
   },
   updateCategory: (id: string, data: Partial<T.Category>) => inventoryClient.put<T.Category>(`/admin/api/inventory/categories/${id}`, data),
