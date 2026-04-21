@@ -111,7 +111,31 @@ export default function InventoryDashboardClient() {
     }
 
     const { kpis, charts, recentActions } = dashboard;
-    const overview = kpis; // The response puts them directly under kpis
+    const overview = kpis;
+
+    const getRangeLabel = () => {
+        if (selectedRange === 'Today') return 'Today';
+        if (selectedRange === 'Yesterday') return 'Yesterday';
+        if (selectedRange === 'Default') return 'This Month';
+        if (selectedRange === 'Custom') return 'in Selected Period';
+        if (selectedRange.endsWith('D')) return `Last ${selectedRange.replace('D', '')} Days`;
+        if (selectedRange.endsWith('M')) return `Last ${selectedRange.replace('M', '')} Months`;
+        return selectedRange;
+    };
+    const rangeLabel = getRangeLabel();
+
+    const getComparePeriodLabel = () => {
+        if (selectedRange === 'Today') return 'yesterday';
+        if (selectedRange === 'Yesterday') return 'day before';
+        if (selectedRange === '7D') return 'prev. 7 days';
+        if (selectedRange === '30D') return 'prev. 30 days';
+        if (selectedRange === '3M') return 'prev. 3 months';
+        if (selectedRange === '6M') return 'prev. 6 months';
+        if (selectedRange === '12M') return 'prev. year';
+        if (selectedRange === 'Default') return 'prev. month';
+        return 'prev. period';
+    };
+    const compareLabel = getComparePeriodLabel();
 
     // Adapt chart data for Recharts
     const chartData = {
@@ -237,11 +261,12 @@ export default function InventoryDashboardClient() {
             <div style={{ padding: 'var(--content-padding)' }}>
 
                 {/* FIRST KPI ROW - Basic Metrics */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={fmtMillions(overview.totalBusiness?.value ?? 0)} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label="New This Month" value={fmtMillions(overview.newBusinessThisMonth?.value ?? 0)} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="Active Today" value={fmtMillions(overview.activeToday?.value ?? 0)} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="daily active rate" />
-                    <DashboardCard variant="metric" label="MRR" value={fmtMillions(overview.mrr?.value ?? 0, "₦")} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle="vs last month" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 24 }}>
+                    <DashboardCard variant="metric" label="Total Businesses" value={fmtMillions(overview.totalBusiness?.value ?? 0)} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="total growth" />
+                    <DashboardCard variant="metric" label={`New ${rangeLabel}`} value={fmtMillions(overview.newBusinessThisMonth?.value ?? 0)} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={`vs ${compareLabel}`} />
+                    <DashboardCard variant="metric" label={`Active ${rangeLabel}`} value={overview.activeToday?.value?.toLocaleString() ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle={`vs ${compareLabel}`} />
+                    <DashboardCard variant="metric" label="Total MRR" value={fmtMillions(overview.mrr?.value ?? 0, "₦")} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle="system wide" />
+                    <DashboardCard variant="metric" label="RR" value={fmtMillions(overview.rr?.value ?? 0, "₦")} trend={overview.rr?.trend ?? ''} trendUp={overview.rr?.trendUp ?? true} subtitle={`vs ${compareLabel}`} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}

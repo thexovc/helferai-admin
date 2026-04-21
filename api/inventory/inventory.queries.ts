@@ -21,7 +21,8 @@ export const inventoryKeys = {
   products: () => [...inventoryKeys.all, 'products'] as const,
   aiUsage: () => [...inventoryKeys.all, 'aiUsage'] as const,
   broadcasts: () => [...inventoryKeys.all, 'broadcasts'] as const,
-  referrals: () => [...inventoryKeys.all, 'referrals'] as const,
+  referrals: (params?: { search?: string; pointsFilter?: string; page?: number; pageSize?: number }) =>
+    [...inventoryKeys.all, 'referrals', params] as const,
   integrations: (params?: any) => [...inventoryKeys.all, 'integrations', params] as const,
   testimonials: () => [...inventoryKeys.all, 'testimonials'] as const,
   activityLogs: () => [...inventoryKeys.all, 'activityLogs'] as const,
@@ -103,10 +104,10 @@ export const useInventoryBroadcasts = (page = 1, pageSize = 10) => {
   });
 };
 
-export const useInventoryReferrals = () => {
+export const useInventoryReferrals = (params?: { search?: string; pointsFilter?: string; page?: number; pageSize?: number }) => {
   return useQuery({
-    queryKey: inventoryKeys.referrals(),
-    queryFn: inventoryApi.getReferralAnalytics,
+    queryKey: inventoryKeys.referrals(params),
+    queryFn: () => inventoryApi.getReferralAnalytics(params),
   });
 };
 
