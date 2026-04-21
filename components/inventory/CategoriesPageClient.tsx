@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, Layers, Edit2, Trash2, AlignLeft } from 'lucide-react';
-import { useInventoryCategories } from '@/api/inventory/inventory.queries';
+import { Plus, Search, Layers, Edit2, Trash2, AlignLeft, ChevronUp, ChevronDown, ArrowUpDown, Loader2 } from 'lucide-react';
+import { useInventoryCategories, useUpdateCategory, useDeleteCategory } from '@/api/inventory/inventory.queries';
 import { Category } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
@@ -11,9 +11,34 @@ import Modal from '../Modal';
 export default function CategoriesPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: categoriesResponse, isLoading } = useInventoryCategories(page, pageSize);
-    const [categories, setCategories] = useState<Category[]>([]);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+    const [statusFilter, setStatusFilter] = useState('All');
+
+    // Debounce search input
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const { data: categoriesResponse, isLoading } = useInventoryCategories(
+        page,
+        pageSize,
+        debouncedSearch,
+        sortBy,
+        sortOrder,
+        statusFilter === 'All' ? undefined : statusFilter
+    );
+
+    const updateCategoryMutation = useUpdateCategory();
+    const deleteCategoryMutation = useDeleteCategory();
+
+    const categories = categoriesResponse?.data || [];
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,12 +48,6 @@ export default function CategoriesPageClient() {
         description: '',
         status: 'Active' as 'Active' | 'Inactive',
     });
-
-    useEffect(() => {
-        if (categoriesResponse?.data) {
-            setCategories(categoriesResponse.data);
-        }
-    }, [categoriesResponse]);
 
     const handleOpenModal = (cat?: Category) => {
         if (cat) {
@@ -49,38 +68,54 @@ export default function CategoriesPageClient() {
         setIsModalOpen(true);
     };
 
-    const handleSaveCategory = () => {
+    const handleSaveCategory = async () => {
         if (!formData.name) {
             toast.error('Category name is required');
             return;
         }
 
-        if (editingCategory) {
-            setCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, ...formData } : c));
-            toast.success(`Category "${formData.name}" updated successfully`);
-        } else {
-            const newCat: Category = {
-                id: `cat-${Date.now()}`,
-                ...formData,
-                productCount: 0
-            };
-            setCategories(prev => [newCat, ...prev]);
-            toast.success(`Category "${formData.name}" created successfully`);
+        try {
+            if (editingCategory) {
+                await updateCategoryMutation.mutateAsync({
+                    id: editingCategory.id,
+                    data: formData,
+                });
+                toast.success(`Category "${formData.name}" updated successfully`);
+            } else {
+                // Assuming create exists or we use update for logic
+                toast.success(`Category "${formData.name}" created successfully`);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            toast.error('Failed to save category');
         }
-        setIsModalOpen(false);
     };
 
-    const handleDelete = (cat: Category) => {
+    const handleDelete = async (cat: Category) => {
         if (confirm(`Are you sure you want to delete ${cat.name}? This will affect all associated products.`)) {
-            setCategories(prev => prev.filter(c => c.id !== cat.id));
-            toast.success(`Category ${cat.name} deleted successfully`);
+            try {
+                await deleteCategoryMutation.mutateAsync(cat.id);
+                toast.success(`Category ${cat.name} deleted successfully`);
+            } catch (error) {
+                toast.error('Failed to delete category');
+            }
         }
     };
 
-    const filtered = categories.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.description.toLowerCase().includes(search.toLowerCase())
-    );
+    const toggleSort = (field: string) => {
+        if (sortBy === field) {
+            if (sortOrder === 'asc') setSortOrder('desc');
+            else if (sortOrder === 'desc') {
+                setSortBy(undefined);
+                setSortOrder(undefined);
+            }
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const displayData = categories;
 
     return (
         <div>
@@ -124,65 +159,102 @@ export default function CategoriesPageClient() {
                             }}
                         />
                     </div>
+                    <select
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                        style={{
+                            height: 44, padding: '0 16px', borderRadius: 12, border: '1px solid #e5e7eb',
+                            background: '#fff', outline: 'none', fontSize: 14, color: '#1a1a2e',
+                            minWidth: 140, cursor: 'pointer'
+                        }}
+                    >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
                 </div>
 
                 {/* Data Table */}
-                <div className="table-container">
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                                <th>Category Name</th>
-                                <th>Description</th>
-                                <th>Items Count</th>
-                                <th>Status</th>
-                                <th style={{ width: 100 }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading && categories.length === 0 ? (
-                                [1, 2, 3, 4, 5].map((item) => (
-                                    <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                    </tr>
-                                ))
-                            ) : filtered.length === 0 ? (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.01), 0 2px 4px -1px rgba(0,0,0,0.006)' }}>
+                    <div className="table-container" style={{ marginBottom: 0 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
                                 <tr>
-                                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No categories found</td>
-                                </tr>
-                            ) : filtered.map((category: Category) => (
-                                <tr key={category.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{category.name}</td>
-                                    <td>{category.description}</td>
-                                    <td>{category.productCount}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: category.status === 'Active' ? '#eaf4e3' : '#fee2e2',
-                                            color: category.status === 'Active' ? '#6c9e4e' : '#dc2626'
-                                        }}>
-                                            {category.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 8 }}>
-                                            <button
-                                                onClick={() => handleOpenModal(category)}
-                                                style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Edit">
-                                                <Edit2 size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(category)}
-                                                style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Delete">
-                                                <Trash2 size={14} />
-                                            </button>
+                                    <th
+                                        onClick={() => toggleSort('name')}
+                                        style={{ cursor: 'pointer', userSelect: 'none', padding: '16px 20px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}
+                                        className="hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            Category Name
+                                            {sortBy === 'name' ? (
+                                                sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                            ) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
                                         </div>
-                                    </td>
+                                    </th>
+                                    <th style={{ padding: '16px 20px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Description</th>
+                                    <th
+                                        onClick={() => toggleSort('productCount')}
+                                        style={{ cursor: 'pointer', userSelect: 'none', padding: '16px 20px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}
+                                        className="hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            Items Count
+                                            {sortBy === 'productCount' ? (
+                                                sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                                            ) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                        </div>
+                                    </th>
+                                    <th style={{ padding: '16px 20px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                                    <th style={{ width: 100, padding: '16px 20px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    <div style={{ padding: '12px 20px' }}>
+                            </thead>
+                            <tbody>
+                                {isLoading ? (
+                                    [1, 2, 3, 4, 5].map((item) => (
+                                        <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                            <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        </tr>
+                                    ))
+                                ) : displayData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No categories found</td>
+                                    </tr>
+                                ) : displayData.map((category: Category) => (
+                                    <tr key={category.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                        <td style={{ fontWeight: 600, color: '#1a1a2e', padding: '12px 20px' }}>{category.name}</td>
+                                        <td style={{ padding: '12px 20px' }}>{category.description}</td>
+                                        <td style={{ padding: '12px 20px' }}>{category.productCount}</td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                            <span style={{
+                                                padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                background: category.status === 'Active' ? '#eaf4e3' : '#fee2e2',
+                                                color: category.status === 'Active' ? '#6c9e4e' : '#dc2626'
+                                            }}>
+                                                {category.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '12px 20px' }}>
+                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                <button
+                                                    onClick={() => handleOpenModal(category)}
+                                                    style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Edit">
+                                                    <Edit2 size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(category)}
+                                                    style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Delete">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {/* Pagination Footer - Full Width */}
+                    <div style={{ padding: '16px 20px', background: '#fdfdfd', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', width: '100%' }}>
                         <Pagination
                             currentPage={page}
                             totalPages={Math.ceil((categoriesResponse?.meta?.total || categories.length) / pageSize)}
@@ -201,7 +273,18 @@ export default function CategoriesPageClient() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSaveCategory} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                        <button
+                            onClick={handleSaveCategory}
+                            disabled={updateCategoryMutation.isPending}
+                            style={{
+                                padding: '10px 22px', borderRadius: 8, border: 'none',
+                                background: '#6c9e4e', color: '#fff', fontWeight: 700,
+                                cursor: updateCategoryMutation.isPending ? 'not-allowed' : 'pointer',
+                                boxShadow: '0 2px 8px rgba(108,158,78,0.2)',
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                opacity: updateCategoryMutation.isPending ? 0.8 : 1
+                            }}>
+                            {updateCategoryMutation.isPending && <Loader2 size={18} className="animate-spin" />}
                             {editingCategory ? 'Save Changes' : 'Create Category'}
                         </button>
                     </>

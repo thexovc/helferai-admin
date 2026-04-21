@@ -34,8 +34,27 @@ export const inventoryApi = {
   getProducts: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Product>>(`/admin/api/inventory/products?page=${page}&pageSize=${pageSize}`),
   getAiUsage: () => inventoryClient.get<T.AIUsage>('/admin/api/inventory/ai/usage'),
   getBroadcastHistory: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Broadcast>>(`/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}`),
-  getReferralAnalytics: () => inventoryClient.get<T.ReferralAnalytics>('/admin/api/inventory/referrals/analytics'),
-  getIntegrations: () => inventoryClient.get<T.Integration[]>('/admin/api/inventory/integrations'),
+  getReferralAnalytics: (params?: { search?: string; pointsFilter?: string; page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.pointsFilter) query.set('pointsFilter', params.pointsFilter);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+
+    const queryString = query.toString();
+    return inventoryClient
+      .get(`/admin/api/inventory/referrals/analytics${queryString ? `?${queryString}` : ''}`)
+      .then((res: unknown) => (res as { data: { data: any } }).data.data);
+  }, getIntegrations: (params?: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.status && params.status !== 'All') query.append('status', params.status);
+    if (params?.authStatus && params.authStatus !== 'All') query.append('authStatus', params.authStatus);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.pageSize) query.append('pageSize', String(params.pageSize));
+    const queryString = query.toString();
+    return inventoryClient.get<T.PaginatedResponse<T.Integration>>(`/admin/api/inventory/integrations${queryString ? `?${queryString}` : ''}`);
+  },
   getTestimonials: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Testimonial>>(`/admin/api/inventory/testimonials?page=${page}&pageSize=${pageSize}`),
   getActivityLogs: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.ActivityLog>>(`/admin/api/inventory/activity-logs?page=${page}&pageSize=${pageSize}`),
 
@@ -49,8 +68,37 @@ export const inventoryApi = {
   getBusinessIntegrations: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessIntegrationItem>>(`/admin/api/inventory/businesses/${id}/integrations?page=${page}&pageSize=${pageSize}`),
   getBusinessAi: (id: string) => inventoryClient.get<T.AIUsage>(`/admin/api/inventory/businesses/${id}/ai`),
 
-  getBrands: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Brand>>(`/admin/api/inventory/brands?page=${page}&pageSize=${pageSize}`),
-  getCategories: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Category>>(`/admin/api/inventory/categories?page=${page}&pageSize=${pageSize}`),
+  getBrands: (page = 1, pageSize = 10, search = '', sortBy?: string, sortOrder?: string, status?: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sort_by', sortBy);
+    if (sortOrder) params.append('sort_order', sortOrder);
+    if (status) params.append('status', status);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    return inventoryClient.get<T.PaginatedResponse<T.Brand>>(`/admin/api/inventory/brands?${params.toString()}`);
+  },
+  createBrand: (data: { name: string; manufacturer?: string }) => inventoryClient.post<T.Brand>('/admin/api/inventory/brands', data),
+  updateBrand: (id: string, data: { name?: string; manufacturer?: string }) => inventoryClient.put<T.Brand>(`/admin/api/inventory/brands/${id}`, data),
+  deleteBrand: (id: string) => inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/brands/${id}`),
+  getCategories: (page = 1, pageSize = 10, search = '', sortBy?: string, sortOrder?: string, status?: string) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sort_by', sortBy);
+    if (sortOrder) params.append('sort_order', sortOrder);
+    if (status) params.append('status', status);
+
+    return inventoryClient.get<T.PaginatedResponse<T.Category>>(`/admin/api/inventory/categories?${params.toString()}`);
+  },
+  updateCategory: (id: string, data: Partial<T.Category>) => inventoryClient.put<T.Category>(`/admin/api/inventory/categories/${id}`, data),
+  deleteCategory: (id: string) => inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/categories/${id}`),
   getUnits: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Unit>>(`/admin/api/inventory/units?page=${page}&pageSize=${pageSize}`),
   getWhatsappNumbers: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.WhatsappNumber>>(`/admin/api/inventory/whatsapp-numbers?page=${page}&pageSize=${pageSize}`),
   getSubscriptions: (

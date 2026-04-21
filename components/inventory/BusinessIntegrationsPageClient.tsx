@@ -5,7 +5,11 @@ import { Plus, Search, Building, MoreVertical } from 'lucide-react';
 import { useInventoryIntegrations } from '@/api/inventory/inventory.queries';
 
 export default function BusinessIntegrationsPageClient() {
-    const { data: integrations, isLoading } = useInventoryIntegrations();
+    const { data: integrationsResponse, isLoading } = useInventoryIntegrations();
+
+    const integrations: any[] = Array.isArray(integrationsResponse)
+        ? integrationsResponse
+        : integrationsResponse?.data ?? [];
 
     return (
         <div>
@@ -64,11 +68,9 @@ export default function BusinessIntegrationsPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
-                                        <td><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        {[...Array(5)].map((_, idx) => (
+                                            <td key={idx}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft" /></td>
+                                        ))}
                                         <td style={{ textAlign: 'center' }}>
                                             <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
                                                 <MoreVertical size={16} />
@@ -76,32 +78,39 @@ export default function BusinessIntegrationsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : integrations?.map((int) => (
-                                <tr key={int.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{int.name}</td>
-                                    <td>{int.category}</td>
-                                    <td>{int.activeUsers.toLocaleString()}</td>
-                                    <td>{new Date(int.lastSync).toLocaleString()}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: int.status === 'Active' ? '#eaf4e3' : '#fef2f2',
-                                            color: int.status === 'Active' ? '#6c9e4e' : '#ef4444'
-                                        }}>
-                                            {int.status}
-                                        </span>
-                                    </td>
-                                    <td style={{ textAlign: 'center' }}>
-                                        <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
-                                            <MoreVertical size={16} />
-                                        </button>
+                            ) : integrations.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+                                        No business integrations found
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                integrations.map((int: any) => (
+                                    <tr key={int.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                        <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{int.name}</td>
+                                        <td>{int.category}</td>
+                                        <td>{int.activeUsers?.toLocaleString()}</td>
+                                        <td>{new Date(int.lastSync).toLocaleString()}</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                background: int.status === 'Active' ? '#eaf4e3' : '#fef2f2',
+                                                color: int.status === 'Active' ? '#6c9e4e' : '#ef4444'
+                                            }}>
+                                                {int.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
+                                                <MoreVertical size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
-
             </div>
         </div>
     );
