@@ -1,4 +1,4 @@
-export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended';
+export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended' | 'Inactive';
 export type BillingCycle = 'Monthly' | 'Annual';
 
 export interface PaginatedResponse<T> {
@@ -9,12 +9,14 @@ export interface PaginatedResponse<T> {
     pageSize: number;
     totalPages?: number;
   };
+  aggregates?: any;
 }
 
 export interface Business {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   logo?: string;
   address?: string;
   registrationNumber?: string;
@@ -351,27 +353,61 @@ export interface Subscription {
   paymentMethod: string;
 }
 
+export interface SubscriptionAggregates {
+  totalActive: number;
+  totalTrial: number;
+  totalExpired: number;
+  totalCancelled: number;
+  totalMRR: number;
+  totalARR: number;
+}
+
+export interface SubscriptionResponse extends PaginatedResponse<Subscription> {
+  aggregates: SubscriptionAggregates;
+}
+
 export interface ReferralTier {
   id: string;
   name: string;
-  minReferrals: number;
-  rewardMultiplier: number;
+  slug: string;
+  min_points: number;
+  max_points?: number;
+  color?: string;
+  icon?: string;
+  order: number;
   status: string;
 }
 
 export interface PointConfig {
   id: string;
-  action: string;
-  points: number;
+  activity_type: string;
+  user_points: number;
+  referrer_points: number;
+  description?: string;
   status: string;
 }
 
 export interface ReferralReward {
   id: string;
   name: string;
-  pointsRequired: number;
+  points: number;
+  type: string;
   description: string;
   status: string;
+  date: string;
+}
+
+export interface ReferralAudit {
+  id: string;
+  referrerName: string;
+  referrerEmail: string;
+  referredName: string;
+  referredEmail: string;
+  referralCode: string;
+  status: string;
+  pointsAwarded: number;
+  createdAt: string;
+  rewardedAt?: string;
 }
 
 export interface FinanceSummary {

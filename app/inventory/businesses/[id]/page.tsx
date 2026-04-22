@@ -10,15 +10,20 @@ import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from 
 import {
     useInventoryBusiness,
     useBusinessUsers,
+    useBusinessMetrics,
     useBusinessSubscriptions,
     useBusinessProducts,
     useBusinessSales,
     useBusinessExpenses,
     useBusinessWhatsapp,
     useBusinessIntegrations,
-    useBusinessAi
+    useBusinessAi,
+    useUpdateBusiness
 } from '@/api/inventory';
 import { toast } from 'sonner';
+import BusinessModal from '../../../../components/modals/BusinessModal';
+import UserModal from '../../../../components/modals/UserModal';
+import ConfirmModal from '../../../../components/modals/ConfirmModal';
 
 
 const TABS = [
@@ -44,7 +49,7 @@ const ActionBtn = ({ label, color = '#6c9e4e', icon, onClick }: { label: string;
     </button>
 );
 
-function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
+function TabContent({ tab, businessId, onEditItem, onCreateItem }: { tab: string; businessId: string; onEditItem: (item: any) => void; onCreateItem: () => void }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
@@ -78,7 +83,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     const getMeta = (resp: any) => resp?.meta || { total: 0, page: 1, pageSize: 10 };
 
     const handleCreateNew = () => {
-        toast.info(`Create feature for ${tab} coming soon!`);
+        onCreateItem();
     };
 
     const handleAction = (type: 'view' | 'edit' | 'delete', item: any) => {
@@ -87,6 +92,8 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
             if (confirm(`Are you sure you want to delete ${name}?`)) {
                 toast.success(`${name} deleted successfully`);
             }
+        } else if (type === 'edit') {
+            onEditItem(item);
         } else {
             toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)}ing ${name}...`);
         }
@@ -359,18 +366,54 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
 export default function BusinessDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
     const params = use(paramsPromise);
     const { data: business, isLoading, error } = useInventoryBusiness(params.id);
+    const { data: metrics, isLoading: metricsLoading } = useBusinessMetrics(params.id);
+    const updateMutation = useUpdateBusiness();
+
     const [activeTab, setActiveTab] = useState('users');
+    const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
 
     const handleEditBusiness = () => {
-        if (!business) return;
-        toast.info(`Editing ${business.name}...`);
+        setIsBusinessModalOpen(true);
     };
 
     const handleSuspendBusiness = () => {
         if (!business) return;
-        const msg = business.status === 'Suspended' ? 'unsuspend' : 'suspend';
-        if (confirm(`Are you sure you want to ${msg} ${business.name}?`)) {
-            toast.success(`Business ${business.name} has been ${msg}ed`);
+        setIsConfirmModalOpen(true);
+    };
+
+    const confirmSuspend = async () => {
+        if (!business) return;
+        const isSuspended = business.status === 'Inactive' || business.status === 'Suspended';
+        try {
+            await updateMutation.mutateAsync({
+                id: params.id,
+                data: { status: isSuspended ? '1' : '0' }
+            });
+            toast.success(`Business ${business.name} has been ${isSuspended ? 'unsuspended' : 'suspended'}`);
+            setIsConfirmModalOpen(false);
+        } catch (error) {
+            toast.error(`Failed to ${isSuspended ? 'unsuspend' : 'suspend'} business`);
+        }
+    };
+
+    const handleEditTabItem = (item: any) => {
+        if (activeTab === 'users') {
+            setSelectedUser(item);
+            setIsUserModalOpen(true);
+        } else {
+            toast.info(`Editing ${activeTab} items coming soon!`);
+        }
+    };
+
+    const handleCreateTabItem = () => {
+        if (activeTab === 'users') {
+            setSelectedUser(null);
+            setIsUserModalOpen(true);
+        } else {
+            toast.info(`Creating ${activeTab} items coming soon!`);
         }
     };
 
@@ -414,12 +457,12 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                                     <span style={{ padding: '3px 10px', background: '#eaf4e3', color: '#5b8441', borderRadius: 99, fontSize: 12, fontWeight: 600 }}>{business.currentPlan}</span>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, auto)', gap: '4px 24px', fontSize: 13, color: '#6b7280' }}>
-                                    <span>📧 {business.email}</span>
-                                    <span>🌐 {business.website}</span>
-                                    <span>📍 {business.address}</span>
-                                    <span>🏭 {business.industry} · {business.country}</span>
-                                    <span>📋 Reg: {business.registrationNumber}</span>
-                                    <span>💰 Tax: {business.taxNumber}</span>
+                                    <span>📧 {business.email ?? "*****"}</span>
+                                    <span>🌐 {business.website ?? "-"}</span>
+                                    <span>📍 {business.address ?? "-"}</span>
+                                    <span>🏭    {business.industry ?? "-"} · {business.country ?? "-"}</span>
+                                    <span>📋 Reg: {business.registrationNumber ?? "-"}</span>
+                                    <span>💰 Tax: {business.taxNumber ?? "-"}</span>
                                     <span>📅 Joined: {business.dateJoined ? formatDate(business.dateJoined) : 'N/A'}</span>
                                 </div>
                             </div>
@@ -432,8 +475,14 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                             </button>
                             <button
                                 onClick={handleSuspendBusiness}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                <Ban size={14} /> {business.status === 'Suspended' ? 'Unsuspend' : 'Suspend'}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px',
+                                    background: (business.status === 'Suspended' || business.status === 'Inactive') ? '#f0fdf4' : '#fee2e2',
+                                    color: (business.status === 'Suspended' || business.status === 'Inactive') ? '#166534' : '#dc2626',
+                                    border: `1px solid ${(business.status === 'Suspended' || business.status === 'Inactive') ? '#bbf7d0' : '#fecaca'}`,
+                                    borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer'
+                                }}>
+                                <Ban size={14} /> {(business.status === 'Suspended' || business.status === 'Inactive') ? 'Unsuspend' : 'Suspend'}
                             </button>
                         </div>
                     </div>
@@ -442,12 +491,12 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 {/* KPI Cards Row 1 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 14 }}>
                     {[
-                        { label: 'Sales Records', value: business.totalSales || 0, icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
-                        { label: 'Expense Records', value: business.totalExpenses || 0, icon: <Receipt size={16} />, accent: '#f59e0b' },
-                        { label: 'Products', value: business.totalProducts || 0, icon: <Package size={16} />, accent: '#7c5cbf' },
-                        { label: 'Sub Ends', value: business.subEndDate ? formatDate(business.subEndDate) : 'N/A', icon: <CreditCard size={16} />, accent: '#6c9e4e' },
-                        { label: 'Days Remaining', value: business.daysRemaining < 0 ? `${Math.abs(business.daysRemaining)}d overdue` : `${business.daysRemaining || 0}d`, icon: <BarChart2 size={16} />, accent: daysColor },
-                        { label: 'Total Revenue', value: formatCurrency(business.totalRevenue || 0), icon: <DollarSign size={16} />, accent: '#22c55e' },
+                        { label: 'Sales Records', value: metrics?.salesRecords || 0, icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
+                        { label: 'Expense Records', value: metrics?.expenseRecords || 0, icon: <Receipt size={16} />, accent: '#f59e0b' },
+                        { label: 'Products', value: metrics?.products || 0, icon: <Package size={16} />, accent: '#7c5cbf' },
+                        { label: 'Sub Ends', value: metrics?.subEnds ? formatDate(metrics.subEnds) : 'N/A', icon: <CreditCard size={16} />, accent: '#6c9e4e' },
+                        { label: 'Days Remaining', value: metrics?.daysRemaining || '0d', icon: <BarChart2 size={16} />, accent: daysColor },
+                        { label: 'Total Revenue', value: formatCurrency(metrics?.totalRevenue || 0), icon: <DollarSign size={16} />, accent: '#22c55e' },
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 6 }}>{k.icon}</div>
@@ -455,19 +504,20 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                             <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{k.label}</div>
                         </div>
                     ))}
-                </div>
-                {/* KPI Row 2 */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #0ea5e9' }}>
                         <div style={{ color: '#0ea5e9', marginBottom: 6 }}><Users size={16} /></div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{business.totalUsers || 0}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{metrics?.totalUsers || 0}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Total Users</div>
                     </div>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #6b7280' }}>
                         <div style={{ color: '#6b7280', marginBottom: 6 }}><span>🕐</span></div>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e' }}>{business.lastLogin ? formatDateTime(business.lastLogin) : 'Never'}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e' }}>{metrics?.lastLogin ? formatDateTime(metrics.lastLogin) : 'Never'}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Last Login</div>
                     </div>
+                </div>
+                {/* KPI Row 2 */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
+
                 </div>
 
                 {/* Tabs */}
@@ -486,10 +536,39 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                         ))}
                     </div>
                     <div style={{ padding: 20 }}>
-                        <TabContent tab={activeTab} businessId={business.id} />
+                        <TabContent tab={activeTab} businessId={business.id} onEditItem={handleEditTabItem} onCreateItem={handleCreateTabItem} />
                     </div>
                 </div>
+
+                <BusinessModal
+                    isOpen={isBusinessModalOpen}
+                    onClose={() => setIsBusinessModalOpen(false)}
+                    business={business}
+                />
+
+                <UserModal
+                    isOpen={isUserModalOpen}
+                    onClose={() => {
+                        setIsUserModalOpen(false);
+                        setSelectedUser(null);
+                    }}
+                    businessId={params.id}
+                    user={selectedUser}
+                />
+
+                <ConfirmModal
+                    isOpen={isConfirmModalOpen}
+                    onClose={() => setIsConfirmModalOpen(false)}
+                    onConfirm={confirmSuspend}
+                    isLoading={updateMutation.isPending}
+                    title={(business.status === 'Inactive' || business.status === 'Suspended') ? 'Unsuspend Business' : 'Suspend Business'}
+                    message={`Are you sure you want to ${(business.status === 'Inactive' || business.status === 'Suspended') ? 'unsuspend' : 'suspend'} ${business.name}? This will affect their access to the system.`}
+                    confirmText={(business.status === 'Inactive' || business.status === 'Suspended') ? 'Unsuspend' : 'Suspend'}
+                    type={(business.status === 'Inactive' || business.status === 'Suspended') ? 'info' : 'danger'}
+                />
             </div>
         </div>
     );
 }
+
+

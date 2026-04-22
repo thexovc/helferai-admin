@@ -34,6 +34,8 @@ export const inventoryKeys = {
   referralTiers: () => [...inventoryKeys.all, 'referralTiers'] as const,
   pointConfigs: () => [...inventoryKeys.all, 'pointConfigs'] as const,
   referralRewards: () => [...inventoryKeys.all, 'referralRewards'] as const,
+  referralsList: (params?: { search?: string; status?: string; page?: number; pageSize?: number }) =>
+    [...inventoryKeys.all, 'referralsList', params] as const,
   financeSummary: () => [...inventoryKeys.all, 'financeSummary'] as const,
   finance: (startDate?: string, endDate?: string) => [...inventoryKeys.all, 'finance', { startDate, endDate }] as const,
   financeSubscriptions: (params: any) => [...inventoryKeys.all, 'financeSubscriptions', params] as const,
@@ -73,6 +75,40 @@ export const useInventoryBusiness = (id: string) => {
     queryKey: inventoryKeys.business(id),
     queryFn: () => inventoryApi.getBusinessById(id),
     enabled: !!id,
+  });
+};
+
+export const useBusinessMetrics = (id: string) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.business(id), 'metrics'],
+    queryFn: () => inventoryApi.getBusinessMetrics(id),
+    enabled: !!id,
+  });
+};
+
+export const useUpdateBusiness = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => inventoryApi.updateBusiness(id, data),
+    onSuccess: async (updatedBusiness, variables) => {
+      const bizId = variables.id;
+      
+      // 1. Immediately update the cache for the specific business if we have data
+      if (updatedBusiness) {
+        queryClient.setQueryData(inventoryKeys.business(bizId), updatedBusiness);
+      }
+
+      // 2. Force immediate refetch of the business and its metrics
+      // Using Promise.all to ensure everything is fetched concurrently but awaited
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: inventoryKeys.business(bizId) }),
+        queryClient.refetchQueries({ queryKey: inventoryKeys.businesses() }),
+        queryClient.refetchQueries({ queryKey: ['inventory', 'kpis'] }),
+        queryClient.refetchQueries({ queryKey: ['inventory', 'dashboard'] }),
+        queryClient.refetchQueries({ queryKey: ['inventory', 'charts'] }),
+        queryClient.refetchQueries({ queryKey: ['inventory', 'business', bizId] }),
+      ]);
+    },
   });
 };
 
@@ -204,7 +240,7 @@ export const useInventorySubscriptions = (
   pageSize = 10,
   filters?: SubscriptionFilters,
 ) => {
-  return useQuery({
+  return useQuery<T.SubscriptionResponse>({
     queryKey: [...inventoryKeys.subscriptions(), page, pageSize, filters],
     queryFn: () => inventoryApi.getSubscriptions(page, pageSize, filters),
   });
@@ -231,6 +267,13 @@ export const useInventoryReferralRewards = (page = 1, pageSize = 10) => {
   });
 };
 
+export const useInventoryReferralsList = (params?: { search?: string; status?: string; page?: number; pageSize?: number }) => {
+  return useQuery({
+    queryKey: inventoryKeys.referralsList(params),
+    queryFn: () => inventoryApi.getReferralsList(params),
+  });
+};
+
 export const useInventoryFinanceSummary = () => {
   return useQuery({
     queryKey: inventoryKeys.financeSummary(),
@@ -251,6 +294,47 @@ export const useBusinessUsers = (id: string, page = 1, pageSize = 10) => {
     queryKey: [...inventoryKeys.businessUsers(id), page, pageSize],
     queryFn: () => inventoryApi.getBusinessUsers(id, page, pageSize),
     enabled: !!id,
+  });
+};
+
+export const useBusinessRoles = (id: string) => {
+  return useQuery({
+    queryKey: [...inventoryKeys.business(id), 'roles'],
+    queryFn: () => inventoryApi.getBusinessRoles(id),
+    enabled: !!id,
+  });
+};
+
+export const useCreateBusinessUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => inventoryApi.createBusinessUser(id, data),
+    onSuccess: async (_, variables) => {
+      const bizId = variables.id;
+      // Force immediate refetch of user list and metrics
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: inventoryKeys.businessUsers(bizId) }),
+        queryClient.refetchQueries({ queryKey: [...inventoryKeys.business(bizId), 'metrics'] }),
+        queryClient.refetchQueries({ queryKey: inventoryKeys.business(bizId), exact: true }),
+      ]);
+    },
+  });
+};
+
+export const useUpdateBusinessUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, userId, data }: { id: string; userId: string; data: any }) =>
+      inventoryApi.updateBusinessUser(id, userId, data),
+    onSuccess: async (_, variables) => {
+      const bizId = variables.id;
+      // Force immediate refetch of user list and metrics
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: inventoryKeys.businessUsers(bizId) }),
+        queryClient.refetchQueries({ queryKey: [...inventoryKeys.business(bizId), 'metrics'] }),
+        queryClient.refetchQueries({ queryKey: inventoryKeys.business(bizId), exact: true }),
+      ]);
+    },
   });
 };
 
