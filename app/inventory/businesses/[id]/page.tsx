@@ -5,8 +5,8 @@ import Topbar from '../../../../components/Topbar';
 import Pagination from '../../../../components/Pagination';
 import StatusBadge from '../../../../components/StatusBadge';
 import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
-import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
-import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
+import { Plus, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
+import { TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
     useInventoryBusiness,
     useBusinessUsers,

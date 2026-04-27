@@ -90,23 +90,14 @@ export const useUpdateBusiness = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => inventoryApi.updateBusiness(id, data),
-    onSuccess: async (updatedBusiness, variables) => {
+    onSuccess: async (_, variables) => {
       const bizId = variables.id;
-      
-      // 1. Immediately update the cache for the specific business if we have data
-      if (updatedBusiness) {
-        queryClient.setQueryData(inventoryKeys.business(bizId), updatedBusiness);
-      }
 
-      // 2. Force immediate refetch of the business and its metrics
-      // Using Promise.all to ensure everything is fetched concurrently but awaited
+      // Force immediate refetch of the business and its metrics to ensure UI reflects changes
       await Promise.all([
         queryClient.refetchQueries({ queryKey: inventoryKeys.business(bizId) }),
-        queryClient.refetchQueries({ queryKey: inventoryKeys.businesses() }),
-        queryClient.refetchQueries({ queryKey: ['inventory', 'kpis'] }),
-        queryClient.refetchQueries({ queryKey: ['inventory', 'dashboard'] }),
-        queryClient.refetchQueries({ queryKey: ['inventory', 'charts'] }),
-        queryClient.refetchQueries({ queryKey: ['inventory', 'business', bizId] }),
+        queryClient.refetchQueries({ queryKey: [...inventoryKeys.business(bizId), 'metrics'] }),
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
       ]);
     },
   });
