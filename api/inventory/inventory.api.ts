@@ -1,4 +1,4 @@
-import { inventoryClient } from '../api-client';
+import { inventoryClient, apiClient } from '../api-client';
 import * as T from './inventory.types';
 
 export const inventoryApi = {
@@ -28,7 +28,7 @@ export const inventoryApi = {
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),
   getBusinessMetrics: (id: string) => inventoryClient.get<T.BusinessMetrics>(`/admin/api/inventory/businesses/${id}/metrics`),
   createBusiness: (data: Partial<T.Business>) => inventoryClient.post<T.Business>('/admin/api/inventory/businesses', data),
-  updateBusiness: (id: string, data: Partial<T.Business>) => inventoryClient.put<T.Business>(`/admin/api/inventory/businesses/${id}`, data),
+  updateBusiness: (id: string, data: any) => inventoryClient.patch<T.Business>(`/admin/api/inventory/businesses/${id}`, data),
   deleteBusiness: (id: string) => inventoryClient.delete<T.Business>(`/admin/api/inventory/businesses/${id}`),
   getTransactions: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Transaction>>(`/admin/api/inventory/finance/transactions?page=${page}&pageSize=${pageSize}`),
   getProducts: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.Product>>(`/admin/api/inventory/products?page=${page}&pageSize=${pageSize}`),
@@ -42,9 +42,17 @@ export const inventoryApi = {
     if (params?.pageSize) query.set('pageSize', String(params.pageSize));
 
     const queryString = query.toString();
-    return inventoryClient
-      .get(`/admin/api/inventory/referrals/analytics${queryString ? `?${queryString}` : ''}`)
-      .then((res: unknown) => (res as { data: { data: any } }).data.data);
+    return inventoryClient.get<{ success: boolean; data: any }>(`/admin/api/inventory/referrals/analytics${queryString ? `?${queryString}` : ''}`);
+  },
+  getReferralsList: (params?: { search?: string; status?: string; page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set('search', params.search);
+    if (params?.status) query.set('status', params.status);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.pageSize) query.set('pageSize', String(params.pageSize));
+
+    const queryString = query.toString();
+    return inventoryClient.get<T.PaginatedResponse<T.ReferralAudit>>(`/admin/api/inventory/referrals/list${queryString ? `?${queryString}` : ''}`);
   }, getIntegrations: (params?: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number }) => {
     const query = new URLSearchParams();
     if (params?.search) query.append('search', params.search);
@@ -60,6 +68,9 @@ export const inventoryApi = {
 
   // Business Specific Sub-resources
   getBusinessUsers: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessUser>>(`/admin/api/inventory/businesses/${id}/users?page=${page}&pageSize=${pageSize}`),
+  getBusinessRoles: (id: string) => apiClient.get<any[]>(`/roles?businessId=${id}`),
+  createBusinessUser: (id: string, data: any) => inventoryClient.post<T.BusinessUser>(`/admin/api/inventory/businesses/${id}/users`, data),
+  updateBusinessUser: (id: string, userId: string, data: any) => inventoryClient.patch<T.BusinessUser>(`/admin/api/inventory/businesses/${id}/users/${userId}`, data),
   getBusinessSubscriptions: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessSubscription>>(`/admin/api/inventory/businesses/${id}/subscriptions?page=${page}&pageSize=${pageSize}`),
   getBusinessProducts: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessProduct>>(`/admin/api/inventory/businesses/${id}/products?page=${page}&pageSize=${pageSize}`),
   getBusinessSales: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessSale>>(`/admin/api/inventory/businesses/${id}/sales?page=${page}&pageSize=${pageSize}`),
@@ -108,6 +119,7 @@ export const inventoryApi = {
       search?: string;
       plan?: string;
       status?: string;
+      billing?: string;
       startDate?: string;
       endDate?: string;
     },
@@ -120,15 +132,24 @@ export const inventoryApi = {
     if (filters?.search?.trim()) params.set('search', filters.search.trim());
     if (filters?.plan?.trim()) params.set('plan', filters.plan.trim());
     if (filters?.status?.trim()) params.set('status', filters.status.trim());
+    if (filters?.billing?.trim()) params.set('billing', filters.billing.trim());
     if (filters?.startDate?.trim()) params.set('startDate', filters.startDate.trim());
     if (filters?.endDate?.trim()) params.set('endDate', filters.endDate.trim());
 
-    return inventoryClient.get<T.PaginatedResponse<T.Subscription>>(
+    return inventoryClient.get<T.SubscriptionResponse>(
       `/admin/api/inventory/subscriptions?${params.toString()}`,
     );
   },
   getReferralTiers: () => inventoryClient.get<T.ReferralTier[]>('/admin/api/inventory/referrals/tiers'),
+  createReferralTier: (data: Partial<T.ReferralTier>) => inventoryClient.post<T.ReferralTier>('/admin/api/inventory/referrals/tiers', data),
+  updateReferralTier: (id: string, data: Partial<T.ReferralTier>) => inventoryClient.put<T.ReferralTier>(`/admin/api/inventory/referrals/tiers/${id}`, data),
+  deleteReferralTier: (id: string) => inventoryClient.delete(`/admin/api/inventory/referrals/tiers/${id}`),
+
   getPointConfigs: () => inventoryClient.get<T.PointConfig[]>('/admin/api/inventory/referrals/points/config'),
+  createPointConfig: (data: Partial<T.PointConfig>) => inventoryClient.post<T.PointConfig>('/admin/api/inventory/referrals/points/config', data),
+  updatePointConfig: (id: string, data: Partial<T.PointConfig>) => inventoryClient.put<T.PointConfig>(`/admin/api/inventory/referrals/points/config/${id}`, data),
+  deletePointConfig: (id: string) => inventoryClient.delete(`/admin/api/inventory/referrals/points/config/${id}`),
+
   getReferralRewards: (page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.ReferralReward>>(`/admin/api/inventory/referrals/rewards?page=${page}&pageSize=${pageSize}`),
   getFinanceSummary: () => inventoryClient.get<T.FinanceSummary>('/admin/api/inventory/finance/summary'),
   getFinanceData: (startDate?: string, endDate?: string) => {
