@@ -19,22 +19,22 @@ export const useCreateBusiness = () => {
   });
 };
 
-export const useUpdateBusiness = () => {
-  const queryClient = useQueryClient();
+// export const useUpdateBusiness = () => {
+//   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Business> }) =>
-      inventoryApi.updateBusiness(id, data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.businesses() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.business(data.id) });
-      toast.success('Business updated successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'An error occurred while updating the business');
-    },
-  });
-};
+//   return useMutation({
+//     mutationFn: ({ id, data }: { id: string; data: Partial<Business> }) =>
+//       inventoryApi.updateBusiness(id, data),
+//     onSuccess: (data) => {
+//       queryClient.invalidateQueries({ queryKey: inventoryKeys.businesses() });
+//       queryClient.invalidateQueries({ queryKey: inventoryKeys.business(data.id) });
+//       toast.success('Business updated successfully');
+//     },
+//     onError: (error: any) => {
+//       toast.error(error.message || 'An error occurred while updating the business');
+//     },
+//   });
+// };
 
 export const useDeleteBusiness = () => {
   const queryClient = useQueryClient();

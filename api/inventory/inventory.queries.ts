@@ -97,7 +97,7 @@ export const useUpdateBusiness = () => {
       await Promise.all([
         queryClient.refetchQueries({ queryKey: inventoryKeys.business(bizId) }),
         queryClient.refetchQueries({ queryKey: [...inventoryKeys.business(bizId), 'metrics'] }),
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.business(bizId) }),
       ]);
     },
   });
