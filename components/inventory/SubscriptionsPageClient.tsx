@@ -73,13 +73,14 @@ export default function SubscriptionsPageClient() {
     const total = subscriptionsResponse?.meta?.total ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
-    // KPIs — computed from the current page rows
-    const totalActive = subscriptions.filter(s => s.status === 'Active').length;
-    const totalTrial = subscriptions.filter(s => s.status === 'Trial').length;
-    const totalExpired = subscriptions.filter(s => s.status === 'Expired').length;
-    const totalCancelled = subscriptions.filter(s => s.status === 'Cancelled').length;
-    const totalMRR = subscriptions.filter(s => s.status === 'Active' && s.billingCycle === 'Monthly').reduce((a, s) => a + s.amountPaying, 0);
-    const totalARR = subscriptions.filter(s => s.status === 'Active' && s.billingCycle === 'Annual').reduce((a, s) => a + s.amountPaying, 0);
+    // KPIs — use backend aggregates
+    const aggregates = subscriptionsResponse?.aggregates;
+    const totalActive = aggregates?.totalActive ?? 0;
+    const totalTrial = aggregates?.totalTrial ?? 0;
+    const totalExpired = aggregates?.totalExpired ?? 0;
+    const totalCancelled = aggregates?.totalCancelled ?? 0;
+    const totalMRR = aggregates?.totalMRR ?? 0;
+    const totalARR = aggregates?.totalARR ?? 0;
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     const handleFilterChange = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) =>
