@@ -7,6 +7,7 @@ export interface PaginatedResponse<T> {
     total: number;
     page: number;
     pageSize: number;
+    totalPages?: number;
   };
 }
 
@@ -23,6 +24,7 @@ export interface Business {
   country?: string;
   status: SubStatus;
   currentPlan: string;
+  planId?: string;
   previousPlan?: string;
   subStartDate?: string;
   subEndDate?: string;
@@ -39,32 +41,18 @@ export interface Business {
   totalUsers?: number;
 }
 
-
 export interface KPIValue {
   value: number;
   trend: string;
   trendUp: boolean;
 }
 
-export interface InventoryOverview {
-  totalBusiness?: KPIValue;
-  totalSubscribingBusiness?: KPIValue;
-  trialUsers?: KPIValue;
-  expiredSubscription?: KPIValue;
-  cancelledBusinesses?: KPIValue;
-  newBusinessThisMonth?: KPIValue;
-  newPayingBusinesses?: KPIValue;
-  conversionRate?: KPIValue;
-  activeToday?: KPIValue;
-  activeVsInactiveRatio?: KPIValue;
-}
-
 export interface KPIMetrics {
   totalBusiness?: KPIValue;
   totalSubscribingBusiness?: KPIValue;
-  trialUsers?: { value: number };
-  expiredSubscription?: { value: number };
-  cancelledBusinesses?: { value: number };
+  trialUsers?: { value: number; trend?: string; trendUp?: boolean };
+  expiredSubscription?: { value: number; trend?: string; trendUp?: boolean };
+  cancelledBusinesses?: { value: number; trend?: string; trendUp?: boolean };
   newBusinessThisMonth?: KPIValue;
   activeToday?: KPIValue;
   mrr: KPIValue;
@@ -74,7 +62,9 @@ export interface KPIMetrics {
   arpu: KPIValue;
   pendingRenewalsValue?: { value: number };
   pendingRenewals?: { value: number };
-  conversionRate?: { value: number };
+  conversionRate?: { value: number; trend?: string; trendUp?: boolean };
+  activeVsInactiveRatio?: KPIValue;
+  newPayingBusinesses?: KPIValue;
 }
 
 export interface ChartData {
@@ -91,9 +81,25 @@ export interface RenewalTimelineItem {
   amount: number;
 }
 
+export interface ConversionFunnel {
+  registered: number;
+  trialing: number;
+  paying: number;
+  trialConversionRate: number;
+  payingConversionRate: number;
+}
+
+export interface RetentionChurnItem {
+  week: string;
+  active: number;
+  inactive: number;
+}
+
 export interface InventoryCharts {
   monthlyTrends: ChartData[];
   pendingRenewalsTimeline: RenewalTimelineItem[];
+  conversionFunnel?: ConversionFunnel;
+  retentionChurn?: RetentionChurnItem[];
 }
 
 export interface RecentAction {
@@ -103,13 +109,54 @@ export interface RecentAction {
   businessName: string;
   adminName: string;
   timestamp: string;
-  metadata: any;
+  metadata?: any;
 }
 
 export interface UnifiedDashboardData {
   kpis: KPIMetrics;
   charts: InventoryCharts;
   recentActions: RecentAction[];
+}
+
+export interface SubscriptionAggregates {
+  totalActive: number;
+  totalTrial: number;
+  totalExpired: number;
+  totalCancelled: number;
+  totalMRR: number;
+  totalARR: number;
+}
+
+export interface SubscriptionsResponse extends PaginatedResponse<Subscription> {
+  aggregates?: SubscriptionAggregates;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  frequency: string;
+  features?: string[];
+  maxUsers?: number;
+  maxProducts?: number;
+}
+
+export interface Subscription {
+  id: string;
+  businessId: string;
+  businessName: string;
+  businessEmail: string;
+  plan: string;
+  planId?: string;
+  status: SubStatus;
+  startDate: string;
+  endDate: string;
+  amountPaying: number;
+  billingCycle: BillingCycle;
+  daysRemaining: number;
+  autoRenew: boolean;
+  paymentMethod: string;
 }
 
 export interface FinanceSubscription {
@@ -123,7 +170,7 @@ export interface FinanceSubscription {
 }
 
 export interface AnomalousEvent {
-  id: number;
+  id: number | string;
   type: string;
   clientId: string;
   time: string;
@@ -137,7 +184,7 @@ export interface UnifiedFinanceData {
     monthlyRevenue: Array<{ month: string; amount: number }>;
     subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number }>;
   };
-  subscriptions: FinanceSubscription[];
+  subscriptions?: FinanceSubscription[];
   anomalousEvents: AnomalousEvent[];
 }
 
@@ -153,14 +200,24 @@ export interface Transaction {
   billingCycle: BillingCycle;
 }
 
-
 export interface Product {
+  id?: string;
   sku: string;
   name: string;
   category: string;
+  categoryId?: string | null;
+  brand: string;
+  brandId?: string | null;
+  unit: string;
+  unitId?: string | null;
+  businessName?: string;
+  businessId?: string;
   price: number;
+  costPrice?: number;
   stockLevel: number;
+  batchesCount?: number;
   status: string;
+  createdAt?: string;
 }
 
 export interface AIUsageMetric {
@@ -183,6 +240,7 @@ export interface BusinessUser {
   name: string;
   email: string;
   role: string;
+  roleId?: string;
   status: string;
   createdAt: string;
 }
@@ -246,14 +304,18 @@ export interface BusinessIntegrationItem {
 export interface Broadcast {
   id: string;
   title: string;
+  message?: string;
+  segment?: string;
   sentAt: string;
+  createdAt?: string;
   recipients: number;
+  deliveredCount?: number;
+  readCount?: number;
   deliveryRate: string;
   readRate: string;
   status: string;
   channel: string;
 }
-
 
 export interface ReferralAnalytics {
   totalInvites: number;
@@ -261,6 +323,19 @@ export interface ReferralAnalytics {
   conversionRate: string;
   pointsDistributed: number;
   topReferrers: Array<{ name: string; referrals: number; points: number }>;
+}
+
+export interface ReferralAuditItem {
+  id: string;
+  referrerName: string;
+  referrerEmail: string;
+  referredName: string;
+  referredEmail: string;
+  referralCode: string;
+  status: string;
+  pointsAwarded: number;
+  createdAt: string;
+  rewardedAt?: string | null;
 }
 
 export interface Integration {
@@ -274,29 +349,41 @@ export interface Integration {
   lastSync: string;
 }
 
-
 export interface Testimonial {
   id: string;
-  userName: string;
+  userName?: string;
+  author?: string;
+  role?: string;
+  company?: string;
   rating: number;
   content: string;
   status: string;
-  date: string;
+  isActive?: boolean;
+  avatar?: string;
+  date?: string;
+  createdAt?: string;
 }
 
 export interface ActivityLog {
   id: string;
+  userId?: string | null;
   adminName: string;
+  userEmail?: string;
+  businessId?: string | null;
+  businessName?: string;
   action: string;
+  resourceType: string;
   targetId?: string;
+  details?: string;
   timestamp: string;
   ip: string;
+  metadata?: any;
 }
 
 export interface Brand {
   id: string;
   name: string;
-  manufacturer: string;
+  manufacturer?: string;
   productCount: number;
   status: string;
   createdAt: string;
@@ -305,63 +392,70 @@ export interface Brand {
 export interface Category {
   id: string;
   name: string;
-  description: string;
+  businessName?: string;
+  businessId?: string | null;
+  description?: string;
   productCount: number;
   status: string;
+  createdAt?: string;
 }
 
 export interface Unit {
   id: string;
   name: string;
   abbreviation: string;
+  productCount?: number;
+  businessName?: string;
   status: string;
+  createdAt?: string;
 }
 
 export interface WhatsappNumber {
   id: string;
   number: string;
+  phoneNumber?: string;
+  name?: string;
   businessName: string;
+  businessId?: string;
   status: string;
   lastActive: string;
-}
-
-export interface Subscription {
-  id: string;
-  businessId: string;
-  businessName: string;
-  businessEmail: string;
-  plan: string;
-  status: SubStatus;
-  startDate: string;
-  endDate: string;
-  amountPaying: number;
-  billingCycle: BillingCycle;
-  daysRemaining: number;
-  autoRenew: boolean;
-  paymentMethod: string;
+  createdAt?: string;
 }
 
 export interface ReferralTier {
   id: string;
   name: string;
-  minReferrals: number;
-  rewardMultiplier: number;
+  slug?: string;
+  min_points?: number;
+  max_points?: number;
+  minReferrals?: number;
+  rewardMultiplier?: number;
+  color?: string;
+  icon?: string;
+  order?: number;
   status: string;
 }
 
 export interface PointConfig {
   id: string;
-  action: string;
-  points: number;
+  activity_type?: string;
+  action?: string;
+  user_points?: number;
+  referrer_points?: number;
+  points?: number;
+  description?: string;
   status: string;
 }
 
 export interface ReferralReward {
   id: string;
   name: string;
-  pointsRequired: number;
+  pointsRequired?: number;
+  points?: number;
+  type?: string;
   description: string;
   status: string;
+  date?: string;
 }
 
 export interface FinanceSummary {
@@ -380,4 +474,42 @@ export interface BusinessMetrics {
   totalRevenue: number;
   totalUsers: number;
   lastLogin: string;
+}
+
+export interface AdminUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: { id: string; name: string };
+  roleId?: string;
+  status: string;
+  isActive?: boolean;
+  lastLogin?: string;
+  createdAt: string;
+}
+
+export interface AdminRoleRecord {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: string[];
+  adminCount?: number;
+  userCount?: number;
+  createdAt?: string;
+}
+
+export interface PlatformUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  businessName?: string;
+  businessId?: string;
+  businesses?: Array<{ id: string; name: string }>;
+  role?: string;
+  status: string;
+  lastLogin?: string;
+  createdAt: string;
+  totalSales?: number;
+  totalExpenses?: number;
 }

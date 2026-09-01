@@ -213,7 +213,7 @@ export default function InventoryFinancePageClient() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {subscriptions.map((s: T.FinanceSubscription) => (
+                                {(subscriptions || []).map((s: T.FinanceSubscription) => (
                                     <tr key={s.id} style={{ background: '#fff', transition: 'transform 0.2s', cursor: 'pointer' }}>
                                         <td style={{ padding: '20px', borderRadius: '16px 0 0 16px', borderTop: '1px solid #f8fafc', borderBottom: '1px solid #f8fafc', borderLeft: '1px solid #f8fafc' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

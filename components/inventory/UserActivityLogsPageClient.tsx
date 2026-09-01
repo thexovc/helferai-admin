@@ -10,10 +10,10 @@ import { formatDateTime } from '@/app/lib/utils';
 export default function UserActivityLogsPageClient() {
     const [page, setPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(10);
-    const { data: logsResponse, isLoading } = useInventoryActivityLogs(page, pageSize);
+    const [search, setSearch] = React.useState('');
+    const { data: logsResponse, isLoading } = useInventoryActivityLogs({ page, pageSize, search });
     const logs = logsResponse?.data || [];
     const meta = logsResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-    const [search, setSearch] = React.useState('');
 
     const filtered = (logs || []).filter(l => {
         const matchSearch =

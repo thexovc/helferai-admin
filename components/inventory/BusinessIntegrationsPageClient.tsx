@@ -5,7 +5,8 @@ import { Plus, Search, Building, MoreVertical } from 'lucide-react';
 import { useInventoryIntegrations } from '@/api/inventory/inventory.queries';
 
 export default function BusinessIntegrationsPageClient() {
-    const { data: integrations, isLoading } = useInventoryIntegrations();
+    const { data: integrationsResp, isLoading } = useInventoryIntegrations();
+    const integrations = (integrationsResp as any)?.data || (Array.isArray(integrationsResp) ? integrationsResp : []);
 
     return (
         <div>
@@ -76,7 +77,7 @@ export default function BusinessIntegrationsPageClient() {
                                         </td>
                                     </tr>
                                 ))
-                            ) : integrations?.map((int) => (
+                            ) : integrations?.map((int: any) => (
                                 <tr key={int.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{int.name}</td>
                                     <td>{int.category}</td>
