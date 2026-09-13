@@ -5,13 +5,22 @@ import { X } from 'lucide-react';
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
-    title: string;
+    title: React.ReactNode;
     children: React.ReactNode;
     footer?: React.ReactNode;
-    maxWidth?: number;
+    maxWidth?: number | string;
+    closeOnBackdropClick?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, title, children, footer, maxWidth = 500 }: ModalProps) {
+export default function Modal({
+    isOpen,
+    onClose,
+    title,
+    children,
+    footer,
+    maxWidth = 500,
+    closeOnBackdropClick = false
+}: ModalProps) {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -24,17 +33,27 @@ export default function Modal({ isOpen, onClose, title, children, footer, maxWid
     if (!isOpen) return null;
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-            background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 1000, padding: 20, backdropFilter: 'blur(4px)',
-        }} onClick={onClose}>
-            <div style={{
-                background: '#fff', borderRadius: 20, width: '100%', maxWidth,
-                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-                display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                animation: 'modalSlideUp 0.3s ease-out',
-            }} onClick={e => e.stopPropagation()}>
+        <div
+            style={{
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 1000, padding: 20, backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => {
+                if (closeOnBackdropClick) {
+                    onClose();
+                }
+            }}
+        >
+            <div
+                style={{
+                    background: '#fff', borderRadius: 20, width: '100%', maxWidth,
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                    animation: 'modalSlideUp 0.3s ease-out',
+                }}
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', margin: 0 }}>{title}</h2>

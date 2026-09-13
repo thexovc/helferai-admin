@@ -1,18 +1,25 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Phone, Edit2, Trash2, Building2 } from 'lucide-react';
 import { useInventoryWhatsappNumbers } from '@/api/inventory/inventory.queries';
+import { useCreateWhatsappNumber, useUpdateWhatsappNumber, useDeleteWhatsappNumber } from '@/api/inventory/inventory.mutations';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
 import Modal from '../Modal';
+import ConfirmModal from '../ConfirmModal';
+import { WhatsappNumber } from '@/api/inventory/inventory.types';
 
 export default function WhatsAppNumbersPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: numbersResponse, isLoading } = useInventoryWhatsappNumbers(page, pageSize);
-    const [numbers, setNumbers] = useState<any[]>([]);
     const [search, setSearch] = useState('');
+
+    const { data: numbersResponse, isLoading } = useInventoryWhatsappNumbers(page, pageSize, search);
+
+    const createWhatsappMutation = useCreateWhatsappNumber();
+    const updateWhatsappMutation = useUpdateWhatsappNumber();
+    const deleteWhatsappMutation = useDeleteWhatsappNumber();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,19 +30,13 @@ export default function WhatsAppNumbersPageClient() {
         status: 'Active',
     });
 
-    useEffect(() => {
-        if (numbersResponse?.data) {
-            setNumbers(numbersResponse.data);
-        }
-    }, [numbersResponse]);
-
     const handleOpenModal = (num?: any) => {
         if (num) {
             setEditingNumber(num);
             setFormData({
-                number: num.number,
-                businessName: num.businessName,
-                status: num.status,
+                number: num.phoneNumber || num.number || '',
+                businessName: num.businessName || '',
+                status: num.status || 'Active',
             });
         } else {
             setEditingNumber(null);
@@ -48,38 +49,61 @@ export default function WhatsAppNumbersPageClient() {
         setIsModalOpen(true);
     };
 
-    const handleSaveNumber = () => {
-        if (!formData.number || !formData.businessName) {
-            toast.error('Phone number and business name are required');
+    const handleSaveNumber = async () => {
+        if (!formData.number) {
+            toast.error('Phone number is required');
             return;
         }
 
-        if (editingNumber) {
-            setNumbers(prev => prev.map(n => n.id === editingNumber.id ? { ...n, ...formData, lastActive: new Date().toISOString() } : n));
-            toast.success(`WhatsApp number "${formData.number}" updated successfully`);
-        } else {
-            const newNum = {
-                id: `num-${Date.now()}`,
-                ...formData,
-                lastActive: new Date().toISOString()
-            };
-            setNumbers(prev => [newNum, ...prev]);
-            toast.success(`WhatsApp number "${formData.number}" connected successfully`);
+        try {
+            if (editingNumber) {
+                await updateWhatsappMutation.mutateAsync({
+                    id: editingNumber.id,
+                    dto: {
+                        phoneNumber: formData.number,
+                        businessName: formData.businessName,
+                        status: formData.status
+                    }
+                });
+            } else {
+                await createWhatsappMutation.mutateAsync({
+                    phoneNumber: formData.number,
+                    businessName: formData.businessName,
+                    status: formData.status
+                });
+            }
+            setIsModalOpen(false);
+        } catch (err) {
+            // Handled by mutation
         }
-        setIsModalOpen(false);
     };
+
+    // Delete Confirm Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; number: any | null }>({
+        isOpen: false,
+        number: null,
+    });
 
     const handleDeleteNumber = (num: any) => {
-        if (confirm(`Are you sure you want to disconnect and delete ${num.number}? This action cannot be undone.`)) {
-            setNumbers(prev => prev.filter(item => item.id !== num.id));
-            toast.success(`WhatsApp number ${num.number} disconnected successfully`);
-        }
+        setDeleteModal({ isOpen: true, number: num });
     };
 
-    const filtered = numbers.filter(n =>
-        n.number.toLowerCase().includes(search.toLowerCase()) ||
-        n.businessName.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.number) return;
+        try {
+            await deleteWhatsappMutation.mutateAsync(deleteModal.number.id);
+            setDeleteModal({ isOpen: false, number: null });
+        } catch (err) { }
+    };
+
+    const rawNumbers = numbersResponse?.data || [];
+    // Sort latest first
+    const numbers = [...rawNumbers].sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.created_at || a.lastActive || 0).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || b.lastActive || 0).getTime();
+        return timeB - timeA;
+    });
+    const totalCount = numbersResponse?.meta?.total || numbers.length;
 
     return (
         <div>
@@ -120,7 +144,10 @@ export default function WhatsAppNumbersPageClient() {
                                 outline: 'none', fontSize: 14, color: '#1a1a2e', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                             }}
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
                         />
                     </div>
                 </div>
@@ -138,20 +165,20 @@ export default function WhatsAppNumbersPageClient() {
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading && numbers.length === 0 ? (
+                            {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                         <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : numbers.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No numbers found</td>
                                 </tr>
-                            ) : filtered.map((n) => (
+                            ) : numbers.map((n: any) => (
                                 <tr key={n.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{n.number}</td>
-                                    <td>{n.businessName}</td>
+                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{n.phoneNumber || n.number}</td>
+                                    <td>{n.businessName || 'General'}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -161,7 +188,7 @@ export default function WhatsAppNumbersPageClient() {
                                             {n.status}
                                         </span>
                                     </td>
-                                    <td>{new Date(n.lastActive).toLocaleString()}</td>
+                                    <td>{n.lastActive ? new Date(n.lastActive).toLocaleString() : 'N/A'}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
@@ -184,9 +211,9 @@ export default function WhatsAppNumbersPageClient() {
                     <div style={{ padding: '12px 20px' }}>
                         <Pagination
                             currentPage={page}
-                            totalPages={Math.ceil((numbersResponse?.meta?.total || numbers.length) / pageSize)}
+                            totalPages={Math.ceil(totalCount / pageSize) || 1}
                             onPageChange={setPage}
-                            totalItems={numbersResponse?.meta?.total || numbers.length}
+                            totalItems={totalCount}
                             pageSize={pageSize}
                         />
                     </div>
@@ -200,8 +227,11 @@ export default function WhatsAppNumbersPageClient() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSaveNumber} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            {editingNumber ? 'Save Changes' : 'Connect Number'}
+                        <button
+                            onClick={handleSaveNumber}
+                            disabled={createWhatsappMutation.isPending || updateWhatsappMutation.isPending}
+                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {createWhatsappMutation.isPending || updateWhatsappMutation.isPending ? 'Saving...' : editingNumber ? 'Save Changes' : 'Connect Number'}
                         </button>
                     </>
                 }
@@ -229,17 +259,29 @@ export default function WhatsAppNumbersPageClient() {
                             style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
                         />
                     </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                            {['Active', 'Inactive', 'Disconnected'].map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
                 </div>
             </Modal>
+
+            {/* Delete WhatsApp Number Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, number: null })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteWhatsappMutation.isPending}
+                title="Disconnect & Delete WhatsApp Number"
+                description={`Are you sure you want to disconnect and delete the WhatsApp number "${deleteModal.number?.number || deleteModal.number?.phoneNumber}"? Automated WhatsApp messaging for "${deleteModal.number?.businessName}" will stop.`}
+                details={
+                    deleteModal.number
+                        ? [
+                              { label: 'Phone Number', value: deleteModal.number.number || deleteModal.number.phoneNumber },
+                              { label: 'Business Name', value: deleteModal.number.businessName },
+                              { label: 'Status', value: deleteModal.number.status },
+                          ]
+                        : []
+                }
+                confirmText="Disconnect & Delete"
+                variant="danger"
+            />
         </div>
     );
 }

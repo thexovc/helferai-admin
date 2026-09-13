@@ -1,19 +1,25 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Filter, Layers, Edit2, Trash2, AlignLeft } from 'lucide-react';
+import { Plus, Search, Layers, Edit2, Trash2, AlignLeft } from 'lucide-react';
 import { useInventoryCategories } from '@/api/inventory/inventory.queries';
+import { useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/api/inventory/inventory.mutations';
 import { Category } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
 import Modal from '../Modal';
+import ConfirmModal from '../ConfirmModal';
 
 export default function CategoriesPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: categoriesResponse, isLoading } = useInventoryCategories(page, pageSize);
-    const [categories, setCategories] = useState<Category[]>([]);
     const [search, setSearch] = useState('');
+
+    const { data: categoriesResponse, isLoading } = useInventoryCategories(page, pageSize, search);
+
+    const createCategoryMutation = useCreateCategory();
+    const updateCategoryMutation = useUpdateCategory();
+    const deleteCategoryMutation = useDeleteCategory();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,19 +30,13 @@ export default function CategoriesPageClient() {
         status: 'Active' as 'Active' | 'Inactive',
     });
 
-    useEffect(() => {
-        if (categoriesResponse?.data) {
-            setCategories(categoriesResponse.data);
-        }
-    }, [categoriesResponse]);
-
     const handleOpenModal = (cat?: Category) => {
         if (cat) {
             setEditingCategory(cat);
             setFormData({
                 name: cat.name,
-                description: cat.description,
-                status: cat.status as 'Active' | 'Inactive',
+                description: cat.description || '',
+                status: (cat.status as 'Active' | 'Inactive') || 'Active',
             });
         } else {
             setEditingCategory(null);
@@ -49,38 +49,55 @@ export default function CategoriesPageClient() {
         setIsModalOpen(true);
     };
 
-    const handleSaveCategory = () => {
+    const handleSaveCategory = async () => {
         if (!formData.name) {
             toast.error('Category name is required');
             return;
         }
 
-        if (editingCategory) {
-            setCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, ...formData } : c));
-            toast.success(`Category "${formData.name}" updated successfully`);
-        } else {
-            const newCat: Category = {
-                id: `cat-${Date.now()}`,
-                ...formData,
-                productCount: 0
-            };
-            setCategories(prev => [newCat, ...prev]);
-            toast.success(`Category "${formData.name}" created successfully`);
+        try {
+            if (editingCategory) {
+                await updateCategoryMutation.mutateAsync({
+                    id: editingCategory.id,
+                    dto: { name: formData.name }
+                });
+            } else {
+                await createCategoryMutation.mutateAsync({
+                    name: formData.name
+                });
+            }
+            setIsModalOpen(false);
+        } catch (err) {
+            // Handled by mutation
         }
-        setIsModalOpen(false);
     };
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; category: Category | null }>({
+        isOpen: false,
+        category: null,
+    });
 
     const handleDelete = (cat: Category) => {
-        if (confirm(`Are you sure you want to delete ${cat.name}? This will affect all associated products.`)) {
-            setCategories(prev => prev.filter(c => c.id !== cat.id));
-            toast.success(`Category ${cat.name} deleted successfully`);
-        }
+        setDeleteModal({ isOpen: true, category: cat });
     };
 
-    const filtered = categories.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.description.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.category) return;
+        try {
+            await deleteCategoryMutation.mutateAsync(deleteModal.category.id);
+            setDeleteModal({ isOpen: false, category: null });
+        } catch (err) { }
+    };
+
+    const rawCategories = categoriesResponse?.data || [];
+    // Sort latest first
+    const categories = [...rawCategories].sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+    });
+    const totalCount = categoriesResponse?.meta?.total || categories.length;
 
     return (
         <div>
@@ -116,7 +133,10 @@ export default function CategoriesPageClient() {
                         <input
                             placeholder="Search categories..."
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
                             style={{
                                 width: '100%', height: 44, paddingLeft: 44, paddingRight: 16,
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
@@ -132,28 +152,28 @@ export default function CategoriesPageClient() {
                         <thead>
                             <tr>
                                 <th>Category Name</th>
-                                <th>Description</th>
+                                <th>Business</th>
                                 <th>Items Count</th>
                                 <th>Status</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading && categories.length === 0 ? (
+                            {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                         <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : categories.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No categories found</td>
                                 </tr>
-                            ) : filtered.map((category: Category) => (
+                            ) : categories.map((category: Category) => (
                                 <tr key={category.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{category.name}</td>
-                                    <td>{category.description}</td>
-                                    <td>{category.productCount}</td>
+                                    <td style={{ color: '#6b7280', fontSize: 13 }}>{category.businessName || 'Global'}</td>
+                                    <td>{category.productCount || 0}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -185,9 +205,9 @@ export default function CategoriesPageClient() {
                     <div style={{ padding: '12px 20px' }}>
                         <Pagination
                             currentPage={page}
-                            totalPages={Math.ceil((categoriesResponse?.meta?.total || categories.length) / pageSize)}
+                            totalPages={Math.ceil(totalCount / pageSize) || 1}
                             onPageChange={setPage}
-                            totalItems={categoriesResponse?.meta?.total || categories.length}
+                            totalItems={totalCount}
                             pageSize={pageSize}
                         />
                     </div>
@@ -201,8 +221,11 @@ export default function CategoriesPageClient() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSaveCategory} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            {editingCategory ? 'Save Changes' : 'Create Category'}
+                        <button
+                            onClick={handleSaveCategory}
+                            disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {createCategoryMutation.isPending || updateCategoryMutation.isPending ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Category'}
                         </button>
                     </>
                 }
@@ -230,17 +253,29 @@ export default function CategoriesPageClient() {
                             style={{ height: 80, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', fontSize: 14, outline: 'none', background: '#f9fafb', resize: 'none', fontFamily: 'inherit' }}
                         />
                     </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as 'Active' | 'Inactive' }))}
-                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                            {['Active', 'Inactive'].map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
                 </div>
             </Modal>
+
+            {/* Delete Category Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, category: null })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteCategoryMutation.isPending}
+                title="Delete Category"
+                description={`Are you sure you want to delete the category "${deleteModal.category?.name}"? Products categorized under this will become uncategorized.`}
+                details={
+                    deleteModal.category
+                        ? [
+                              { label: 'Category Name', value: deleteModal.category.name },
+                              { label: 'Description', value: deleteModal.category.description || 'No description' },
+                              { label: 'Products Linked', value: `${deleteModal.category.productCount || 0} products` },
+                          ]
+                        : []
+                }
+                confirmText="Delete Category"
+                variant="danger"
+            />
         </div>
     );
 }

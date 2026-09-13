@@ -2,13 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
-import { formatCurrency, formatDate } from '../../lib/utils';
-import { SkeletonPulse, KPISkeleton, TableSkeleton } from '@/components/Skeleton';
-import { Search, Building2, CheckCircle, Plus, Edit2, Trash2, Globe, Mail } from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
+import { Search, Building2, CheckCircle, Plus, Edit2, Trash2, Mail, Loader2 } from 'lucide-react';
 import Pagination from '@/components/Pagination';
-import { useInventoryBusinesses, useCreateBusiness, useUpdateBusiness, useDeleteBusiness, SubStatus, BillingCycle } from '@/api/inventory';
+import { useInventoryBusinesses } from '@/api/inventory';
+import { useCreateBusiness, useUpdateBusiness, useDeleteBusiness } from '@/api/inventory/inventory.mutations';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
+import ConfirmModal from '@/components/ConfirmModal';
+import SearchableSelect from '@/components/SearchableSelect';
+import EmailComposerModal from '@/components/EmailComposerModal';
 
 const SORT_FILTERS = [
     'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',
@@ -23,13 +26,14 @@ export default function BusinessesPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [selectedBizForEmail, setSelectedBizForEmail] = useState<any | null>(null);
 
-    // Debounce search effect
+    // Debounce search input to avoid re-triggering requests on every keystroke
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearch(search);
-        }, 500); // 500ms delay
-
+            setPage(1);
+        }, 300);
         return () => clearTimeout(handler);
     }, [search]);
 
@@ -45,7 +49,7 @@ export default function BusinessesPage() {
                 'Annual Plan': 'annual_plan',
                 'Auto Renew Off': 'auto_renew_off',
                 'Inactive 30 Days': 'inactive_30d',
-                'Recently Upgraded': 'recently_upgraded', // (Currently not handled in API but can be added)
+                'Recently Upgraded': 'recently_upgraded',
                 'Converted from Trial': 'converted_trial',
                 'Downgraded Recently': 'recently_downgraded'
             };
@@ -58,35 +62,35 @@ export default function BusinessesPage() {
     })();
 
     const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey);
-    const createBusiness = useCreateBusiness();
-    const updateBusiness = useUpdateBusiness();
-    const deleteBusiness = useDeleteBusiness();
+
+    const createBusinessMutation = useCreateBusiness();
+    const updateBusinessMutation = useUpdateBusiness();
+    const deleteBusinessMutation = useDeleteBusiness();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingBusiness, setEditingBusiness] = useState<import('@/api/inventory').Business | null>(null);
+    const [editingBusiness, setEditingBusiness] = useState<any | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        status: 'Active' as SubStatus,
+        status: 'Active',
         currentPlan: 'Basic',
-        billingCycle: 'Monthly' as BillingCycle,
+        billingCycle: 'Monthly',
         amountPaying: 0,
         daysRemaining: 30
     });
 
-
-    const handleOpenModal = (business?: import('@/api/inventory').Business) => {
+    const handleOpenModal = (business?: any) => {
         if (business) {
             setEditingBusiness(business);
             setFormData({
                 name: business.name,
                 email: business.email,
-                status: business.status,
-                currentPlan: business.currentPlan,
-                billingCycle: business.billingCycle,
-                amountPaying: business.amountPaying,
-                daysRemaining: business.daysRemaining
+                status: business.status || 'Active',
+                currentPlan: business.currentPlan || 'Basic',
+                billingCycle: business.billingCycle || 'Monthly',
+                amountPaying: business.amountPaying || 0,
+                daysRemaining: business.daysRemaining || 30
             });
         } else {
             setEditingBusiness(null);
@@ -103,71 +107,79 @@ export default function BusinessesPage() {
         setIsModalOpen(true);
     };
 
-    const handleSaveBusiness = () => {
+    const handleSaveBusiness = async () => {
         if (!formData.name || !formData.email) {
             toast.error('Business name and email are required');
             return;
         }
 
-        if (editingBusiness) {
-            updateBusiness.mutate(
-                { id: editingBusiness.id, data: formData },
-                {
-                    onSuccess: () => setIsModalOpen(false)
-                }
-            );
-        } else {
-            createBusiness.mutate(formData, {
-                onSuccess: () => setIsModalOpen(false)
-            });
+        try {
+            if (editingBusiness) {
+                await updateBusinessMutation.mutateAsync({
+                    id: editingBusiness.id,
+                    dto: {
+                        name: formData.name,
+                        email: formData.email,
+                        status: formData.status,
+                        currentPlan: formData.currentPlan
+                    }
+                });
+            } else {
+                await createBusinessMutation.mutateAsync({
+                    name: formData.name,
+                    email: formData.email,
+                    status: formData.status,
+                    currentPlan: formData.currentPlan
+                });
+            }
+            setIsModalOpen(false);
+        } catch (err) {
+            // Handled by mutation
         }
     };
 
-    const handleDeleteBusiness = (id: string, name: string) => {
-        if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-            deleteBusiness.mutate(id);
-        }
+    // Delete Confirm Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; business: any | null }>({
+        isOpen: false,
+        business: null,
+    });
+
+    const handleDeleteBusiness = (business: any) => {
+        setDeleteModal({ isOpen: true, business });
     };
 
-    // Only show full page skeleton if it's the INITIAL load AND we have no data
-    const businesses = businessesResponse?.data || [];
-    const isInitialLoading = isLoading && businesses.length === 0;
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.business) return;
+        try {
+            await deleteBusinessMutation.mutateAsync(deleteModal.business.id);
+            setDeleteModal({ isOpen: false, business: null });
+        } catch (err) { }
+    };
 
-    if (isInitialLoading) {
-        return (
-            <div>
-                <Topbar title="Business Management" subtitle="Manage all customer businesses" product="inventory" />
-                <div style={{ padding: 'var(--content-padding)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                        {Array(4).fill(0).map((_, i) => <KPISkeleton key={i} />)}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                        {Array(5).fill(0).map((_, i) => <SkeletonPulse key={i} width={100} height={30} borderRadius={99} />)}
-                    </div>
-                    <TableSkeleton rows={8} cols={7} />
-                </div>
-            </div>
-        );
-    }
-
-    const meta = businessesResponse?.meta || { total: 0, page: 1, pageSize: 10 };
-    const filtered = businesses;
+    const rawBusinesses = businessesResponse?.data || [];
+    // Sort latest first
+    const businesses = [...rawBusinesses].sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+    });
+    const meta = businessesResponse?.meta || { total: businesses.length, page: 1, pageSize: 10 };
 
     return (
         <div>
-            <Topbar title="Business Management" subtitle="Manage all customer businesses" product="inventory" />
+            <Topbar title="Business Management" subtitle="Manage all customer businesses, subscription cycles, and profiles." product="inventory" />
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
                         { label: 'Total Businesses', value: meta.total, color: '#6c9e4e' },
-                        { label: 'Active', value: filtered.filter(b => b.status === 'Active').length, color: '#22c55e' },
-                        { label: 'Trial', value: filtered.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
-                        { label: 'Expired', value: filtered.filter(b => b.status === 'Expired').length, color: '#ef4444' },
+                        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, color: '#22c55e' },
+                        { label: 'Trial', value: businesses.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
+                        { label: 'Expired', value: businesses.filter(b => b.status === 'Expired').length, color: '#ef4444' },
                     ].map(s => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</span>
-                            <span style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value}</span>
+                            <span style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{isLoading && !businessesResponse ? '...' : s.value}</span>
                         </div>
                     ))}
                 </div>
@@ -193,8 +205,16 @@ export default function BusinessesPage() {
                 <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
                     <div style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: isFetching ? '#6c9e4e' : '#9ca3af' }} />
-                            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search businesses…" style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: `1px solid ${isFetching ? '#6c9e4e' : '#e5e7eb'}`, background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }} />
+                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+                            <input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Search businesses by name, email, or plan…"
+                                style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }}
+                            />
+                            {isFetching && (
+                                <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#6c9e4e' }} />
+                            )}
                         </div>
                         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
                             <option>All</option>
@@ -217,59 +237,74 @@ export default function BusinessesPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((b, i) => (
-                                    <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                                        <td>
-                                            <Link href={`/inventory/businesses/${b.id}`} style={{ textDecoration: 'none' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eaf4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                        <Building2 size={15} color="#6c9e4e" />
-                                                    </div>
-                                                    <span style={{ fontWeight: 600, fontSize: 13, color: '#6c9e4e' }}>{b.name}</span>
-                                                </div>
-                                            </Link>
-                                        </td>
-                                        <td style={{ color: '#6b7280', fontSize: 13 }}>{b.email}</td>
-                                        <td>
-                                            <span style={{
-                                                padding: '4px 10px',
-                                                background: b.status === 'Active' ? '#dcfce7' : b.status === 'Trial' ? '#fef9c3' : '#fee2e2',
-                                                color: b.status === 'Active' ? '#15803d' : b.status === 'Trial' ? '#a16207' : '#dc2626',
-                                                borderRadius: 99, fontSize: 11, fontWeight: 700
-                                            }}>
-                                                {b.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ fontWeight: 600 }}>{b.currentPlan}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ fontSize: 13, color: b.daysRemaining < 30 ? '#ef4444' : '#1a1a2e', fontWeight: 600 }}>{b.daysRemaining} days</span>
-                                                <span style={{ fontSize: 10, color: '#9ca3af' }}>left in cycle</span>
-                                            </div>
-                                        </td>
-                                        <td style={{ fontWeight: 700, color: '#1a1a2e' }}>{formatCurrency(b.amountPaying)}</td>
-                                        <td>
-                                            <span style={{ padding: '3px 8px', background: b.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: b.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{b.billingCycle}</span>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: 6 }}>
-                                                <button
-                                                    onClick={() => handleOpenModal(b)}
-                                                    style={{ border: 'none', background: '#f0f9ff', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }} title="Edit"><Edit2 size={14} /></button>
-                                                <button
-                                                    onClick={() => handleDeleteBusiness(b.id, b.name)}
-                                                    style={{ border: 'none', background: '#fee2e2', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }} title="Delete"><Trash2 size={14} /></button>
-                                            </div>
-                                        </td>
+                                {isLoading && !businessesResponse ? (
+                                    [1, 2, 3, 4, 5].map((item) => (
+                                        <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                            <td colSpan={8}><div style={{ height: 32, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        </tr>
+                                    ))
+                                ) : businesses.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No businesses found matching your search.</td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    businesses.map((b, i) => (
+                                        <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                                            <td>
+                                                <Link href={`/inventory/businesses/${b.id}`} style={{ textDecoration: 'none' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eaf4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            <Building2 size={15} color="#6c9e4e" />
+                                                        </div>
+                                                        <span style={{ fontWeight: 600, fontSize: 13, color: '#6c9e4e' }}>{b.name}</span>
+                                                    </div>
+                                                </Link>
+                                            </td>
+                                            <td style={{ color: '#6b7280', fontSize: 13 }}>{b.email}</td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '4px 10px',
+                                                    background: b.status === 'Active' ? '#dcfce7' : b.status === 'Trial' ? '#fef9c3' : '#fee2e2',
+                                                    color: b.status === 'Active' ? '#15803d' : b.status === 'Trial' ? '#a16207' : '#dc2626',
+                                                    borderRadius: 99, fontSize: 11, fontWeight: 700
+                                                }}>
+                                                    {b.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontWeight: 600 }}>{b.currentPlan}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: 13, color: (b.daysRemaining || 30) < 30 ? '#ef4444' : '#1a1a2e', fontWeight: 600 }}>{b.daysRemaining ?? 30} days</span>
+                                                    <span style={{ fontSize: 10, color: '#9ca3af' }}>left in cycle</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ fontWeight: 700, color: '#1a1a2e' }}>{formatCurrency(b.amountPaying || 0)}</td>
+                                            <td>
+                                                <span style={{ padding: '3px 8px', background: b.billingCycle === 'Annual' ? '#eaf4e3' : '#f3f4f6', color: b.billingCycle === 'Annual' ? '#5b8441' : '#6b7280', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{b.billingCycle || 'Monthly'}</span>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button
+                                                        onClick={() => setSelectedBizForEmail(b)}
+                                                        style={{ border: 'none', background: '#eaf4e3', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#166534', display: 'flex' }} title="Send Formatted Email"><Mail size={14} /></button>
+                                                    <button
+                                                        onClick={() => handleOpenModal(b)}
+                                                        style={{ border: 'none', background: '#f0f9ff', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }} title="Edit"><Edit2 size={14} /></button>
+                                                    <button
+                                                        onClick={() => handleDeleteBusiness(b)}
+                                                        style={{ border: 'none', background: '#fee2e2', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }} title="Delete"><Trash2 size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
                     <div style={{ padding: '12px 20px' }}>
                         <Pagination
                             currentPage={page}
-                            totalPages={Math.ceil(meta.total / pageSize)}
+                            totalPages={Math.ceil(meta.total / pageSize) || 1}
                             onPageChange={setPage}
                             totalItems={meta.total}
                             pageSize={pageSize}
@@ -285,11 +320,11 @@ export default function BusinessesPage() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button 
-                            disabled={createBusiness.isPaused || updateBusiness.isPending || createBusiness.isPending}
-                            onClick={handleSaveBusiness} 
-                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)', opacity: (createBusiness.isPending || updateBusiness.isPending) ? 0.7 : 1 }}>
-                            {(createBusiness.isPending || updateBusiness.isPending) ? 'Saving...' : (editingBusiness ? 'Save Changes' : 'Create Business')}
+                        <button
+                            onClick={handleSaveBusiness}
+                            disabled={createBusinessMutation.isPending || updateBusinessMutation.isPending}
+                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {createBusinessMutation.isPending || updateBusinessMutation.isPending ? 'Saving...' : editingBusiness ? 'Save Changes' : 'Create Business'}
                         </button>
                     </>
                 }
@@ -320,45 +355,61 @@ export default function BusinessesPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Current Plan</label>
-                            <select
+                            <SearchableSelect
                                 value={formData.currentPlan}
-                                onChange={e => setFormData(prev => ({ ...prev, currentPlan: e.target.value }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                                {['Basic', 'Pro', 'Enterprise', 'Trial'].map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Billing Cycle</label>
-                            <select
-                                value={formData.billingCycle}
-                                onChange={e => setFormData(prev => ({ ...prev, billingCycle: e.target.value as BillingCycle }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                                {['Monthly', 'Annual'].map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Amount Paying (₦)</label>
-                            <input
-                                type="number"
-                                value={formData.amountPaying}
-                                onChange={e => setFormData(prev => ({ ...prev, amountPaying: Number(e.target.value) }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                                onChange={val => setFormData(prev => ({ ...prev, currentPlan: val }))}
+                                placeholder="Select plan..."
+                                options={['Basic', 'Pro', 'Enterprise', 'Trial'].map(p => ({ value: p, label: p }))}
                             />
                         </div>
                         <div>
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
-                            <select
+                            <SearchableSelect
                                 value={formData.status}
-                                onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as SubStatus }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                                {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                                onChange={val => setFormData(prev => ({ ...prev, status: val }))}
+                                placeholder="Select status..."
+                                options={['Active', 'Trial', 'Expired', 'Cancelled'].map(s => ({ value: s, label: s }))}
+                            />
                         </div>
                     </div>
                 </div>
             </Modal>
+
+            {/* Delete Business Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, business: null })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteBusinessMutation.isPending}
+                title="Delete Business"
+                description={`Are you sure you want to permanently delete "${deleteModal.business?.name}"? All associated inventory records, team users, and subscriptions will be deleted.`}
+                details={
+                    deleteModal.business
+                        ? [
+                              { label: 'Business Name', value: deleteModal.business.name },
+                              { label: 'Owner Email', value: deleteModal.business.email },
+                              { label: 'Current Plan', value: deleteModal.business.currentPlan || 'Basic' },
+                              { label: 'Status', value: deleteModal.business.status || 'Active' },
+                          ]
+                        : []
+                }
+                confirmText="Delete Business"
+                variant="danger"
+            />
+
+            {/* Email Composer Modal */}
+            <EmailComposerModal
+                isOpen={!!selectedBizForEmail}
+                onClose={() => setSelectedBizForEmail(null)}
+                initialTarget={selectedBizForEmail ? {
+                    mode: 'direct',
+                    recipientBusiness: {
+                        id: selectedBizForEmail.id,
+                        name: selectedBizForEmail.name,
+                        email: selectedBizForEmail.email,
+                    }
+                } : undefined}
+            />
         </div>
     );
 }

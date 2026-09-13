@@ -1,113 +1,85 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Send, Eye, Copy, MessageSquare, Users, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, Send, Eye, Copy, Mail, MessageSquare, Trash2, Smartphone, Monitor } from 'lucide-react';
 import { useInventoryBroadcasts } from '@/api/inventory/inventory.queries';
+import { useDeleteBroadcast } from '@/api/inventory/inventory.mutations';
 import { Broadcast } from '@/api/inventory/inventory.types';
 import { formatDateTime } from '@/app/lib/utils';
-import { toast } from 'sonner';
+import Pagination from '../Pagination';
 import Modal from '../Modal';
+import ConfirmModal from '../ConfirmModal';
+import EmailComposerModal from '../EmailComposerModal';
 
 export default function SendBroadcastPageClient() {
-    const { data: response, isLoading } = useInventoryBroadcasts();
-    const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
+    const { data: response, isLoading } = useInventoryBroadcasts(page, pageSize, search);
+
+    const deleteBroadcastMutation = useDeleteBroadcast();
 
     // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        title: '',
-        channel: 'WhatsApp',
-        message: '',
-        recipientsCount: 0,
-        segment: 'All Customers'
+    const [isComposerOpen, setIsComposerOpen] = useState(false);
+    const [selectedBroadcast, setSelectedBroadcast] = useState<Broadcast | null>(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+    // Delete Confirm Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; broadcast: Broadcast | null }>({
+        isOpen: false,
+        broadcast: null,
     });
 
-    useEffect(() => {
-        if (response?.data) {
-            setBroadcasts(response.data);
-        }
-    }, [response]);
-
-    const handleOpenModal = () => {
-        setFormData({
-            title: '',
-            channel: 'WhatsApp',
-            message: '',
-            recipientsCount: Math.floor(Math.random() * 500) + 50,
-            segment: 'All Customers'
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleSendBroadcast = () => {
-        if (!formData.title || !formData.message) {
-            toast.error('Title and message are required');
-            return;
-        }
-
-        const newBroadcast: Broadcast = {
-            id: `bc-${Date.now()}`,
-            title: formData.title,
-            channel: formData.channel,
-            recipients: formData.recipientsCount,
-            sentAt: new Date().toISOString(),
-            status: 'Sent',
-            deliveryRate: '100%',
-            readRate: '0%'
-        };
-
-        setBroadcasts(prev => [newBroadcast, ...prev]);
-        toast.success(`Broadcast "${formData.title}" sent successfully to ${formData.recipientsCount} recipients`);
-        setIsModalOpen(false);
-    };
-
-    const handleAction = (type: 'view' | 'duplicate', b: Broadcast) => {
-        if (type === 'duplicate') {
-            const duplicated: Broadcast = {
-                ...b,
-                id: `bc-dup-${Date.now()}`,
-                title: `${b.title} (Copy)`,
-                sentAt: new Date().toISOString(),
-                status: 'Draft' as any,
-                readRate: '0%'
-            };
-            setBroadcasts(prev => [duplicated, ...prev]);
-            toast.success(`Broadcast "${b.title}" duplicated as draft`);
+    const handleAction = (type: 'view' | 'delete', b: Broadcast) => {
+        if (type === 'delete') {
+            setDeleteModal({ isOpen: true, broadcast: b });
         } else {
-            toast.info(`Opening details for broadcast: ${b.title}`);
+            setSelectedBroadcast(b);
+            setIsViewModalOpen(true);
         }
     };
 
-    const filtered = broadcasts.filter(b =>
-        b.title.toLowerCase().includes(search.toLowerCase()) ||
-        b.channel.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.broadcast) return;
+        try {
+            await deleteBroadcastMutation.mutateAsync(deleteModal.broadcast.id);
+            setDeleteModal({ isOpen: false, broadcast: null });
+        } catch (err) { }
+    };
+
+    const rawBroadcasts = response?.data || [];
+    // Sort latest first
+    const broadcasts = [...rawBroadcasts].sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.sentAt || 0).getTime();
+        const timeB = new Date(b.createdAt || b.sentAt || 0).getTime();
+        return timeB - timeA;
+    });
+    const totalCount = response?.meta?.total || broadcasts.length;
 
     return (
         <div>
-            <Topbar title="Send Broadcast" subtitle="Compose and send bulk messages to segmented audiences." product="inventory" />
+            <Topbar title="Send Broadcast" subtitle="Compose and dispatch formatted emails and broadcast announcements to customers." product="inventory" />
 
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Send size={24} />
+                            <Mail size={24} />
                         </div>
                         <div>
-                            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Send Broadcast</h2>
-                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and send broadcasts to your users.</p>
+                            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Broadcasts & Formatted Emails</h2>
+                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Send rich HTML emails, announcements, and messages to your customers.</p>
                         </div>
                     </div>
                     <button
-                        onClick={handleOpenModal}
+                        onClick={() => setIsComposerOpen(true)}
                         style={{
-                            background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8,
-                            padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(108,158,78,0.2)'
+                            background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10,
+                            padding: '11px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(108,158,78,0.25)'
                         }}>
-                        <Plus size={18} /> New Broadcast
+                        <Plus size={18} /> New Broadcast / Email
                     </button>
                 </div>
 
@@ -116,9 +88,12 @@ export default function SendBroadcastPageClient() {
                     <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
                         <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                         <input
-                            placeholder="Search broadcasts..."
+                            placeholder="Search campaigns by subject or title..."
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={e => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
                             style={{
                                 width: '100%', height: 44, paddingLeft: 44, paddingRight: 16,
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
@@ -133,128 +108,185 @@ export default function SendBroadcastPageClient() {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                <th>Broadcast Title</th>
+                                <th>Subject / Title</th>
                                 <th>Target Channel</th>
+                                <th>Segment</th>
                                 <th>Recipients</th>
-                                <th>Sent At</th>
+                                <th>Sent / Created At</th>
                                 <th>Status</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading && broadcasts.length === 0 ? (
+                            {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={6}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={7}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : broadcasts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No broadcasts found</td>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No broadcasts found</td>
                                 </tr>
-                            ) : filtered.map((b: Broadcast) => (
-                                <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{b.title}</td>
-                                    <td>{b.channel}</td>
-                                    <td>{b.recipients.toLocaleString()}</td>
-                                    <td>{formatDateTime(b.sentAt)}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                                            background: b.status === 'Sent' ? '#dcfce7' : '#f3f4f6',
-                                            color: b.status === 'Sent' ? '#15803d' : '#6b7280'
-                                        }}>
-                                            {b.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 8 }}>
-                                            <button
-                                                onClick={() => handleAction('view', b)}
-                                                style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="View">
-                                                <Eye size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleAction('duplicate', b)}
-                                                style={{ background: '#f3f4f6', border: 'none', color: '#374151', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }} title="Duplicate">
-                                                <Copy size={14} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            ) : broadcasts.map((b: Broadcast) => {
+                                const isEmail = b.channel?.toLowerCase() === 'email';
+                                return (
+                                    <tr key={b.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
+                                        <td style={{ fontWeight: 600, color: '#1a1a2e' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                {isEmail ? <Mail size={16} color="#6c9e4e" /> : <MessageSquare size={16} color="#2563eb" />}
+                                                <span>{b.title}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span style={{
+                                                padding: '4px 10px',
+                                                background: isEmail ? '#eaf4e3' : '#dbeafe',
+                                                color: isEmail ? '#15803d' : '#1d4ed8',
+                                                borderRadius: 6,
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                            }}>
+                                                {b.channel || 'General'}
+                                            </span>
+                                        </td>
+                                        <td style={{ fontSize: 13, color: '#4b5563' }}>{b.segment || 'All Customers'}</td>
+                                        <td style={{ fontWeight: 600 }}>{(b.recipients || 0).toLocaleString()} users</td>
+                                        <td style={{ fontSize: 13, color: '#6b7280' }}>{b.sentAt ? formatDateTime(b.sentAt) : 'Draft'}</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+                                                background: b.status === 'Sent' ? '#dcfce7' : b.status === 'Sending' ? '#fef3c7' : '#f3f4f6',
+                                                color: b.status === 'Sent' ? '#15803d' : b.status === 'Sending' ? '#b45309' : '#6b7280'
+                                            }}>
+                                                {b.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button
+                                                    onClick={() => handleAction('view', b)}
+                                                    style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 7, borderRadius: 6, display: 'flex' }}
+                                                    title="View Email Preview"
+                                                >
+                                                    <Eye size={15} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleAction('delete', b)}
+                                                    style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 7, borderRadius: 6, display: 'flex' }}
+                                                    title="Delete Broadcast Record"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
+
+                    <div style={{ padding: '12px 20px' }}>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={Math.ceil(totalCount / pageSize) || 1}
+                            onPageChange={setPage}
+                            totalItems={totalCount}
+                            pageSize={pageSize}
+                        />
+                    </div>
                 </div>
             </div>
 
+            {/* Email Composer Modal */}
+            <EmailComposerModal
+                isOpen={isComposerOpen}
+                onClose={() => setIsComposerOpen(false)}
+            />
+
+            {/* View / Details Modal */}
             <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Compose New Broadcast"
+                isOpen={isViewModalOpen}
+                onClose={() => setIsViewModalOpen(false)}
+                title={selectedBroadcast ? selectedBroadcast.title : 'Broadcast Details'}
+                maxWidth="720px"
                 footer={
-                    <>
-                        <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSendBroadcast} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            <Send size={14} style={{ marginRight: 6 }} /> Send Broadcast
-                        </button>
-                    </>
+                    <button onClick={() => setIsViewModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Close</button>
                 }
             >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            Broadcast Title
-                        </label>
-                        <input
-                            value={formData.title}
-                            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="e.g. Monthly Newsletter - March"
-                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
-                        />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Channel</label>
-                            <select
-                                value={formData.channel}
-                                onChange={e => setFormData(prev => ({ ...prev, channel: e.target.value }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                                {['WhatsApp', 'Email', 'SMS'].map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                {selectedBroadcast && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontSize: 14 }}>
+                        {/* Meta badges */}
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ padding: '4px 10px', borderRadius: 6, background: '#eaf4e3', color: '#166534', fontSize: 12, fontWeight: 700 }}>
+                                Channel: {selectedBroadcast.channel || 'Email'}
+                            </span>
+                            <span style={{ padding: '4px 10px', borderRadius: 6, background: '#f3f4f6', color: '#374151', fontSize: 12, fontWeight: 600 }}>
+                                Segment: {selectedBroadcast.segment || 'All Customers'}
+                            </span>
+                            <span style={{ padding: '4px 10px', borderRadius: 6, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 700 }}>
+                                {selectedBroadcast.status}
+                            </span>
+                            <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 'auto' }}>
+                                Sent: {formatDateTime(selectedBroadcast.sentAt || selectedBroadcast.createdAt || '')}
+                            </span>
                         </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Recipient Segment</label>
-                            <select
-                                value={formData.segment}
-                                onChange={e => setFormData(prev => ({ ...prev, segment: e.target.value }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                                {['All Customers', 'Trial Users', 'Active Subscribers', 'Expired'].map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+
+                        {/* Content display: Rich HTML or text */}
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+                            <div style={{ background: '#f9fafb', padding: '10px 16px', borderBottom: '1px solid #e5e7eb', fontSize: 12, fontWeight: 700, color: '#4b5563' }}>
+                                Message Content Preview
+                            </div>
+                            <div style={{ padding: 20, maxHeight: 380, overflowY: 'auto' }}>
+                                {selectedBroadcast.channel?.toLowerCase() === 'email' || (selectedBroadcast.message && selectedBroadcast.message.includes('<')) ? (
+                                    <div
+                                        style={{ fontSize: 14, lineHeight: 1.65, color: '#374151' }}
+                                        dangerouslySetInnerHTML={{ __html: selectedBroadcast.message || '' }}
+                                    />
+                                ) : (
+                                    <div style={{ whiteSpace: 'pre-wrap', color: '#1a1a2e', lineHeight: 1.6 }}>
+                                        {selectedBroadcast.message || 'No content preview available'}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, background: '#f9fafb', padding: 14, borderRadius: 10 }}>
+                            <div>
+                                <span style={{ color: '#9ca3af', fontSize: 12 }}>Total Recipients:</span>
+                                <div style={{ fontWeight: 800, fontSize: 16, color: '#1a1a2e' }}>{selectedBroadcast.recipients.toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <span style={{ color: '#9ca3af', fontSize: 12 }}>Status:</span>
+                                <div style={{ fontWeight: 700, color: '#16a34a' }}>{selectedBroadcast.status}</div>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            <MessageSquare size={14} /> Message Content
-                        </label>
-                        <textarea
-                            value={formData.message}
-                            onChange={e => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                            placeholder="Type your message here..."
-                            style={{ height: 120, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '12px 14px', fontSize: 14, outline: 'none', background: '#f9fafb', resize: 'none', fontFamily: 'inherit' }}
-                        />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px dashed #cbd5e1' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: 13 }}>
-                            <Users size={16} />
-                            <span>Estimated <b>{formData.recipientsCount}</b> recipients</span>
-                        </div>
-                        <button style={{ background: 'none', border: 'none', color: '#6c9e4e', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <ImageIcon size={14} /> Add Media
-                        </button>
-                    </div>
-                </div>
+                )}
             </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, broadcast: null })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteBroadcastMutation.isPending}
+                title="Delete Broadcast Record"
+                description={`Are you sure you want to delete the broadcast record "${deleteModal.broadcast?.title}"?`}
+                details={
+                    deleteModal.broadcast
+                        ? [
+                            { label: 'Subject', value: deleteModal.broadcast.title },
+                            { label: 'Channel', value: deleteModal.broadcast.channel || 'Email' },
+                            { label: 'Recipients', value: `${deleteModal.broadcast.recipients} users` },
+                            { label: 'Sent At', value: formatDateTime(deleteModal.broadcast.sentAt || deleteModal.broadcast.createdAt || new Date().toISOString()) },
+                        ]
+                        : []
+                }
+                confirmText="Delete Record"
+                variant="danger"
+            />
         </div>
     );
 }

@@ -1,19 +1,25 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Topbar from '../Topbar';
 import { Plus, Search, Tag, Edit2, Trash2, Building2 } from 'lucide-react';
 import { useInventoryBrands } from '@/api/inventory/inventory.queries';
+import { useCreateBrand, useUpdateBrand, useDeleteBrand } from '@/api/inventory/inventory.mutations';
 import { Brand } from '@/api/inventory/inventory.types';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
 import Modal from '../Modal';
+import ConfirmModal from '../ConfirmModal';
 
 export default function BrandsPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const { data: brandsResponse, isLoading } = useInventoryBrands(page, pageSize);
-    const [brands, setBrands] = useState<Brand[]>([]);
     const [search, setSearch] = useState('');
+
+    const { data: brandsResponse, isLoading } = useInventoryBrands({ page, pageSize, search });
+
+    const createBrandMutation = useCreateBrand();
+    const updateBrandMutation = useUpdateBrand();
+    const deleteBrandMutation = useDeleteBrand();
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,19 +30,13 @@ export default function BrandsPageClient() {
         status: 'Active' as 'Active' | 'Inactive',
     });
 
-    useEffect(() => {
-        if (brandsResponse?.data) {
-            setBrands(brandsResponse.data);
-        }
-    }, [brandsResponse]);
-
     const handleOpenModal = (brand?: Brand) => {
         if (brand) {
             setEditingBrand(brand);
             setFormData({
                 name: brand.name,
-                manufacturer: brand.manufacturer,
-                status: brand.status as 'Active' | 'Inactive',
+                manufacturer: brand.manufacturer || '',
+                status: (brand.status as 'Active' | 'Inactive') || 'Active',
             });
         } else {
             setEditingBrand(null);
@@ -49,43 +49,60 @@ export default function BrandsPageClient() {
         setIsModalOpen(true);
     };
 
-    const handleSaveBrand = () => {
-        if (!formData.name || !formData.manufacturer) {
-            toast.error('Brand name and manufacturer are required');
+    const handleSaveBrand = async () => {
+        if (!formData.name) {
+            toast.error('Brand name is required');
             return;
         }
 
-        if (editingBrand) {
-            setBrands(prev => prev.map(b => b.id === editingBrand.id ? { ...b, ...formData } : b));
-            toast.success(`Brand "${formData.name}" updated successfully`);
-        } else {
-            const newBrand: Brand = {
-                id: `brand-${Date.now()}`,
-                ...formData,
-                productCount: 0,
-                createdAt: new Date().toISOString()
-            };
-            setBrands(prev => [newBrand, ...prev]);
-            toast.success(`Brand "${formData.name}" created successfully`);
+        try {
+            if (editingBrand) {
+                await updateBrandMutation.mutateAsync({
+                    id: editingBrand.id,
+                    dto: { name: formData.name, manufacturer: formData.manufacturer }
+                });
+            } else {
+                await createBrandMutation.mutateAsync({
+                    name: formData.name,
+                    manufacturer: formData.manufacturer
+                });
+            }
+            setIsModalOpen(false);
+        } catch (err) {
+            // Handled by mutation
         }
-        setIsModalOpen(false);
     };
+
+    // Delete Confirm Modal State
+    const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; brand: Brand | null }>({
+        isOpen: false,
+        brand: null,
+    });
 
     const handleAction = (type: 'edit' | 'delete', brand: Brand) => {
         if (type === 'delete') {
-            if (confirm(`Are you sure you want to delete ${brand.name}? This will affect all associated products.`)) {
-                setBrands(prev => prev.filter(b => b.id !== brand.id));
-                toast.success(`Brand ${brand.name} deleted successfully`);
-            }
+            setDeleteModal({ isOpen: true, brand });
         } else {
             handleOpenModal(brand);
         }
     };
 
-    const filtered = brands.filter(b =>
-        b.name.toLowerCase().includes(search.toLowerCase()) ||
-        b.manufacturer.toLowerCase().includes(search.toLowerCase())
-    );
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.brand) return;
+        try {
+            await deleteBrandMutation.mutateAsync(deleteModal.brand.id);
+            setDeleteModal({ isOpen: false, brand: null });
+        } catch (err) { }
+    };
+
+    const rawBrands = brandsResponse?.data || [];
+    // Sort latest first
+    const brands = [...rawBrands].sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+    });
+    const totalCount = brandsResponse?.meta?.total || brands.length;
 
     return (
         <div>
@@ -100,7 +117,7 @@ export default function BrandsPageClient() {
                         </div>
                         <div>
                             <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Brands</h2>
-                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and organize your brands.</p>
+                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and organize your product brands.</p>
                         </div>
                     </div>
                     <button
@@ -121,7 +138,10 @@ export default function BrandsPageClient() {
                         <input
                             placeholder="Search brands..."
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setPage(1);
+                            }}
                             style={{
                                 width: '100%', height: 44, paddingLeft: 44, paddingRight: 16,
                                 borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff',
@@ -145,21 +165,21 @@ export default function BrandsPageClient() {
                             </tr>
                         </thead>
                         <tbody>
-                            {isLoading && brands.length === 0 ? (
+                            {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                         <td colSpan={6}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
-                            ) : filtered.length === 0 ? (
+                            ) : brands.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No brands found</td>
                                 </tr>
-                            ) : filtered.map((brand: Brand) => (
+                            ) : brands.map((brand: Brand) => (
                                 <tr key={brand.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{brand.name}</td>
-                                    <td>{brand.manufacturer}</td>
-                                    <td>{brand.productCount}</td>
+                                    <td>{brand.manufacturer || 'N/A'}</td>
+                                    <td>{brand.productCount || 0}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -169,7 +189,7 @@ export default function BrandsPageClient() {
                                             {brand.status}
                                         </span>
                                     </td>
-                                    <td>{new Date(brand.createdAt).toLocaleDateString()}</td>
+                                    <td>{brand.createdAt ? new Date(brand.createdAt).toLocaleDateString() : 'N/A'}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
@@ -192,9 +212,9 @@ export default function BrandsPageClient() {
                     <div style={{ padding: '12px 20px' }}>
                         <Pagination
                             currentPage={page}
-                            totalPages={Math.ceil((brandsResponse?.meta?.total || brands.length) / pageSize)}
+                            totalPages={Math.ceil(totalCount / pageSize) || 1}
                             onPageChange={setPage}
-                            totalItems={brandsResponse?.meta?.total || brands.length}
+                            totalItems={totalCount}
                             pageSize={pageSize}
                         />
                     </div>
@@ -208,8 +228,11 @@ export default function BrandsPageClient() {
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleSaveBrand} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            {editingBrand ? 'Save Changes' : 'Create Brand'}
+                        <button
+                            onClick={handleSaveBrand}
+                            disabled={createBrandMutation.isPending || updateBrandMutation.isPending}
+                            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
+                            {createBrandMutation.isPending || updateBrandMutation.isPending ? 'Saving...' : editingBrand ? 'Save Changes' : 'Create Brand'}
                         </button>
                     </>
                 }
@@ -237,17 +260,29 @@ export default function BrandsPageClient() {
                             style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
                         />
                     </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as 'Active' | 'Inactive' }))}
-                            style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 10px', fontSize: 14, outline: 'none', background: '#f9fafb' }}>
-                            {['Active', 'Inactive'].map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
                 </div>
             </Modal>
+
+            {/* Delete Brand Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, brand: null })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteBrandMutation.isPending}
+                title="Delete Brand"
+                description={`Are you sure you want to delete the brand "${deleteModal.brand?.name}"? Associated products will no longer be linked to this brand.`}
+                details={
+                    deleteModal.brand
+                        ? [
+                              { label: 'Brand Name', value: deleteModal.brand.name },
+                              { label: 'Manufacturer', value: deleteModal.brand.manufacturer || '—' },
+                              { label: 'Products Linked', value: `${deleteModal.brand.productCount || 0} products` },
+                          ]
+                        : []
+                }
+                confirmText="Delete Brand"
+                variant="danger"
+            />
         </div>
     );
 }

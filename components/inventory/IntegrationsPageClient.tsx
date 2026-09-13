@@ -7,10 +7,11 @@ import { formatDateTime } from '@/app/lib/utils';
 
 
 export default function IntegrationsPageClient() {
-    const { data: integrations, isLoading } = useInventoryIntegrations();
+    const { data: integrationsResp, isLoading } = useInventoryIntegrations();
+    const integrations = (integrationsResp as any)?.data || (Array.isArray(integrationsResp) ? integrationsResp : []);
     const [search, setSearch] = React.useState('');
 
-    const filtered = (integrations || []).filter(i =>
+    const filtered = (integrations || []).filter((i: any) =>
         i.name.toLowerCase().includes(search.toLowerCase()) ||
         i.provider.toLowerCase().includes(search.toLowerCase())
     );
