@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from './inventory.api';
 import { inventoryKeys } from './inventory.queries';
 import { toast } from 'sonner';
+import type { SendBroadcastDto, SendTestEmailDto, SendDirectEmailDto } from './inventory.types';
 
 // ==========================================
 // BUSINESS MUTATIONS
@@ -490,14 +491,42 @@ export const useUpdatePlatformUserStatus = () => {
 export const useSendBroadcast = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: { title: string; message: string; target?: string; businessId?: string }) =>
+    mutationFn: (dto: SendBroadcastDto) =>
       inventoryApi.sendBroadcast(dto),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.broadcasts() });
-      toast.success('Broadcast sent successfully');
+      toast.success(res?.message || 'Broadcast campaign sent successfully');
     },
     onError: (err: any) => {
       toast.error(err?.message || 'Failed to send broadcast');
+    },
+  });
+};
+
+export const useSendTestEmail = () => {
+  return useMutation({
+    mutationFn: (dto: SendTestEmailDto) =>
+      inventoryApi.sendTestBroadcastEmail(dto),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || 'Test email dispatched to your inbox');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to send test email');
+    },
+  });
+};
+
+export const useSendDirectEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: SendDirectEmailDto) =>
+      inventoryApi.sendDirectEmail(dto),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.broadcasts() });
+      toast.success(res?.message || 'Email sent successfully');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to send email');
     },
   });
 };

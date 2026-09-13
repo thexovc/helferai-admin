@@ -315,6 +315,38 @@ export interface Broadcast {
   readRate: string;
   status: string;
   channel: string;
+  preheader?: string;
+  isHtml?: boolean;
+}
+
+export interface SendBroadcastDto {
+  title: string;
+  message: string;
+  channel?: string;
+  target?: string;
+  segment?: string;
+  businessId?: string;
+  businessIds?: string[];
+  userIds?: string[];
+  preheader?: string;
+  isHtml?: boolean;
+}
+
+export interface SendTestEmailDto {
+  testEmail: string;
+  title: string;
+  message: string;
+  preheader?: string;
+}
+
+export interface SendDirectEmailDto {
+  userId?: string | number;
+  userIds?: (string | number)[];
+  email?: string;
+  emails?: string[];
+  title: string;
+  message: string;
+  preheader?: string;
 }
 
 export interface ReferralAnalytics {

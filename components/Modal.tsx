@@ -5,10 +5,10 @@ import { X } from 'lucide-react';
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
-    title: string;
+    title: React.ReactNode;
     children: React.ReactNode;
     footer?: React.ReactNode;
-    maxWidth?: number;
+    maxWidth?: number | string;
     closeOnBackdropClick?: boolean;
 }
 

@@ -193,8 +193,12 @@ export const inventoryApi = {
     return inventoryClient.get<T.PaginatedResponse<T.Broadcast>>(url);
   },
   getBroadcastById: (id: string) => inventoryClient.get<T.Broadcast>(`/admin/api/inventory/broadcasts/${id}`),
-  sendBroadcast: (dto: { title: string; message: string; target?: string; businessId?: string }) =>
+  sendBroadcast: (dto: T.SendBroadcastDto) =>
     inventoryClient.post<T.Broadcast>('/admin/api/inventory/broadcasts/send', dto),
+  sendTestBroadcastEmail: (dto: T.SendTestEmailDto) =>
+    inventoryClient.post<{ success: boolean; message: string }>('/admin/api/inventory/broadcasts/send-test', dto),
+  sendDirectEmail: (dto: T.SendDirectEmailDto) =>
+    inventoryClient.post<{ success: boolean; message: string; broadcastId?: string; recipients: number }>('/admin/api/inventory/broadcasts/send-direct', dto),
   deleteBroadcast: (id: string) =>
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/broadcasts/${id}`),
 

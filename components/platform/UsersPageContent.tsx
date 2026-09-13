@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Topbar from '../Topbar';
 import StatusBadge from '../StatusBadge';
 import { formatDate, formatDateTime } from '@/app/lib/utils';
-import { Search, Edit2, Key, LogOut, Plus, Activity, UserCheck, UserX, Clock } from 'lucide-react';
+import { Search, Edit2, Key, LogOut, Plus, Activity, UserCheck, UserX, Clock, Mail } from 'lucide-react';
 import { usePlatformUsers, useUserActivities } from '@/api/inventory/inventory.queries';
 import { useUpdatePlatformUserStatus } from '@/api/inventory/inventory.mutations';
 import { PlatformUserRecord, ActivityLog } from '@/api/inventory/inventory.types';
@@ -11,6 +11,7 @@ import Pagination from '../Pagination';
 import { toast } from 'sonner';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
+import EmailComposerModal from '../EmailComposerModal';
 
 interface Props {
     product: 'inventory' | 'studio' | 'admin';
@@ -33,6 +34,8 @@ export default function UsersPageContent({ product }: Props) {
 
     // User activity logs drilldown modal
     const [selectedUserForActivity, setSelectedUserForActivity] = useState<PlatformUserRecord | null>(null);
+    // User Email Composer modal
+    const [selectedUserForEmail, setSelectedUserForEmail] = useState<PlatformUserRecord | null>(null);
     // Status Confirm Modal State
     const [statusConfirmModal, setStatusConfirmModal] = useState<{
         isOpen: boolean;
@@ -168,6 +171,12 @@ export default function UsersPageContent({ product }: Props) {
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                                                     <button
+                                                        onClick={() => setSelectedUserForEmail(u)}
+                                                        title="Send Formatted Email"
+                                                        style={{ background: '#eaf4e3', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: '#166534', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
+                                                        <Mail size={13} /> Email
+                                                    </button>
+                                                    <button
                                                         onClick={() => setSelectedUserForActivity(u)}
                                                         title="View Activity Logs"
                                                         style={{ background: lightBg, border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', color: accentColor, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
@@ -261,6 +270,21 @@ export default function UsersPageContent({ product }: Props) {
                 }
                 confirmText={statusConfirmModal.nextStatus === 'Active' ? 'Activate Account' : 'Suspend Account'}
                 variant={statusConfirmModal.nextStatus === 'Active' ? 'success' : 'warning'}
+            />
+
+            {/* Direct Email Composer Modal */}
+            <EmailComposerModal
+                isOpen={!!selectedUserForEmail}
+                onClose={() => setSelectedUserForEmail(null)}
+                initialTarget={selectedUserForEmail ? {
+                    mode: 'direct',
+                    recipientUser: {
+                        id: selectedUserForEmail.id,
+                        name: selectedUserForEmail.name,
+                        email: selectedUserForEmail.email,
+                        businessName: selectedUserForEmail.businesses?.[0]?.name,
+                    }
+                } : undefined}
             />
         </div>
     );

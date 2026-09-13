@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 import ConfirmModal from '@/components/ConfirmModal';
 import SearchableSelect from '@/components/SearchableSelect';
+import EmailComposerModal from '@/components/EmailComposerModal';
 
 const SORT_FILTERS = [
     'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',
@@ -25,6 +26,7 @@ export default function BusinessesPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [selectedBizForEmail, setSelectedBizForEmail] = useState<any | null>(null);
 
     // Debounce search input to avoid re-triggering requests on every keystroke
     useEffect(() => {
@@ -283,6 +285,9 @@ export default function BusinessesPage() {
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     <button
+                                                        onClick={() => setSelectedBizForEmail(b)}
+                                                        style={{ border: 'none', background: '#eaf4e3', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#166534', display: 'flex' }} title="Send Formatted Email"><Mail size={14} /></button>
+                                                    <button
                                                         onClick={() => handleOpenModal(b)}
                                                         style={{ border: 'none', background: '#f0f9ff', padding: 6, borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }} title="Edit"><Edit2 size={14} /></button>
                                                     <button
@@ -390,6 +395,20 @@ export default function BusinessesPage() {
                 }
                 confirmText="Delete Business"
                 variant="danger"
+            />
+
+            {/* Email Composer Modal */}
+            <EmailComposerModal
+                isOpen={!!selectedBizForEmail}
+                onClose={() => setSelectedBizForEmail(null)}
+                initialTarget={selectedBizForEmail ? {
+                    mode: 'direct',
+                    recipientBusiness: {
+                        id: selectedBizForEmail.id,
+                        name: selectedBizForEmail.name,
+                        email: selectedBizForEmail.email,
+                    }
+                } : undefined}
             />
         </div>
     );
