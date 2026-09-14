@@ -319,6 +319,13 @@ export interface Broadcast {
   isHtml?: boolean;
 }
 
+export interface EmailAttachmentDto {
+  filename: string;
+  contentType: string;
+  content: string; // base64 encoded content
+  size?: number;
+}
+
 export interface SendBroadcastDto {
   title: string;
   message: string;
@@ -330,6 +337,7 @@ export interface SendBroadcastDto {
   userIds?: string[];
   preheader?: string;
   isHtml?: boolean;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface SendTestEmailDto {
@@ -337,6 +345,7 @@ export interface SendTestEmailDto {
   title: string;
   message: string;
   preheader?: string;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface SendDirectEmailDto {
@@ -347,6 +356,7 @@ export interface SendDirectEmailDto {
   title: string;
   message: string;
   preheader?: string;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface ReferralAnalytics {
