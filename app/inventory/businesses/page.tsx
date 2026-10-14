@@ -11,7 +11,9 @@ import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 import ConfirmModal from '@/components/ConfirmModal';
 import SearchableSelect from '@/components/SearchableSelect';
-import EmailComposerModal from '@/components/EmailComposerModal';
+import dynamic from 'next/dynamic';
+
+const EmailComposerModal = dynamic(() => import('@/components/EmailComposerModal'), { ssr: false });
 
 const SORT_FILTERS = [
     'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',

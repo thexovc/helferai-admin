@@ -9,7 +9,9 @@ import { formatDateTime } from '@/app/lib/utils';
 import Pagination from '../Pagination';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
-import EmailComposerModal from '../EmailComposerModal';
+import dynamic from 'next/dynamic';
+
+const EmailComposerModal = dynamic(() => import('../EmailComposerModal'), { ssr: false });
 
 export default function SendBroadcastPageClient() {
     const [page, setPage] = useState(1);
