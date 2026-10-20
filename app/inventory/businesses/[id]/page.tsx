@@ -7,6 +7,7 @@ import StatusBadge from '../../../../components/StatusBadge';
 import { formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
 import { compactNaira, fullNaira, fullCount } from '@/components/inventory/formatNumbers';
 import ToggleValue from '@/components/inventory/ToggleValue';
+import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
@@ -46,8 +47,9 @@ const ActionBtn = ({ label, color = '#6c9e4e', icon, onClick }: { label: string;
     </button>
 );
 
-function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
+function TabContent({ tab, businessId, businessName }: { tab: string; businessId: string; businessName?: string }) {
     const [page, setPage] = useState(1);
+    const [assignOpen, setAssignOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
     const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
@@ -80,6 +82,10 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     const getMeta = (resp: any) => resp?.meta || { total: 0, page: 1, pageSize: 10 };
 
     const handleCreateNew = () => {
+        if (tab === 'subscriptions') {
+            setAssignOpen(true);
+            return;
+        }
         toast.info(`Create feature for ${tab} coming soon!`);
     };
 
@@ -151,6 +157,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
         if (subsLoading) return loadingEl;
         return (
             <div>{createBtn}
+                <AssignSubscriptionModal isOpen={assignOpen} onClose={() => setAssignOpen(false)} businessId={businessId} businessName={businessName} />
                 <div style={{ overflowX: 'auto' }}>
                     <table style={tableStyle}><thead><tr>{['Plan', 'Amount', 'Start Date', 'End Date', 'Status', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                         <tbody>
@@ -488,7 +495,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                         ))}
                     </div>
                     <div style={{ padding: 20 }}>
-                        <TabContent tab={activeTab} businessId={business.id} />
+                        <TabContent tab={activeTab} businessId={business.id} businessName={business.name} />
                     </div>
                 </div>
             </div>
