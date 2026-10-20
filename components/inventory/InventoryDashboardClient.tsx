@@ -46,7 +46,7 @@ const CountTooltip = ({ active, payload, label }: any) => {
 // Local YYYY-MM-DD (toISOString would shift the day to UTC)
 const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// 'Default' sends no dates, so the backend uses the current month to date
+// 'Default' is the current month to date
 const getRangeDates = (range: string, customStart: string, customEnd: string): { startDate?: string; endDate?: string } => {
     const today = new Date();
     const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
@@ -60,7 +60,7 @@ const getRangeDates = (range: string, customStart: string, customEnd: string): {
         case '6M': return { startDate: toYMD(monthsAgo(6)), endDate: toYMD(today) };
         case '12M': return { startDate: toYMD(monthsAgo(12)), endDate: toYMD(today) };
         case 'Custom': return { startDate: customStart, endDate: customEnd };
-        default: return {};
+        default: return { startDate: toYMD(new Date(today.getFullYear(), today.getMonth(), 1)), endDate: toYMD(today) };
     }
 };
 
@@ -154,6 +154,9 @@ export default function InventoryDashboardClient() {
 
     const comparisonSubtitle = selectedRange === 'Default' ? 'vs last month' : 'vs previous period';
 
+    // The charts are split by day, week or month depending on the period length
+    const granularity: string = charts.granularity || 'month';
+
     // The active count covers the whole selected period, so name it after the period
     const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', Default: 'Active This Month' };
     const activeLabel = activeLabels[selectedRange] ?? 'Active in Period';
@@ -171,10 +174,10 @@ export default function InventoryDashboardClient() {
             ['Metric', 'Value', 'Trend'],
             ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
             [],
-            ['Month', 'Subscription Income', 'MRR', 'ARPU', 'Total Businesses', 'Subscribing', 'Sales by Businesses'],
-            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
+            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Businesses', 'New Businesses', 'Subscribing', 'Sales by Businesses'],
+            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.newBusinesses ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
             [],
-            ['Week', 'Active', 'Inactive'],
+            ['Period', 'Active', 'Inactive'],
             ...(charts.retentionChurn || []).map((d: any) => [d.week, d.active, d.inactive]),
         ];
         const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
@@ -316,8 +319,8 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Monthly Revenue</h3>
-                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Subscription income HelferAI collected each month</div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Revenue</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Subscription income HelferAI collected each {granularity}</div>
                             </div>
                             <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
                         </div>
@@ -343,6 +346,7 @@ export default function InventoryDashboardClient() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Business Growth</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Total businesses at the end of each {granularity}</div>
                             </div>
                             <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
                         </div>
@@ -367,7 +371,7 @@ export default function InventoryDashboardClient() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>Retention & Churn Velocity</h3>
-                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Comparison of Active vs Inactive business profiles</div>
+                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Active vs inactive businesses at the end of each {granularity}</div>
                         </div>
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#64748b'
@@ -390,7 +394,7 @@ export default function InventoryDashboardClient() {
 
                 {/* BOTTOM ROW (Funnel and Actions) */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
-                    {/* The server's funnel counts businesses on a trial or paid plan now, not new sign-ups in the period */}
+                    {/* Businesses that joined in the selected period, and how far they got */}
                     <ConversionFunnel data={{
                         registered: charts.conversionFunnel?.registered ?? overview.totalBusiness?.value ?? 0,
                         trialing: charts.conversionFunnel?.trialing ?? overview.trialUsers?.value ?? 0,

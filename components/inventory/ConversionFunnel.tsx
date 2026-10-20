@@ -49,7 +49,7 @@ export default function ConversionFunnel({ data }: { data?: { registered: number
             height: '100%'
         }}>
             <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Conversion Funnel</h3>
-            <p style={{ margin: '0 0 32px', fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Registered to Paying conversion path</p>
+            <p style={{ margin: '0 0 32px', fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Businesses that joined in this period</p>
 
             <div style={{ paddingRight: 40 }}>
                 <FunnelStep label="Registered" value={reg.toLocaleString()} progress={100} color="#6c9e4e" />

@@ -73,7 +73,9 @@ export interface ChartData {
   revenue: number;
   arpu: number;
   totalBusiness?: number;
+  newBusinesses?: number;
   subscribing?: number;
+  salesVolume?: number;
 }
 
 export interface RenewalTimelineItem {
@@ -96,6 +98,7 @@ export interface RetentionChurnItem {
 }
 
 export interface InventoryCharts {
+  granularity?: 'day' | 'week' | 'month';
   monthlyTrends: ChartData[];
   pendingRenewalsTimeline: RenewalTimelineItem[];
   conversionFunnel?: ConversionFunnel;
