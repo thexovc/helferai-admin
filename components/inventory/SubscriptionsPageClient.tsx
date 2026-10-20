@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import SearchableSelect from '../SearchableSelect';
+import ToggleValue from './ToggleValue';
+import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
 const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
 const BILLING_OPTIONS = ['All', 'Monthly', 'Annual'];
@@ -182,7 +184,7 @@ export default function SubscriptionsPageClient() {
     const rawSubscriptions = subscriptionsResponse?.data || [];
     // The server already returns newest first across all pages
     const subscriptions = rawSubscriptions;
-    const aggregates = subscriptionsResponse?.aggregates || {
+    const aggregates: any = subscriptionsResponse?.aggregates || {
         totalActive: rawSubscriptions.filter(s => s.status === 'Active').length,
         totalTrial: rawSubscriptions.filter(s => s.status === 'Trial').length,
         totalExpired: rawSubscriptions.filter(s => s.status === 'Expired').length,
@@ -211,16 +213,22 @@ export default function SubscriptionsPageClient() {
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
                     {[
-                        { label: 'Active', value: aggregates.totalActive, icon: <CheckCircle size={18} />, accent: '#22c55e', sub: 'Paid & current' },
-                        { label: 'On Trial', value: aggregates.totalTrial, icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Free trial period' },
-                        { label: 'Expired', value: aggregates.totalExpired, icon: <XCircle size={18} />, accent: '#ef4444', sub: 'Ended, not renewed yet' },
-                        { label: 'Cancelled', value: aggregates.totalCancelled, icon: <XCircle size={18} />, accent: '#6b7280', sub: 'Churned' },
-                        { label: 'MRR', value: formatCurrency(aggregates.totalMRR), icon: <CreditCard size={18} />, accent: '#6c9e4e', sub: 'Active subs per month (yearly ÷ 12)' },
-                        { label: 'ARR', value: formatCurrency(aggregates.totalARR), icon: <TrendingUp size={18} />, accent: '#7c5cbf', sub: 'MRR × 12' },
+                        // Short by default (1.2K, ₦375K); click a figure for the exact value
+                        { label: 'Total Subscriptions', count: aggregates.totalSubscriptions ?? totalCount, icon: <ShieldCheck size={18} />, accent: '#0ea5e9', sub: 'All started, renewals included' },
+                        { label: 'Active', count: aggregates.totalActive, icon: <CheckCircle size={18} />, accent: '#22c55e', sub: 'Paid & current' },
+                        { label: 'On Trial', count: aggregates.totalTrial, icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Free trial period' },
+                        { label: 'Expired', count: aggregates.totalExpired, icon: <XCircle size={18} />, accent: '#ef4444', sub: 'Ended, not renewed yet' },
+                        { label: 'Cancelled', count: aggregates.totalCancelled, icon: <XCircle size={18} />, accent: '#6b7280', sub: 'Churned' },
+                        { label: 'MRR', money: aggregates.totalMRR, icon: <CreditCard size={18} />, accent: '#6c9e4e', sub: 'Active subs per month (yearly ÷ 12)' },
+                        { label: 'ARR', money: aggregates.totalARR, icon: <TrendingUp size={18} />, accent: '#7c5cbf', sub: 'MRR × 12' },
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 8 }}>{k.icon}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{isLoading ? '...' : k.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>
+                                {isLoading ? '...' : k.money !== undefined
+                                    ? <ToggleValue short={compactNaira(k.money)} full={fullNaira(k.money)} />
+                                    : <ToggleValue short={compactCount(k.count)} full={fullCount(k.count)} />}
+                            </div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e' }}>{k.label}</div>
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{k.sub}</div>
                         </div>
