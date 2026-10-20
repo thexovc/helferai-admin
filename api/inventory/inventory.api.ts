@@ -51,6 +51,13 @@ export const inventoryApi = {
   getBusinessExpenses: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessExpense>>(`/admin/api/inventory/businesses/${id}/expenses?page=${page}&pageSize=${pageSize}`),
   getBusinessWhatsapp: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessWhatsapp>>(`/admin/api/inventory/businesses/${id}/whatsapp?page=${page}&pageSize=${pageSize}`),
   getBusinessIntegrations: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessIntegrationItem>>(`/admin/api/inventory/businesses/${id}/integrations?page=${page}&pageSize=${pageSize}`),
+  getBusinessProductOptions: (id: string) => inventoryClient.get<{
+    categories: { id: string; name: string }[];
+    brands: { id: string; name: string }[];
+    vendors: { id: string; name: string }[];
+    units: { id: string; name: string }[];
+    stores: { id: string; name: string; isDefault: boolean }[];
+  }>(`/admin/api/inventory/businesses/${id}/product-options`),
   getBusinessAi: (id: string) => inventoryClient.get<T.AIUsage>(`/admin/api/inventory/businesses/${id}/ai`),
 
   // --- Products ---
@@ -60,7 +67,7 @@ export const inventoryApi = {
     if (status) url += `&status=${encodeURIComponent(status)}`;
     return inventoryClient.get<T.PaginatedResponse<T.Product>>(url);
   },
-  createProduct: (dto: { name: string; sku?: string; price: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number; businessId?: string | number }) =>
+  createProduct: (dto: { name: string; sku?: string; price: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number; businessId?: string | number; vendorId?: string | number; storeId?: string | number; lowStockAlert?: number }) =>
     inventoryClient.post<T.Product>('/admin/api/inventory/products', dto),
   updateProduct: (id: string, dto: { name?: string; sku?: string; price?: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number }) =>
     inventoryClient.put<T.Product>(`/admin/api/inventory/products/${id}`, dto),

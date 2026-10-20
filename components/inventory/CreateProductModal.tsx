@@ -1,8 +1,9 @@
 'use client';
 import React from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Modal from '../Modal';
-import { useInventoryCategories, inventoryKeys } from '@/api/inventory/inventory.queries';
+import { inventoryKeys } from '@/api/inventory/inventory.queries';
+import { inventoryApi } from '@/api/inventory/inventory.api';
 import { useCreateProduct } from '@/api/inventory/inventory.mutations';
 
 const inputStyle: React.CSSProperties = { height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' };
@@ -21,9 +22,13 @@ export default function CreateProductModal({ isOpen, onClose, businessId, busine
 }) {
     const queryClient = useQueryClient();
     const createProduct = useCreateProduct();
-    // This merchant's own categories
-    const { data: categoriesResp } = useInventoryCategories(1, 100, '', isOpen ? businessId : '');
-    const categories = (categoriesResp as any)?.data || [];
+    // This merchant's own categories, brands, vendors, units and stores
+    const { data: options } = useQuery({
+        queryKey: [...inventoryKeys.business(businessId), 'product-options'],
+        queryFn: () => inventoryApi.getBusinessProductOptions(businessId),
+        enabled: isOpen && !!businessId,
+    });
+    const categories = options?.categories || [];
 
     const [name, setName] = React.useState('');
     const [sku, setSku] = React.useState('');
@@ -31,11 +36,24 @@ export default function CreateProductModal({ isOpen, onClose, businessId, busine
     const [costPrice, setCostPrice] = React.useState('');
     const [stock, setStock] = React.useState('');
     const [categoryId, setCategoryId] = React.useState('');
+    const [brandId, setBrandId] = React.useState('');
+    const [vendorId, setVendorId] = React.useState('');
+    const [unitId, setUnitId] = React.useState('');
+    const [storeId, setStoreId] = React.useState('');
+    const [lowStock, setLowStock] = React.useState('');
 
     React.useEffect(() => {
         if (!isOpen) return;
         setName(''); setSku(''); setPrice(''); setCostPrice(''); setStock(''); setCategoryId('');
+        setBrandId(''); setVendorId(''); setUnitId(''); setStoreId(''); setLowStock('');
     }, [isOpen]);
+
+    // Default to the merchant's main store once the list arrives
+    React.useEffect(() => {
+        if (isOpen && !storeId && options?.stores?.length) {
+            setStoreId((options.stores.find(s => s.isDefault) || options.stores[0]).id);
+        }
+    }, [isOpen, options, storeId]);
 
     const valid = name.trim().length > 0 && toNumber(price) > 0;
 
@@ -51,6 +69,11 @@ export default function CreateProductModal({ isOpen, onClose, businessId, busine
                 costPrice: costPrice ? toNumber(costPrice) : undefined,
                 stockLevel: stock ? Math.round(toNumber(stock)) : 0,
                 categoryId: categoryId || undefined,
+                brandId: brandId || undefined,
+                vendorId: vendorId || undefined,
+                unitId: unitId || undefined,
+                storeId: storeId || undefined,
+                lowStockAlert: lowStock ? Math.round(toNumber(lowStock)) : undefined,
             });
             // Refresh this merchant's products tab and counts
             queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
@@ -100,12 +123,50 @@ export default function CreateProductModal({ isOpen, onClose, businessId, busine
                         <input value={sku} onChange={e => setSku(e.target.value)} placeholder="Made up if left blank" style={inputStyle} />
                     </div>
                 </div>
-                <div>
-                    <label style={labelStyle}>Category</label>
-                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} style={inputStyle}>
-                        <option value="">No category</option>
-                        {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                        <label style={labelStyle}>Category</label>
+                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} style={inputStyle}>
+                            <option value="">No category</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Brand</label>
+                        <select value={brandId} onChange={e => setBrandId(e.target.value)} style={inputStyle}>
+                            <option value="">No brand</option>
+                            {(options?.brands || []).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                        <label style={labelStyle}>Vendor</label>
+                        <select value={vendorId} onChange={e => setVendorId(e.target.value)} style={inputStyle}>
+                            <option value="">No vendor</option>
+                            {(options?.vendors || []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Unit</label>
+                        <select value={unitId} onChange={e => setUnitId(e.target.value)} style={inputStyle}>
+                            <option value="">Pieces (default)</option>
+                            {(options?.units || []).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                    </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                        <label style={labelStyle}>Store</label>
+                        <select value={storeId} onChange={e => setStoreId(e.target.value)} style={inputStyle}>
+                            {(options?.stores || []).length === 0 && <option value="">No stores</option>}
+                            {(options?.stores || []).map(st => <option key={st.id} value={st.id}>{st.name}{st.isDefault ? ' (main)' : ''}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Low-stock alert at</label>
+                        <input inputMode="numeric" value={lowStock} onChange={e => setLowStock(withCommas(e.target.value.replace(/\./g, '')))} placeholder="e.g. 2" style={inputStyle} />
+                    </div>
                 </div>
             </div>
         </Modal>
