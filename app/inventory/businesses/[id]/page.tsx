@@ -44,8 +44,7 @@ const TABS = [
     { key: 'integrations', label: 'Integrations', icon: <Link2 size={14} /> },
     { key: 'brands', label: 'Brands', icon: <Tag size={14} /> },
     { key: 'categories', label: 'Categories', icon: <LayoutGrid size={14} /> },
-    { key: 'customers', label: 'Customers', icon: <UserCircle size={14} /> },
-    { key: 'suppliers', label: 'Suppliers', icon: <Truck size={14} /> },
+    { key: 'contacts', label: 'Customers & Suppliers', icon: <UserCircle size={14} /> },
     { key: 'ai', label: 'AI', icon: <Sparkles size={14} /> },
 ];
 
@@ -182,7 +181,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
 
     const loadingEl = <TableSkeleton rows={5} cols={6} />;
 
-    if (['brands', 'categories', 'customers', 'suppliers'].includes(tab)) {
+    if (['brands', 'categories', 'contacts'].includes(tab)) {
         return <MerchantListTab kind={tab as ListKind} businessId={businessId} businessName={businessName} />;
     }
 
