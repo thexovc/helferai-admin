@@ -75,7 +75,7 @@ export default function ReferralPointConfigsPageClient() {
     const rules = data?.rules || [];
     return (
         <div>
-            <Topbar title="Referral Point Configs" subtitle="How many points each action earns in the HelferAI app." product="inventory" />
+            <Topbar title="Reward Point Configs" subtitle="How many points each action earns in the HelferAI app." product="inventory" />
             <div style={{ padding: 'var(--content-padding)', display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 48, height: 48, borderRadius: 12, background: '#eaf4e3', color: '#6c9e4e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={24} /></div>
