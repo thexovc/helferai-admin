@@ -185,7 +185,6 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (usersLoading) return loadingEl;
         return (
             <div>{createBtn}
-                {whatsappOpen && <WhatsAppNumberModal businessId={businessId} businessName={businessName} onClose={() => setWhatsappOpen(false)} />}
                 <table style={tableStyle}><thead><tr>{['Name', 'Email', 'Role', 'Status', 'Joined', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(users || []).map((u, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
@@ -400,6 +399,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (whatsappLoading) return loadingEl;
         return (
             <div>{createBtn}
+                {whatsappOpen && <WhatsAppNumberModal businessId={businessId} businessName={businessName} onClose={() => setWhatsappOpen(false)} />}
                 <table style={tableStyle}><thead><tr>{['Name', 'Number', 'Status', 'Connected', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(whatsapp || []).map((w, i) => (
