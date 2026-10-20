@@ -110,7 +110,7 @@ export default function BusinessesPage() {
 
     const handleSaveBusiness = async () => {
         if (!formData.name || !formData.email) {
-            toast.error('Business name and email are required');
+            toast.error('Merchant name and email are required');
             return;
         }
 
@@ -227,7 +227,7 @@ export default function BusinessesPage() {
                         <button
                             onClick={() => handleOpenModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            <Plus size={14} /> Add Business
+                            <Plus size={14} /> Add Merchant
                         </button>
                     </div>
 
@@ -235,7 +235,7 @@ export default function BusinessesPage() {
                         <table style={{ minWidth: 900 }}>
                             <thead>
                                 <tr>
-                                    {['Business Name', 'Owner', 'Date Created', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
+                                    {['Merchant Name', 'Owner', 'Date Created', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>
@@ -249,7 +249,7 @@ export default function BusinessesPage() {
                                     ))
                                 ) : businesses.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No businesses found matching your search.</td>
+                                        <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No merchants found matching your search.</td>
                                     </tr>
                                 ) : (
                                     businesses.map((b, i) => (
@@ -323,7 +323,7 @@ export default function BusinessesPage() {
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title={editingBusiness ? 'Edit Business' : 'Add New Business'}
+                title={editingBusiness ? 'Edit Merchant' : 'Add New Merchant'}
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
@@ -331,7 +331,7 @@ export default function BusinessesPage() {
                             onClick={handleSaveBusiness}
                             disabled={createBusinessMutation.isPending || updateBusinessMutation.isPending}
                             style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
-                            {createBusinessMutation.isPending || updateBusinessMutation.isPending ? 'Saving...' : editingBusiness ? 'Save Changes' : 'Create Business'}
+                            {createBusinessMutation.isPending || updateBusinessMutation.isPending ? 'Saving...' : editingBusiness ? 'Save Changes' : 'Create Merchant'}
                         </button>
                     </>
                 }
@@ -382,25 +382,25 @@ export default function BusinessesPage() {
                 </div>
             </Modal>
 
-            {/* Delete Business Confirmation Modal */}
+            {/* Delete Merchant Confirmation Modal */}
             <ConfirmModal
                 isOpen={deleteModal.isOpen}
                 onClose={() => setDeleteModal({ isOpen: false, business: null })}
                 onConfirm={handleConfirmDelete}
                 isLoading={deleteBusinessMutation.isPending}
-                title="Delete Business"
+                title="Delete Merchant"
                 description={`Are you sure you want to permanently delete "${deleteModal.business?.name}"? All associated inventory records, team users, and subscriptions will be deleted.`}
                 details={
                     deleteModal.business
                         ? [
-                              { label: 'Business Name', value: deleteModal.business.name },
+                              { label: 'Merchant Name', value: deleteModal.business.name },
                               { label: 'Owner Email', value: deleteModal.business.email },
                               { label: 'Current Plan', value: deleteModal.business.currentPlan || 'Basic' },
                               { label: 'Status', value: deleteModal.business.status || 'Active' },
                           ]
                         : []
                 }
-                confirmText="Delete Business"
+                confirmText="Delete Merchant"
                 variant="danger"
             />
 

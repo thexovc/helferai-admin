@@ -158,7 +158,7 @@ export default function WhatsAppNumbersPageClient() {
                         <thead>
                             <tr>
                                 <th>Phone Number</th>
-                                <th>Business Name</th>
+                                <th>Merchant Name</th>
                                 <th>Status</th>
                                 <th>Last Active</th>
                                 <th style={{ width: 100 }}>Actions</th>
@@ -274,7 +274,7 @@ export default function WhatsAppNumbersPageClient() {
                     deleteModal.number
                         ? [
                               { label: 'Phone Number', value: deleteModal.number.number || deleteModal.number.phoneNumber },
-                              { label: 'Business Name', value: deleteModal.number.businessName },
+                              { label: 'Merchant Name', value: deleteModal.number.businessName },
                               { label: 'Status', value: deleteModal.number.status },
                           ]
                         : []

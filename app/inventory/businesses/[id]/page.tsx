@@ -415,7 +415,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
     if (isLoading) {
         return (
             <div>
-                <Topbar title="Business Detail" subtitle="..." product="inventory" />
+                <Topbar title="Merchant Detail" subtitle="..." product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
                     <DetailHeaderSkeleton />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
@@ -425,14 +425,14 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
             </div>
         );
     }
-    if (error || !business) return <div style={{ padding: 40, color: '#ef4444' }}>Error: Business not found</div>;
+    if (error || !business) return <div style={{ padding: 40, color: '#ef4444' }}>Error: Merchant not found</div>;
 
     const daysColor = getDaysRemainingColor(business.daysRemaining);
 
 
     return (
         <div>
-            <Topbar title={business.name} subtitle="Business Details" product="inventory" />
+            <Topbar title={business.name} subtitle="Merchant Details" product="inventory" />
             <div style={{ padding: 28 }}>
                 <Link href="/inventory/businesses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#6b7280', textDecoration: 'none', fontSize: 13, marginBottom: 20 }}>
                     <ArrowLeft size={14} /> Back to Businesses
@@ -466,7 +466,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                             <button
                                 onClick={handleEditBusiness}
                                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                <Edit2 size={14} /> Edit Business
+                                <Edit2 size={14} /> Edit Merchant
                             </button>
                             <button
                                 onClick={handleSuspendBusiness}

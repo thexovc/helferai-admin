@@ -293,7 +293,7 @@ export default function InventoryFinancePageClient() {
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                             <div style={{ position: 'relative', minWidth: 260 }}>
                                 <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                                <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search business…" style={{ paddingLeft: 42, paddingRight: 16, width: '100%', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, outline: 'none', color: '#1a1a2e', fontWeight: 500 }} />
+                                <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search merchant…" style={{ paddingLeft: 42, paddingRight: 16, width: '100%', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, outline: 'none', color: '#1a1a2e', fontWeight: 500 }} />
                             </div>
                             <select value={planFilter} onChange={e => { setPlanFilter(e.target.value); setPage(1); }} style={selectStyle}>
                                 <option value="">All plans</option>

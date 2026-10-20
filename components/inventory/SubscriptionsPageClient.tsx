@@ -100,7 +100,7 @@ export default function SubscriptionsPageClient() {
 
     const handleSaveSubscription = async () => {
         if (!formData.businessId || !formData.planId) {
-            toast.error('Business and Plan are required');
+            toast.error('Merchant and Plan are required');
             return;
         }
 
@@ -193,7 +193,7 @@ export default function SubscriptionsPageClient() {
 
     return (
         <div>
-            <Topbar title="Subscriptions" subtitle="Manage all business subscription plans, payments, and renewals." product="inventory" />
+            <Topbar title="Subscriptions" subtitle="Manage all merchant subscription plans, payments, and renewals." product="inventory" />
             <div style={{ padding: 'var(--content-padding)' }}>
 
                 {/* KPI Cards */}
@@ -232,7 +232,7 @@ export default function SubscriptionsPageClient() {
                                     setSearch(e.target.value);
                                     setPage(1);
                                 }}
-                                placeholder="Search business or plan…"
+                                placeholder="Search merchant or plan…"
                                 style={{ paddingLeft: 30, width: '100%', height: 34, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, outline: 'none', color: '#1a1a2e', boxSizing: 'border-box' }}
                             />
                         </div>
@@ -261,7 +261,7 @@ export default function SubscriptionsPageClient() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
                             <thead>
                                 <tr>
-                                    {['Business', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status', 'Actions'].map(h => (
+                                    {['Merchant', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status', 'Actions'].map(h => (
                                         <th key={h} style={thStyle}>{h}</th>
                                     ))}
                                 </tr>
@@ -395,7 +395,7 @@ export default function SubscriptionsPageClient() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            <Building2 size={14} /> Select Business
+                            <Building2 size={14} /> Select Merchant
                         </label>
                         {editingSub ? (
                             <input
@@ -409,8 +409,8 @@ export default function SubscriptionsPageClient() {
                                 onChange={val => setFormData(prev => ({ ...prev, businessId: val }))}
                                 onSearch={setBusinessSelectSearch}
                                 isLoading={isBusinessesFetching}
-                                placeholder="Select or search business..."
-                                searchPlaceholder="Type business name or email..."
+                                placeholder="Select or search merchant..."
+                                searchPlaceholder="Type merchant name or email..."
                                 options={businessesData?.data?.map(b => ({
                                     value: b.id,
                                     label: b.name,
@@ -494,7 +494,7 @@ export default function SubscriptionsPageClient() {
                 details={
                     confirmModal.sub
                         ? [
-                              { label: 'Business Name', value: confirmModal.sub.businessName },
+                              { label: 'Merchant Name', value: confirmModal.sub.businessName },
                               { label: 'Current Plan', value: confirmModal.sub.plan },
                               { label: 'Status', value: confirmModal.sub.status },
                               {

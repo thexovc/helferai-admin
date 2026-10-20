@@ -54,10 +54,10 @@ export default function ConversionFunnel({ data }: { data?: FunnelData }) {
             height: '100%'
         }}>
             <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Conversion Funnel</h3>
-            <p style={{ margin: '0 0 28px', fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Businesses that joined in this period</p>
+            <p style={{ margin: '0 0 28px', fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>Merchants that joined in this period</p>
 
             {reg === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '40px 0' }}>No new businesses in this period</div>
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '40px 0' }}>No new merchants in this period</div>
             ) : (
                 <>
                     <FunnelStep label="Signed up" value={reg} progress={100} color="#6c9e4e" />

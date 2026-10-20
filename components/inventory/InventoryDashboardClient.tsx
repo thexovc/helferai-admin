@@ -41,7 +41,7 @@ const GrowthTooltip = ({ active, payload, label }: any) => {
     return (
         <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{Number(d.value).toLocaleString()} businesses</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{Number(d.value).toLocaleString()} merchants</div>
             <div style={{ color: '#cbd5e1', marginTop: 2 }}>+{d.added} joined</div>
         </div>
     );
@@ -68,7 +68,7 @@ const getRangeDates = (range: string, customStart: string, customEnd: string): {
     }
 };
 
-// 'totalSubscribingBusiness' -> 'Total Subscribing Business', 'mrr' -> 'MRR'
+// 'totalSubscribingBusiness' -> 'Total Subscribing Merchants', 'mrr' -> 'MRR'
 const metricName = (key: string) =>
     key === 'totalBusiness' ? 'Total Merchants'
     : ['mrr', 'arr', 'rr', 'arpu'].includes(key)
@@ -220,7 +220,7 @@ export default function InventoryDashboardClient() {
             ['Metric', 'Value', 'Trend'],
             ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
             [],
-            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Merchants', 'New Merchants', 'Subscribing', 'Sales by Businesses'],
+            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Merchants', 'New Merchants', 'Subscribing', 'Sales by Merchants'],
             ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.newBusinesses ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
             [],
             ['Period', 'Kept', 'New', 'Lost', 'Paying', 'Kept %'],
@@ -346,8 +346,8 @@ export default function InventoryDashboardClient() {
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
                     <DashboardCard variant="metric" label="Total Merchants" value={compactCount(overview.totalBusiness?.value ?? 0)} fullValue={fullCount(overview.totalBusiness?.value ?? 0)} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Businesses Joined' : 'New in Period'} value={compactCount(overview.newBusinessThisMonth?.value ?? 0)} fullValue={fullCount(overview.newBusinessThisMonth?.value ?? 0)} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
-                    <DashboardCard variant="metric" label={activeLabel} value={compactCount(overview.activeToday?.value ?? 0)} fullValue={fullCount(overview.activeToday?.value ?? 0)} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
+                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Merchants Joined' : 'New in Period'} value={compactCount(overview.newBusinessThisMonth?.value ?? 0)} fullValue={fullCount(overview.newBusinessThisMonth?.value ?? 0)} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label={activeLabel} value={compactCount(overview.activeToday?.value ?? 0)} fullValue={fullCount(overview.activeToday?.value ?? 0)} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="merchants using HelferAI" />
                     <DashboardCard variant="metric" label="MRR" value={compactNaira(overview.mrr?.value ?? 0)} fullValue={fullNaira(overview.mrr?.value ?? 0)} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
@@ -388,8 +388,8 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Business Growth</h3>
-                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Total businesses at the end of each {granularity}</div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Merchant Growth</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Total merchants at the end of each {granularity}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>{latestBusinessTotal.toLocaleString()}</div>
@@ -418,7 +418,7 @@ export default function InventoryDashboardClient() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>Retention & Churn Velocity</h3>
-                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Paying businesses kept, new and lost each {granularity}</div>
+                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Paying merchants kept, new and lost each {granularity}</div>
                             <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
                                 {[['#6c9e4e', 'KEPT'], ['#b7d7a0', 'NEW'], ['#ef4444', 'LOST']].map(([color, name]) => (
                                     <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

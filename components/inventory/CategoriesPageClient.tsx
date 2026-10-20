@@ -152,7 +152,7 @@ export default function CategoriesPageClient() {
                         <thead>
                             <tr>
                                 <th>Category Name</th>
-                                <th>Business</th>
+                                <th>Merchant</th>
                                 <th>Items Count</th>
                                 <th>Status</th>
                                 <th style={{ width: 100 }}>Actions</th>
