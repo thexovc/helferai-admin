@@ -196,20 +196,31 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         return (
             <div>{createBtn}
                 <CreateProductModal isOpen={productOpen} onClose={() => setProductOpen(false)} businessId={businessId} businessName={businessName} />
-                <table style={tableStyle}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Price', 'Stock', 'Unit', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1100 }}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Vendor', 'Cost', 'Price', 'Margin', 'Stock', 'Unit', 'Added', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(products || []).map((p, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={tdStyle}><b>{p.name}</b></td>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{p.sku}</td>
-                            <td style={tdStyle}>{p.category}</td>
-                            <td style={tdStyle}>{p.brand}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(p.sellingPrice)}</td>
-                            <td style={tdStyle}>{p.openingStock}</td>
-                            <td style={tdStyle}>{p.unit}</td>
-                            <td style={tdStyle}>{acts(p)}</td>
-                        </tr>)}
+                        {(products || []).map((p: any, i: number) => {
+                            const margin = p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : null;
+                            // Red when at or below the merchant's low-stock level (2 if they haven't set one)
+                            const lowStock = p.openingStock <= (p.lowStockAlert ?? 2);
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={tdStyle}><b>{p.name}</b>{p.store && <div style={{ fontSize: 11, color: '#9ca3af' }}>{p.store}</div>}</td>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{p.sku}</td>
+                                <td style={tdStyle}>{p.category}</td>
+                                <td style={tdStyle}>{p.brand}</td>
+                                <td style={tdStyle}>{p.vendor || <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                                <td style={tdStyle}>{fullNaira(p.costPrice)}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(p.sellingPrice)}</td>
+                                <td style={{ ...tdStyle, color: margin === null ? '#9ca3af' : margin < 0 ? '#dc2626' : '#15803d', fontWeight: 600 }}>{margin === null ? '—' : `${margin}%`}</td>
+                                <td style={{ ...tdStyle, color: lowStock ? '#dc2626' : '#374151', fontWeight: lowStock ? 700 : 400 }} title={lowStock ? 'Low stock' : undefined}>{Number(p.openingStock || 0).toLocaleString()}</td>
+                                <td style={tdStyle}>{p.unit}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
+                                <td style={tdStyle}>{acts(p)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}
