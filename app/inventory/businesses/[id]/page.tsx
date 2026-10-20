@@ -4,7 +4,9 @@ import Link from 'next/link';
 import Topbar from '../../../../components/Topbar';
 import Pagination from '../../../../components/Pagination';
 import StatusBadge from '../../../../components/StatusBadge';
-import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
+import { formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
+import { compactNaira, fullNaira, fullCount } from '@/components/inventory/formatNumbers';
+import ToggleValue from '@/components/inventory/ToggleValue';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
@@ -154,7 +156,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         <tbody>
                             {(subscriptions || []).map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
                                 <td style={tdStyle}><b>{s.plan}</b></td>
-                                <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(s.amount)}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(s.amount)}</td>
                                 <td style={tdStyle}>{formatDate(s.startsAt)}</td>
                                 <td style={tdStyle}>{formatDate(s.endsAt)}</td>
                                 <td style={tdStyle}><StatusBadge status={s.status} size="sm" /></td>
@@ -187,7 +189,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{p.sku}</td>
                             <td style={tdStyle}>{p.category}</td>
                             <td style={tdStyle}>{p.brand}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(p.sellingPrice)}</td>
+                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(p.sellingPrice)}</td>
                             <td style={tdStyle}>{p.openingStock}</td>
                             <td style={tdStyle}>{p.unit}</td>
                             <td style={tdStyle}>{acts(p)}</td>
@@ -216,7 +218,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         {(sales || []).map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
                             <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{s.receiptNumber}</td>
                             <td style={tdStyle}>{s.customer}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(s.totalAmount)}</td>
+                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(s.totalAmount)}</td>
                             <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
                             <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
                             <td style={tdStyle}>{formatDate(s.createdAt)}</td>
@@ -247,7 +249,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                             <td style={tdStyle}>{formatDate(e.date)}</td>
                             <td style={tdStyle}>{e.purpose}</td>
                             <td style={tdStyle}>{e.account}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(e.amount)}</td>
+                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(e.amount)}</td>
                             <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{e.referenceNumber}</td>
                             <td style={tdStyle}>{acts(e)}</td>
                         </tr>)}
@@ -442,12 +444,12 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 {/* KPI Cards Row 1 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 14 }}>
                     {[
-                        { label: 'Sales Records', value: business.totalSales || 0, icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
-                        { label: 'Expense Records', value: business.totalExpenses || 0, icon: <Receipt size={16} />, accent: '#f59e0b' },
-                        { label: 'Products', value: business.totalProducts || 0, icon: <Package size={16} />, accent: '#7c5cbf' },
+                        { label: 'Sales Records', value: fullCount(business.totalSales || 0), icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
+                        { label: 'Expense Records', value: fullCount(business.totalExpenses || 0), icon: <Receipt size={16} />, accent: '#f59e0b' },
+                        { label: 'Products', value: fullCount(business.totalProducts || 0), icon: <Package size={16} />, accent: '#7c5cbf' },
                         { label: 'Sub Ends', value: business.subEndDate ? formatDate(business.subEndDate) : 'N/A', icon: <CreditCard size={16} />, accent: '#6c9e4e' },
                         { label: 'Days Remaining', value: business.daysRemaining < 0 ? `${Math.abs(business.daysRemaining)}d overdue` : `${business.daysRemaining || 0}d`, icon: <BarChart2 size={16} />, accent: daysColor },
-                        { label: 'Total Revenue', value: formatCurrency(business.totalRevenue || 0), icon: <DollarSign size={16} />, accent: '#22c55e' },
+                        { label: 'Total Revenue', value: <ToggleValue short={compactNaira(business.totalRevenue || 0)} full={fullNaira(business.totalRevenue || 0)} />, icon: <DollarSign size={16} />, accent: '#22c55e' },
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 6 }}>{k.icon}</div>
@@ -460,7 +462,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #0ea5e9' }}>
                         <div style={{ color: '#0ea5e9', marginBottom: 6 }}><Users size={16} /></div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{business.totalUsers || 0}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{fullCount(business.totalUsers || 0)}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Total Users</div>
                     </div>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #6b7280' }}>
