@@ -311,27 +311,33 @@ export const useBusinessSubscriptions = (id: string, page = 1, pageSize = 10) =>
   });
 };
 
-export const useBusinessProducts = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessProducts = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessProducts(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessProducts(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessProducts(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessProducts(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 
-export const useBusinessSales = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessSales = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessSales(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessSales(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessSales(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessSales(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 
-export const useBusinessExpenses = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessExpenses = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessExpenses(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessExpenses(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessExpenses(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessExpenses(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 

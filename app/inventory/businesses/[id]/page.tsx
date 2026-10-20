@@ -14,6 +14,7 @@ import ImportRecordsModal from '@/components/inventory/ImportRecordsModal';
 import RecordExpenseModal from '@/components/inventory/RecordExpenseModal';
 import { ViewRowModal, EditUserModal, EditSubscriptionModal, EditProductModal, EditSaleModal, WhatsAppNumberModal, deleteActionFor, type RowKind } from '@/components/inventory/MerchantRowModals';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
+import DateRangeFilter, { type DateRange } from '@/components/inventory/DateRangeFilter';
 import MerchantListTab, { type ListKind } from '@/components/inventory/MerchantListTab';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
@@ -65,6 +66,8 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [expenseOpen, setExpenseOpen] = useState(false);
     const [importExpensesOpen, setImportExpensesOpen] = useState(false);
     const [whatsappOpen, setWhatsappOpen] = useState(false);
+    // Date filter on the Products, Sales and Expenses tabs
+    const [range, setRange] = useState<DateRange>({});
     // The row whose View or Edit window is open
     const [rowAction, setRowAction] = useState<{ type: 'view' | 'edit'; row: any } | null>(null);
     const queryClient = useQueryClient();
@@ -78,14 +81,16 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     // Reset page when tab changes
     React.useEffect(() => {
         setPage(1);
+        setRange({});
     }, [tab]);
+    const changeRange = (r: DateRange) => { setRange(r); setPage(1); };
 
     // Lazy matching hooks to tabs
     const { data: usersResp, isLoading: usersLoading } = useBusinessUsers(tab === 'users' ? businessId : '', page, pageSize);
     const { data: subsResp, isLoading: subsLoading } = useBusinessSubscriptions(tab === 'subscriptions' ? businessId : '', page, pageSize);
-    const { data: productsResp, isLoading: productsLoading } = useBusinessProducts(tab === 'products' ? businessId : '', page, pageSize);
-    const { data: salesResp, isLoading: salesLoading } = useBusinessSales(tab === 'sales' ? businessId : '', page, pageSize);
-    const { data: expensesResp, isLoading: expensesLoading } = useBusinessExpenses(tab === 'expenses' ? businessId : '', page, pageSize);
+    const { data: productsResp, isLoading: productsLoading } = useBusinessProducts(tab === 'products' ? businessId : '', page, pageSize, range);
+    const { data: salesResp, isLoading: salesLoading } = useBusinessSales(tab === 'sales' ? businessId : '', page, pageSize, range);
+    const { data: expensesResp, isLoading: expensesLoading } = useBusinessExpenses(tab === 'expenses' ? businessId : '', page, pageSize, range);
     const { data: whatsappResp, isLoading: whatsappLoading } = useBusinessWhatsapp(tab === 'whatsapp' ? businessId : '', page, pageSize);
     const { data: integrationsResp, isLoading: integrationsLoading } = useBusinessIntegrations(tab === 'integrations' ? businessId : '', page, pageSize);
     const { data: aiData, isLoading: aiLoading } = useBusinessAi(tab === 'ai' ? businessId : '');
@@ -250,13 +255,14 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (productsLoading) return loadingEl;
         return (
             <div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     {createBtn}
                     <button
                         onClick={() => setBulkOpen(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
                         Bulk Upload
                     </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
                 </div>
                 <CreateProductModal isOpen={productOpen} onClose={() => setProductOpen(false)} businessId={businessId} businessName={businessName} />
                 <BulkUploadProductsModal isOpen={bulkOpen} onClose={() => setBulkOpen(false)} businessId={businessId} businessName={businessName} />
@@ -302,13 +308,14 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (salesLoading) return loadingEl;
         return (
             <div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     {createBtn}
                     <button
                         onClick={() => setImportSalesOpen(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
                         Import
                     </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
                 </div>
                 <RecordSaleModal isOpen={saleOpen} onClose={() => setSaleOpen(false)} businessId={businessId} businessName={businessName} />
                 <ImportRecordsModal kind="sales" isOpen={importSalesOpen} onClose={() => setImportSalesOpen(false)} businessId={businessId} businessName={businessName} />
@@ -354,13 +361,14 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (expensesLoading) return loadingEl;
         return (
             <div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     {createBtn}
                     <button
                         onClick={() => setImportExpensesOpen(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
                         Import
                     </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
                 </div>
                 <RecordExpenseModal isOpen={expenseOpen} onClose={() => setExpenseOpen(false)} businessId={businessId} businessName={businessName} />
                 <ImportRecordsModal kind="expenses" isOpen={importExpensesOpen} onClose={() => setImportExpensesOpen(false)} businessId={businessId} businessName={businessName} />
