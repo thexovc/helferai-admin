@@ -339,7 +339,7 @@ export default function BusinessesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            <Building2 size={14} /> Business Name
+                            <Building2 size={14} /> Merchant Name
                         </label>
                         <input
                             value={formData.name}

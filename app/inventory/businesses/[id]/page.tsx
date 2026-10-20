@@ -435,7 +435,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
             <Topbar title={business.name} subtitle="Merchant Details" product="inventory" />
             <div style={{ padding: 28 }}>
                 <Link href="/inventory/businesses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#6b7280', textDecoration: 'none', fontSize: 13, marginBottom: 20 }}>
-                    <ArrowLeft size={14} /> Back to Businesses
+                    <ArrowLeft size={14} /> Back to Merchants
                 </Link>
 
                 {/* Identity Card */}
