@@ -34,6 +34,12 @@ const inventoryNav: NavGroup[] = [
         ],
     },
     {
+        title: 'Business Management', items: [
+            { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
+            { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
+        ],
+    },
+    {
         title: 'Integrations', items: [
             { href: '/inventory/business-integrations', icon: <Building size={18} />, label: 'Business Integrations' },
             { href: '/inventory/integrations', icon: <Puzzle size={18} />, label: 'Integrations' },
@@ -46,13 +52,6 @@ const inventoryNav: NavGroup[] = [
             { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
             { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
             { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
-        ],
-    },
-
-    {
-        title: 'Business Management', items: [
-            { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
-            { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
         ],
     },
     {
