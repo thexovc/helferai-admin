@@ -103,7 +103,7 @@ export default function ReferralsPageClient() {
                                 <th>Referral Code</th>
                                 <th>Joined</th>
                                 <th>Status</th>
-                                <th>Points Awarded</th>
+                                <th>Points</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -143,6 +143,12 @@ export default function ReferralsPageClient() {
                                         <span style={{ fontWeight: 700, color: r.pointsAwarded > 0 ? '#16a34a' : '#9ca3af' }}>
                                             {r.pointsAwarded > 0 ? `+${r.pointsAwarded} pts` : '0 pts'}
                                         </span>
+                                        <div style={{ fontSize: 11, color: '#9ca3af' }}>signup bonus</div>
+                                        {r.referrerEarnedFromReferrals > 0 && (
+                                            <div style={{ fontSize: 11, color: '#15803d', marginTop: 3 }}>
+                                                Referrer has earned <b>{Number(r.referrerEarnedFromReferrals).toLocaleString()} pts</b> from their referrals
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
