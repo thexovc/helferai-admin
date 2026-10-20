@@ -8,21 +8,45 @@ import { fullNaira } from './formatNumbers';
 
 const API_BASE = process.env.NEXT_PUBLIC_INVENTORY_API_URL || 'http://localhost:3000/api';
 
-// The HelferAI app's own example sheet (copied from public/examples in HelferAI-Inventory-V2)
-const TEMPLATE_URL = '/examples/sales_bulk_upload_example.xlsx';
+// Sales and expenses imports share this window. Templates are the HelferAI
+// app's own example sheets (copied from public/examples in HelferAI-Inventory-V2)
+const KINDS = {
+    sales: {
+        title: 'Import Sales',
+        template: 'sales_bulk_upload_example.xlsx',
+        path: 'sales/import',
+        idField: 'receipt_number',
+        idLabel: 'receipt numbers',
+        keepField: 'keep_receipts',
+        intro: 'Rows with the same receipt number become one sale. Receipt numbers the merchant already has are checked first, just like in the app.',
+        warning: "Sales are recorded on this merchant's account and their stock is reduced, exactly like an import in the app.",
+    },
+    expenses: {
+        title: 'Import Expenses',
+        template: 'expenses_bulk_upload_example.xlsx',
+        path: 'expenses/import',
+        idField: 'reference_number',
+        idLabel: 'reference numbers',
+        keepField: 'keep_references',
+        intro: 'Reference numbers the merchant already has are checked first, just like in the app.',
+        warning: "Expenses are recorded on this merchant's account, exactly like an import in the app.",
+    },
+} as const;
+export type ImportKind = keyof typeof KINDS;
 
-const downloadTemplate = () => {
+const downloadTemplate = (file: string) => {
     const a = document.createElement('a');
-    a.href = TEMPLATE_URL;
-    a.download = 'sales_bulk_upload_example.xlsx';
+    a.href = `/examples/${file}`;
+    a.download = file;
     a.click();
 };
 
 type Conflict = {
-    receipt_number: string;
+    receipt_number?: string;
+    reference_number?: string;
     changesDetected: string[];
-    current: { amount: number; customer: string };
-    uploaded: { amount: number };
+    current: { amount: number; customer?: string; description?: string | null };
+    uploaded: { amount: number; description?: string | null };
     defaultAction: 'overwrite' | 'keep';
 };
 type CheckResult = { totalRecords: number; validCount: number; conflictCount: number; conflicts: Conflict[]; uploadedAs?: string };
@@ -48,9 +72,11 @@ const choiceBtn = (active: boolean): React.CSSProperties => ({
     background: active ? '#eaf4e3' : '#fff', color: active ? '#3f7d2c' : '#6b7280',
 });
 
-export default function ImportSalesModal({ isOpen, onClose, businessId, businessName }: {
-    isOpen: boolean; onClose: () => void; businessId: string; businessName?: string;
+export default function ImportRecordsModal({ isOpen, onClose, businessId, businessName, kind = 'sales' }: {
+    isOpen: boolean; onClose: () => void; businessId: string; businessName?: string; kind?: ImportKind;
 }) {
+    const cfg = KINDS[kind];
+    const idOf = (c: Conflict) => String(c[cfg.idField] || '');
     const queryClient = useQueryClient();
     const [file, setFile] = React.useState<File | null>(null);
     const [busy, setBusy] = React.useState(false);
@@ -63,14 +89,14 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
         setFile(null); setCheck(null); setResult(null); setChoice({});
     }, [isOpen]);
 
-    const base = `/admin/api/inventory/businesses/${businessId}/sales/import`;
+    const base = `/admin/api/inventory/businesses/${businessId}/${cfg.path}`;
 
     const upload = async (choices = choice) => {
         if (!file) return;
         setBusy(true);
         try {
             const keep = Object.entries(choices).filter(([, c]) => c === 'keep').map(([r]) => r);
-            const data = await postFile(base, file, { keep_receipts: JSON.stringify(keep) });
+            const data = await postFile(base, file, { [cfg.keepField]: JSON.stringify(keep) });
             setResult(data);
             toast.success(`Import started: ${data?.rows ?? 0} rows`);
             // The import runs in the background; refresh the sales tab shortly after
@@ -89,7 +115,7 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
         try {
             const data: CheckResult = await postFile(`${base}/check`, file);
             const choices: Record<string, 'overwrite' | 'keep'> = {};
-            data.conflicts.forEach(c => { choices[c.receipt_number] = c.defaultAction; });
+            data.conflicts.forEach(c => { choices[idOf(c)] = c.defaultAction; });
             setChoice(choices);
             if (data.conflicts.length === 0) {
                 setBusy(false);
@@ -119,7 +145,7 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
     );
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Import Sales${businessName ? ` · ${businessName}` : ''}`} footer={footer}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`${cfg.title}${businessName ? ` · ${businessName}` : ''}`} footer={footer}>
             {result ? (
                 <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.6 }}>
                     <b>{result.rows.toLocaleString()} rows</b> are being imported in the background, the same way as an import from the HelferAI app.
@@ -129,22 +155,22 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '60vh', overflowY: 'auto' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontSize: 13, color: '#6b7280' }}>
-                            The file has <b>{check.totalRecords.toLocaleString()} rows</b>. These receipt numbers already exist with a different amount:
+                            The file has <b>{check.totalRecords.toLocaleString()} rows</b>. These {cfg.idLabel} already exist with different details:
                         </div>
                         <button style={{ ...choiceBtn(false), fontSize: 11, whiteSpace: 'nowrap' }}
-                            onClick={() => setChoice(Object.fromEntries(check.conflicts.map(c => [c.receipt_number, 'keep'])))}>
+                            onClick={() => setChoice(Object.fromEntries(check.conflicts.map(c => [idOf(c), 'keep'])))}>
                             Keep all existing
                         </button>
                     </div>
                     {check.conflicts.map(c => (
-                        <div key={c.receipt_number} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', fontFamily: 'monospace' }}>{c.receipt_number}</div>
+                        <div key={idOf(c)} style={{ border: '1px solid #f0f0f0', borderRadius: 10, padding: 12 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', fontFamily: 'monospace' }}>{idOf(c)}</div>
                             <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                                Now: <b>{fullNaira(c.current.amount)}</b> for {c.current.customer} · In file: <b>{fullNaira(c.uploaded.amount)}</b>
+                                Now: <b>{fullNaira(c.current.amount)}</b>{c.current.customer ? ` for ${c.current.customer}` : ''}{c.current.description ? ` (${c.current.description})` : ''} · In file: <b>{fullNaira(c.uploaded.amount)}</b>{kind === 'expenses' && c.uploaded.description ? ` (${c.uploaded.description})` : ''}
                             </div>
                             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button style={choiceBtn(choice[c.receipt_number] === 'overwrite')} onClick={() => setChoice(p => ({ ...p, [c.receipt_number]: 'overwrite' }))}>Overwrite with file</button>
-                                <button style={choiceBtn(choice[c.receipt_number] === 'keep')} onClick={() => setChoice(p => ({ ...p, [c.receipt_number]: 'keep' }))}>Keep existing</button>
+                                <button style={choiceBtn(choice[idOf(c)] === 'overwrite')} onClick={() => setChoice(p => ({ ...p, [idOf(c)]: 'overwrite' }))}>Overwrite with file</button>
+                                <button style={choiceBtn(choice[idOf(c)] === 'keep')} onClick={() => setChoice(p => ({ ...p, [idOf(c)]: 'keep' }))}>Keep existing</button>
                             </div>
                         </div>
                     ))}
@@ -152,10 +178,9 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
-                        Upload an Excel (.xlsx, .xls) or CSV file in the same format as the HelferAI app&apos;s sales import.
-                        Rows with the same receipt number become one sale. Receipt numbers the merchant already has are checked first, just like in the app.
+                        Upload an Excel (.xlsx, .xls) or CSV file in the same format as the HelferAI app&apos;s {kind} import. {cfg.intro}
                     </div>
-                    <button onClick={downloadTemplate} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px solid #c7ddb8', background: '#f0f7eb', color: '#3f7d2c', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                    <button onClick={() => downloadTemplate(cfg.template)} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px solid #c7ddb8', background: '#f0f7eb', color: '#3f7d2c', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         Download template (.xlsx)
                     </button>
                     <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: 12, padding: 24, textAlign: 'center', cursor: 'pointer', background: '#fafafa' }}>
@@ -164,7 +189,7 @@ export default function ImportSalesModal({ isOpen, onClose, businessId, business
                         <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{file ? `${(file.size / 1024).toFixed(0)} KB` : 'Excel or CSV, up to 50 MB'}</div>
                     </label>
                     <div style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
-                        Sales are recorded on this merchant&apos;s account and their stock is reduced, exactly like an import in the app.
+                        {cfg.warning}
                     </div>
                 </div>
             )}

@@ -51,6 +51,11 @@ export const inventoryApi = {
   getBusinessExpenses: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessExpense>>(`/admin/api/inventory/businesses/${id}/expenses?page=${page}&pageSize=${pageSize}`),
   getBusinessWhatsapp: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessWhatsapp>>(`/admin/api/inventory/businesses/${id}/whatsapp?page=${page}&pageSize=${pageSize}`),
   getBusinessIntegrations: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessIntegrationItem>>(`/admin/api/inventory/businesses/${id}/integrations?page=${page}&pageSize=${pageSize}`),
+  getBusinessExpenseOptions: (id: string) => inventoryClient.get<{
+    purposes: { id: string; name: string }[];
+    accounts: { id: string; name: string }[];
+    people: { id: string; name: string; hasLogin: boolean }[];
+  }>(`/admin/api/inventory/businesses/${id}/expense-options`),
   getBusinessSaleOptions: (id: string, search = '') => inventoryClient.get<{
     customers: { id: string; name: string; phone?: string | null }[];
     products: { id: string; name: string; sku: string; sellingPrice: number; costPrice: number; stock: number }[];

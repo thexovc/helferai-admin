@@ -10,7 +10,8 @@ import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import CreateProductModal from '@/components/inventory/CreateProductModal';
 import RecordSaleModal from '@/components/inventory/RecordSaleModal';
-import ImportSalesModal from '@/components/inventory/ImportSalesModal';
+import ImportRecordsModal from '@/components/inventory/ImportRecordsModal';
+import RecordExpenseModal from '@/components/inventory/RecordExpenseModal';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
@@ -58,6 +59,8 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [productOpen, setProductOpen] = useState(false);
     const [saleOpen, setSaleOpen] = useState(false);
     const [importSalesOpen, setImportSalesOpen] = useState(false);
+    const [expenseOpen, setExpenseOpen] = useState(false);
+    const [importExpensesOpen, setImportExpensesOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
@@ -101,6 +104,10 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         }
         if (tab === 'sales') {
             setSaleOpen(true);
+            return;
+        }
+        if (tab === 'expenses') {
+            setExpenseOpen(true);
             return;
         }
         toast.info(`Create feature for ${tab} coming soon!`);
@@ -267,7 +274,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                     </button>
                 </div>
                 <RecordSaleModal isOpen={saleOpen} onClose={() => setSaleOpen(false)} businessId={businessId} businessName={businessName} />
-                <ImportSalesModal isOpen={importSalesOpen} onClose={() => setImportSalesOpen(false)} businessId={businessId} businessName={businessName} />
+                <ImportRecordsModal kind="sales" isOpen={importSalesOpen} onClose={() => setImportSalesOpen(false)} businessId={businessId} businessName={businessName} />
                 <div style={{ overflowX: 'auto' }}>
                 <table style={{ ...tableStyle, minWidth: 1350 }}><thead><tr>{['Receipt #', 'Date', 'Customer', 'Items', 'Total', 'Discount', 'Paid', 'Balance', 'Method', 'Payment', 'Processing', 'Store', 'Sold by', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
@@ -309,19 +316,39 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     if (tab === 'expenses') {
         if (expensesLoading) return loadingEl;
         return (
-            <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Date', 'Purpose', 'Account', 'Amount', 'Ref #', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+            <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setImportExpensesOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Import
+                    </button>
+                </div>
+                <RecordExpenseModal isOpen={expenseOpen} onClose={() => setExpenseOpen(false)} businessId={businessId} businessName={businessName} />
+                <ImportRecordsModal kind="expenses" isOpen={importExpensesOpen} onClose={() => setImportExpensesOpen(false)} businessId={businessId} businessName={businessName} />
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1100 }}><thead><tr>{['Date', 'Purpose', 'Description', 'Amount', 'Account', 'Employee', 'Approved by', 'Store', 'Ref #', 'Receipt', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(expenses || []).map((e, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={tdStyle}>{formatDate(e.date)}</td>
-                            <td style={tdStyle}>{e.purpose}</td>
-                            <td style={tdStyle}>{e.account}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(e.amount)}</td>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{e.referenceNumber}</td>
-                            <td style={tdStyle}>{acts(e)}</td>
-                        </tr>)}
+                        {(expenses || []).map((e: any, i: number) => {
+                            const none = <span style={{ color: '#9ca3af' }}>—</span>;
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatDate(e.date)}</td>
+                                <td style={tdStyle}>{e.purpose}</td>
+                                <td style={{ ...tdStyle, maxWidth: 220 }}>{e.description || none}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{fullNaira(e.amount)}</td>
+                                <td style={tdStyle}>{e.account}</td>
+                                <td style={tdStyle}>{e.employee || none}</td>
+                                <td style={tdStyle}>{e.approvedBy || none}</td>
+                                <td style={tdStyle}>{e.store || none}</td>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>{e.referenceNumber || none}</td>
+                                <td style={tdStyle}>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3f7d2c', fontWeight: 700, fontSize: 12 }}>View</a> : none}</td>
+                                <td style={tdStyle}>{acts(e)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}
