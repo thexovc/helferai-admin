@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
 import { formatCurrency } from '../../lib/utils';
-import { Search, Building2, CheckCircle, Plus, Edit2, Trash2, Mail, Loader2 } from 'lucide-react';
+import { Search, Building2, Plus, Edit2, Trash2, Mail, Loader2 } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 import { useInventoryBusinesses } from '@/api/inventory';
 import { useCreateBusiness, useUpdateBusiness, useDeleteBusiness } from '@/api/inventory/inventory.mutations';
@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 const EmailComposerModal = dynamic(() => import('@/components/EmailComposerModal'), { ssr: false });
 
 const SORT_FILTERS = [
-    'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days', 'Failed Payments',
+    'Expiring in 5 Days', 'Expiring in 30 Days', 'Trial Ending in 3 Days',
     'Recently Upgraded', 'Converted from Trial', 'High Paying', 'Annual Plan', 'Auto Renew Off',
     'Inactive 30 Days', 'Downgraded Recently',
 ];
@@ -46,7 +46,6 @@ export default function BusinessesPage() {
                 'Expiring in 5 Days': 'expiring_5d',
                 'Expiring in 30 Days': 'expiring_30d',
                 'Trial Ending in 3 Days': 'trial_ending_3d',
-                'Failed Payments': 'failed_payments',
                 'High Paying': 'high_paying',
                 'Annual Plan': 'annual_plan',
                 'Auto Renew Off': 'auto_renew_off',
@@ -183,21 +182,27 @@ export default function BusinessesPage() {
                     ))}
                 </div>
 
-                {/* Sort filter pills */}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                    {SORT_FILTERS.map(f => (
-                        <button key={f} onClick={() => {
-                            setActiveFilter(activeFilter === f ? '' : f);
-                            setPage(1);
-                        }} style={{
-                            padding: '6px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                            background: activeFilter === f ? '#6c9e4e' : '#fff',
-                            color: activeFilter === f ? '#fff' : '#6b7280',
-                            border: activeFilter === f ? '1px solid #6c9e4e' : '1px solid #e5e7eb',
-                        }}>
-                            {activeFilter === f && <CheckCircle size={10} style={{ marginRight: 4 }} />}{f}
+                {/* Quick filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                    <label htmlFor="quick-filter" style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>Show</label>
+                    <select
+                        id="quick-filter"
+                        value={activeFilter}
+                        onChange={e => { setActiveFilter(e.target.value); setPage(1); }}
+                        style={{
+                            height: 38, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer',
+                            border: activeFilter ? '1px solid #6c9e4e' : '1px solid #e5e7eb',
+                            background: activeFilter ? '#eaf4e3' : '#fff', color: activeFilter ? '#3f7d2c' : '#374151',
+                        }}
+                    >
+                        <option value="">All merchants</option>
+                        {SORT_FILTERS.map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                    {activeFilter && (
+                        <button onClick={() => { setActiveFilter(''); setPage(1); }} style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                            Clear
                         </button>
-                    ))}
+                    )}
                 </div>
 
                 {/* Table Card */}
