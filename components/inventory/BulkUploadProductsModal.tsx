@@ -7,18 +7,14 @@ import { inventoryKeys } from '@/api/inventory/inventory.queries';
 
 const API_BASE = process.env.NEXT_PUBLIC_INVENTORY_API_URL || 'http://localhost:3000/api';
 
-// Same columns the main app's bulk upload reads
-const TEMPLATE_HEADERS = ['product_name', 'sku', 'category', 'brand', 'unit', 'vendor', 'selling_price', 'cost_price', 'opening_stock', 'tax_percentage', 'color', 'size', 'description'];
-const TEMPLATE_EXAMPLE = ['iPhone 15 Pro 256GB', 'IP15P-256', 'Smartphones', 'Apple', 'pcs', 'ANGLE 90 Gadgets', '1250000', '1150000', '3', '0', 'Black', '', 'Unlocked, UK used'];
+// The HelferAI app's own example sheet (copied from public/examples in HelferAI-Inventory-V2)
+const TEMPLATE_URL = '/examples/inventory_bulk_upload_example.xlsx';
 
 const downloadTemplate = () => {
-    const csv = [TEMPLATE_HEADERS, TEMPLATE_EXAMPLE].map(r => r.map(c => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'product-upload-template.csv';
+    a.href = TEMPLATE_URL;
+    a.download = 'inventory_bulk_upload_example.xlsx';
     a.click();
-    URL.revokeObjectURL(url);
 };
 
 export default function BulkUploadProductsModal({ isOpen, onClose, businessId, businessName }: {
@@ -92,7 +88,7 @@ export default function BulkUploadProductsModal({ isOpen, onClose, businessId, b
                         Only <b>product name</b> and <b>selling price</b> are required; categories, brands, units and vendors are matched by name, or created if new.
                     </div>
                     <button onClick={downloadTemplate} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px solid #c7ddb8', background: '#f0f7eb', color: '#3f7d2c', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        Download template (.csv)
+                        Download template (.xlsx)
                     </button>
                     <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: 12, padding: 24, textAlign: 'center', cursor: 'pointer', background: '#fafafa' }}>
                         <input type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => setFile(e.target.files?.[0] || null)} />
