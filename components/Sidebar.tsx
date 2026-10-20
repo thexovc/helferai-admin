@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Building2, Users, Settings, Shield, ChevronLeft,
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
-    LogOut, Home, X, Tag, Layers, ShoppingBag, Scale, Building, Puzzle,
+    LogOut, Home, X, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
     MessageSquare, Camera, DollarSign, CreditCard
 } from 'lucide-react';
@@ -48,8 +48,6 @@ const inventoryNav: NavGroup[] = [
     },
     {
         title: 'Inventory', items: [
-            { href: '/inventory/brands', icon: <Tag size={18} />, label: 'Brands' },
-            { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
             { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
             { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
         ],
