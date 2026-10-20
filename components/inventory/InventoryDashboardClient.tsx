@@ -154,6 +154,14 @@ export default function InventoryDashboardClient() {
 
     const comparisonSubtitle = selectedRange === 'Default' ? 'vs last month' : 'vs previous period';
 
+    // The active count covers the whole selected period, so name it after the period
+    const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', Default: 'Active This Month' };
+    const activeLabel = activeLabels[selectedRange] ?? 'Active in Period';
+
+    // Bars under the status cards show each count as a share of all businesses
+    const totalCount = Number(overview.totalBusiness?.value || 0);
+    const shareOfTotal = (v?: number) => totalCount > 0 ? Math.min(100, Math.round((Number(v || 0) / totalCount) * 100)) : 0;
+
     const exportReport = () => {
         const rows: unknown[][] = [
             ['HelferAI Inventory Report'],
@@ -163,8 +171,8 @@ export default function InventoryDashboardClient() {
             ['Metric', 'Value', 'Trend'],
             ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
             [],
-            ['Month', 'Revenue', 'MRR', 'ARPU', 'Total Businesses', 'Subscribing'],
-            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.subscribing ?? '']),
+            ['Month', 'Subscription Income', 'MRR', 'ARPU', 'Total Businesses', 'Subscribing', 'Sales by Businesses'],
+            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
             [],
             ['Week', 'Active', 'Inactive'],
             ...(charts.retentionChurn || []).map((d: any) => [d.week, d.active, d.inactive]),
@@ -290,16 +298,16 @@ export default function InventoryDashboardClient() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
                     <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
                     <DashboardCard variant="metric" label={selectedRange === 'Default' ? 'New This Month' : 'New in Period'} value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
-                    <DashboardCard variant="metric" label="Active Today" value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="daily active rate" />
+                    <DashboardCard variant="metric" label={activeLabel} value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
                     <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={overview.totalSubscribingBusiness?.trend ?? ''} icon={Building2} accent="#3b82f6" progress={100} />
-                    <DashboardCard variant="status" label="Active Trials" value={overview.trialUsers?.value ?? '0'} subValue="Trial active" icon={Calendar} accent="#a16207" progress={75} />
-                    <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={10} />
-                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="conversion rate" icon={TrendingUp} accent="#22c55e" progress={45} />
+                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={overview.totalSubscribingBusiness?.trend ?? ''} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
+                    <DashboardCard variant="status" label="Trials Started" value={overview.trialUsers?.value ?? '0'} subValue="in this period" icon={Calendar} accent="#a16207" progress={shareOfTotal(overview.trialUsers?.value)} />
+                    <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={shareOfTotal(overview.cancelledBusinesses?.value)} />
+                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="of ended trials paid" icon={TrendingUp} accent="#22c55e" progress={Math.min(100, Math.round(Number(overview.conversionRate?.value || 0)))} />
                 </div>
 
                 {/* CHARTS ROW */}
@@ -309,7 +317,7 @@ export default function InventoryDashboardClient() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Monthly Revenue</h3>
-                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Gross billing performance by month</div>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Subscription income HelferAI collected each month</div>
                             </div>
                             <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
                         </div>
@@ -323,7 +331,7 @@ export default function InventoryDashboardClient() {
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tickFormatter={v => `₦${v / 1000000}M`} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
+                                <YAxis tickFormatter={fmtMillions}tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Area type="monotone" dataKey="value" stroke="#6c9e4e" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
                             </AreaChart>
@@ -382,10 +390,11 @@ export default function InventoryDashboardClient() {
 
                 {/* BOTTOM ROW (Funnel and Actions) */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
+                    {/* The server's funnel counts businesses on a trial or paid plan now, not new sign-ups in the period */}
                     <ConversionFunnel data={{
-                        registered: overview.totalBusiness?.value ?? 0,
-                        trialing: overview.trialUsers?.value ?? 0,
-                        paying: overview.totalSubscribingBusiness?.value ?? 0
+                        registered: charts.conversionFunnel?.registered ?? overview.totalBusiness?.value ?? 0,
+                        trialing: charts.conversionFunnel?.trialing ?? overview.trialUsers?.value ?? 0,
+                        paying: charts.conversionFunnel?.paying ?? overview.totalSubscribingBusiness?.value ?? 0
                     }} />
                     <RecentActions actions={recentActions} />
                 </div>
