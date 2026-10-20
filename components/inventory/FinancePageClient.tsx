@@ -12,6 +12,7 @@ import {
 import DashboardCard from './DashboardCard';
 import RevenueEvent from './RevenueEvent';
 import Pagination from '../Pagination';
+import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
 // Short axis labels, e.g. ₦0, ₦4K, ₦1.5M
 const fmtK = (v: number) => v >= 1000000 ? `₦${+(v / 1000000).toFixed(1)}M` : v >= 1000 ? `₦${+(v / 1000).toFixed(1)}K` : `₦${v}`;
@@ -216,12 +217,12 @@ export default function InventoryFinancePageClient() {
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* FINANCIAL KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="metric" label="MRR" value={`₦${((kpis.mrr?.value || 0) / 1000).toFixed(1)}k`} trend={allTime ? '' : (kpis.mrr?.trend ?? '')} trendUp={kpis.mrr?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="metric" label="ARR" value={`₦${((kpis.arr?.value || 0) / 1000000).toFixed(2)}M`} trend={allTime ? '' : (kpis.arr?.trend ?? '')} trendUp={kpis.arr?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="metric" label="Revenue in Period" value={fmtNaira(kpis.revenuePeriod?.value ?? 0)} trend={allTime ? '' : (kpis.revenuePeriod?.trend ?? '')} trendUp={kpis.revenuePeriod?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="metric" label="Revenue Today" value={fmtNaira(kpis.revenueToday?.value ?? 0)} trend={kpis.revenueToday?.trend ?? ''} trendUp={kpis.revenueToday?.trendUp ?? true} subtitle="vs yesterday" />
-                    <DashboardCard variant="metric" label="ARPU" value={fmtNaira(kpis.arpu?.value ?? 0)} trend={allTime ? '' : (kpis.arpu?.trend ?? '')} trendUp={kpis.arpu?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="status" label="Renewals Due" value={fmtNaira(kpis.pendingRenewalsValue?.value ?? 0)}
+                    <DashboardCard variant="metric" label="MRR" value={compactNaira(kpis.mrr?.value ?? 0)} fullValue={fullNaira(kpis.mrr?.value ?? 0)} trend={allTime ? '' : (kpis.mrr?.trend ?? '')} trendUp={kpis.mrr?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="ARR" value={compactNaira(kpis.arr?.value ?? 0)} fullValue={fullNaira(kpis.arr?.value ?? 0)} trend={allTime ? '' : (kpis.arr?.trend ?? '')} trendUp={kpis.arr?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="Revenue in Period" value={compactNaira(kpis.revenuePeriod?.value ?? 0)} fullValue={fullNaira(kpis.revenuePeriod?.value ?? 0)} trend={allTime ? '' : (kpis.revenuePeriod?.trend ?? '')} trendUp={kpis.revenuePeriod?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="Revenue Today" value={compactNaira(kpis.revenueToday?.value ?? 0)} fullValue={fullNaira(kpis.revenueToday?.value ?? 0)} trend={kpis.revenueToday?.trend ?? ''} trendUp={kpis.revenueToday?.trendUp ?? true} subtitle="vs yesterday" />
+                    <DashboardCard variant="metric" label="ARPU" value={compactNaira(kpis.arpu?.value ?? 0)} fullValue={fullNaira(kpis.arpu?.value ?? 0)} trend={allTime ? '' : (kpis.arpu?.trend ?? '')} trendUp={kpis.arpu?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="status" label="Renewals Due" value={compactNaira(kpis.pendingRenewalsValue?.value ?? 0)} fullValue={fullNaira(kpis.pendingRenewalsValue?.value ?? 0)}
                         subValue={`${renewalsCount} in the next 30 days`} icon={Clock} accent="#f59e0b"
                         progress={payingCount > 0 ? Math.min(100, Math.round((renewalsCount / payingCount) * 100)) : 0} />
                 </div>

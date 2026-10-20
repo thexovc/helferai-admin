@@ -16,6 +16,7 @@ import {
 import DashboardCard from './DashboardCard';
 import ConversionFunnel from './ConversionFunnel';
 import RecentActions from './RecentActions';
+import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
 // Full amount for tooltips and totals, e.g. ₦16,000
 const fmtNaira = (v: number) => `₦${Math.round(v).toLocaleString()}`;
@@ -343,17 +344,17 @@ export default function InventoryDashboardClient() {
                 
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Businesses Joined' : 'New in Period'} value={overview.newBusinessThisMonth?.value ?? '0'} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
-                    <DashboardCard variant="metric" label={activeLabel} value={overview.activeToday?.value ?? '0'} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
-                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label="Total Businesses" value={compactCount(overview.totalBusiness?.value ?? 0)} fullValue={fullCount(overview.totalBusiness?.value ?? 0)} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
+                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Businesses Joined' : 'New in Period'} value={compactCount(overview.newBusinessThisMonth?.value ?? 0)} fullValue={fullCount(overview.newBusinessThisMonth?.value ?? 0)} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label={activeLabel} value={compactCount(overview.activeToday?.value ?? 0)} fullValue={fullCount(overview.activeToday?.value ?? 0)} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
+                    <DashboardCard variant="metric" label="MRR" value={compactNaira(overview.mrr?.value ?? 0)} fullValue={fullNaira(overview.mrr?.value ?? 0)} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={allTime ? 'all time' : (overview.totalSubscribingBusiness?.trend ?? '')} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
-                    <DashboardCard variant="status" label="Trials Started" value={overview.trialUsers?.value ?? '0'} subValue="in this period" icon={Calendar} accent="#a16207" progress={shareOfTotal(overview.trialUsers?.value)} />
-                    <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={shareOfTotal(overview.cancelledBusinesses?.value)} />
+                    <DashboardCard variant="status" label="Subscribing Orgs" value={compactCount(overview.totalSubscribingBusiness?.value ?? 0)} fullValue={fullCount(overview.totalSubscribingBusiness?.value ?? 0)} subValue={allTime ? 'all time' : (overview.totalSubscribingBusiness?.trend ?? '')} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
+                    <DashboardCard variant="status" label="Trials Started" value={compactCount(overview.trialUsers?.value ?? 0)} fullValue={fullCount(overview.trialUsers?.value ?? 0)} subValue="in this period" icon={Calendar} accent="#a16207" progress={shareOfTotal(overview.trialUsers?.value)} />
+                    <DashboardCard variant="status" label="Cancelled" value={compactCount(overview.cancelledBusinesses?.value ?? 0)} fullValue={fullCount(overview.cancelledBusinesses?.value ?? 0)} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={shareOfTotal(overview.cancelledBusinesses?.value)} />
                     <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="of ended trials paid" icon={TrendingUp} accent="#22c55e" progress={Math.min(100, Math.round(Number(overview.conversionRate?.value || 0)))} />
                 </div>
 
