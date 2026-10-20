@@ -20,14 +20,10 @@ export default function ReferralsPageClient() {
         status: statusFilter
     });
 
-    const rawReferrals = response?.data || [];
-    // Sort latest first
-    const referrals = [...rawReferrals].sort((a: any, b: any) => {
-        const timeA = new Date(a.date || a.createdAt || a.created_at || 0).getTime();
-        const timeB = new Date(b.date || b.createdAt || b.created_at || 0).getTime();
-        return timeB - timeA;
-    });
+    // The server returns real referrals only, newest first
+    const referrals: any[] = response?.data || [];
     const totalCount = response?.meta?.total || referrals.length;
+    const stats = (response as any)?.stats;
 
     return (
         <div>
@@ -46,6 +42,24 @@ export default function ReferralsPageClient() {
                         </div>
                     </div>
                 </div>
+
+                {stats && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 20 }}>
+                        {[
+                            { label: 'Referrals', value: stats.total, sub: 'Merchants who signed up with a code', color: '#1a1a2e', filter: '' },
+                            { label: 'Rewarded', value: stats.rewarded, sub: 'Signup points paid', color: '#15803d', filter: 'rewarded' },
+                            { label: 'Qualified, not paid', value: stats.qualified, sub: 'Made a sale or added a product', color: '#0284c7', filter: 'qualified' },
+                            { label: 'Pending', value: stats.pending, sub: 'Not paid yet', color: '#b45309', filter: 'pending' },
+                        ].map(k => (
+                            <button key={k.label} onClick={() => { setStatusFilter(k.filter); setPage(1); }}
+                                style={{ textAlign: 'left', background: '#fff', borderRadius: 14, padding: '14px 16px', border: statusFilter === k.filter ? '1.5px solid #6c9e4e' : '1px solid #f0f0f0', cursor: 'pointer' }}>
+                                <div style={{ fontSize: 22, fontWeight: 800, color: k.color }}>{k.value}</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e' }}>{k.label}</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af' }}>{k.sub}</div>
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {/* Filters Row */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -74,6 +88,7 @@ export default function ReferralsPageClient() {
                         style={{ height: 44, borderRadius: 12, border: '1px solid #e5e7eb', padding: '0 14px', fontSize: 13, background: '#fff', outline: 'none', color: '#374151' }}>
                         <option value="">All Statuses</option>
                         <option value="rewarded">Rewarded</option>
+                        <option value="qualified">Qualified, not paid</option>
                         <option value="pending">Pending</option>
                     </select>
                 </div>
@@ -84,9 +99,9 @@ export default function ReferralsPageClient() {
                         <thead>
                             <tr>
                                 <th>Referrer</th>
-                                <th>Referred User</th>
+                                <th>Referred Merchant</th>
                                 <th>Referral Code</th>
-                                <th>Date Invited</th>
+                                <th>Joined</th>
                                 <th>Status</th>
                                 <th>Points Awarded</th>
                             </tr>
@@ -102,26 +117,27 @@ export default function ReferralsPageClient() {
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No referral records found</td>
                                 </tr>
-                            ) : referrals.map((r: ReferralAuditItem) => (
+                            ) : referrals.map((r: any) => (
                                 <tr key={r.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td>
                                         <div style={{ fontWeight: 600, color: '#1a1a2e' }}>{r.referrerName}</div>
-                                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{r.referrerEmail}</div>
+                                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{[r.referrerBusiness, r.referrerEmail].filter(Boolean).join(' · ')}</div>
                                     </td>
                                     <td>
-                                        <div style={{ fontWeight: 600, color: '#1a1a2e' }}>{r.referredName}</div>
-                                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{r.referredEmail}</div>
+                                        {r.referredBusinessId
+                                            ? <a href={`/inventory/businesses/${r.referredBusinessId}`} style={{ fontWeight: 600, color: '#1a1a2e', textDecoration: 'none' }}>{r.referredBusiness || r.referredName}</a>
+                                            : <div style={{ fontWeight: 600, color: '#1a1a2e' }}>{r.referredName}</div>}
+                                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{[r.referredBusiness ? r.referredName : null, r.referredEmail].filter(Boolean).join(' · ')}</div>
                                     </td>
                                     <td><span style={{ fontFamily: 'monospace', padding: '3px 8px', background: '#f3f4f6', borderRadius: 4, fontSize: 12 }}>{r.referralCode}</span></td>
-                                    <td style={{ color: '#6b7280', fontSize: 13 }}>{formatDateTime(r.createdAt)}</td>
+                                    <td style={{ color: '#6b7280', fontSize: 13, whiteSpace: 'nowrap' }}>{r.createdAt ? formatDateTime(r.createdAt) : '—'}</td>
                                     <td>
-                                        <span style={{
-                                            padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                                            background: r.status === 'rewarded' ? '#dcfce7' : '#fef3c7',
-                                            color: r.status === 'rewarded' ? '#15803d' : '#b45309'
-                                        }}>
-                                            {r.status === 'rewarded' ? 'Rewarded' : 'Pending'}
-                                        </span>
+                                        {(() => {
+                                            // Rewarded; qualified (did a sale/product, points not paid); or waiting for their first sale/product
+                                            const st = r.status === 'rewarded' ? ['Rewarded', '#dcfce7', '#15803d'] : r.qualified ? ['Qualified, not paid', '#e0f2fe', '#0369a1'] : ['Pending', '#fef3c7', '#b45309'];
+                                            return <span style={{ padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: st[1], color: st[2], whiteSpace: 'nowrap' }}>{st[0]}</span>;
+                                        })()}
+                                        {r.status !== 'rewarded' && !r.qualified && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>No sale or product yet</div>}
                                     </td>
                                     <td>
                                         <span style={{ fontWeight: 700, color: r.pointsAwarded > 0 ? '#16a34a' : '#9ca3af' }}>
