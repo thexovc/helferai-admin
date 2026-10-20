@@ -49,7 +49,7 @@ const GrowthTooltip = ({ active, payload, label }: any) => {
 // Local YYYY-MM-DD (toISOString would shift the day to UTC)
 const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// 'Default' is the current month to date
+// 'All time' starts well before the first record; the server trims it to the first one
 const getRangeDates = (range: string, customStart: string, customEnd: string): { startDate?: string; endDate?: string } => {
     const today = new Date();
     const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
@@ -63,7 +63,7 @@ const getRangeDates = (range: string, customStart: string, customEnd: string): {
         case '6M': return { startDate: toYMD(monthsAgo(6)), endDate: toYMD(today) };
         case '12M': return { startDate: toYMD(monthsAgo(12)), endDate: toYMD(today) };
         case 'Custom': return { startDate: customStart, endDate: customEnd };
-        default: return { startDate: toYMD(new Date(today.getFullYear(), today.getMonth(), 1)), endDate: toYMD(today) };
+        default: return { startDate: '2000-01-01', endDate: toYMD(today) };
     }
 };
 
@@ -105,7 +105,7 @@ const csvCell = (v: unknown) => {
 };
 
 export default function InventoryDashboardClient() {
-    const [selectedRange, setSelectedRange] = React.useState('Default');
+    const [selectedRange, setSelectedRange] = React.useState('All time');
     const [showDateDropdown, setShowDateDropdown] = React.useState(false);
     // Applied custom range, plus the draft values being edited in the dropdown
     const [customStart, setCustomStart] = React.useState('');
@@ -116,7 +116,7 @@ export default function InventoryDashboardClient() {
     const { startDate, endDate } = getRangeDates(selectedRange, customStart, customEnd);
     const { data: dashboard, isLoading, isFetching, isError } = useInventoryDashboard(startDate, endDate);
 
-    // Dates shown in the header; 'Default' is this month so far
+    // Dates shown in the header
     const today = new Date();
     const shownStart = startDate ?? toYMD(new Date(today.getFullYear(), today.getMonth(), 1));
     const shownEnd = endDate ?? toYMD(today);
@@ -182,7 +182,8 @@ export default function InventoryDashboardClient() {
         return start === end ? fmt(start) : `${fmt(start)} - ${fmt(end)}`;
     };
 
-    const comparisonSubtitle = selectedRange === 'Default' ? 'vs last month' : 'vs previous period';
+    const allTime = selectedRange === 'All time';
+    const comparisonSubtitle = selectedRange === 'All time' ? 'all time' : 'vs previous period';
 
     // The charts are split by day, week or month depending on the period length
     const granularity: string = charts.granularity || 'month';
@@ -201,7 +202,7 @@ export default function InventoryDashboardClient() {
     const growthTicks = Array.from({ length: Math.round((growthHigh - growthLow) / growthStep) + 1 }, (_, i) => growthLow + i * growthStep);
 
     // The active count covers the whole selected period, so name it after the period
-    const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', Default: 'Active This Month' };
+    const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', 'All time': 'Active Ever' };
     const activeLabel = activeLabels[selectedRange] ?? 'Active in Period';
 
     // Bars under the status cards show each count as a share of all businesses
@@ -257,7 +258,7 @@ export default function InventoryDashboardClient() {
                             userSelect: 'none', position: 'relative'
                         }}
                     >
-                        {formatDateRange(shownStart, shownEnd)}
+                        {selectedRange === 'All time' ? 'All time' : formatDateRange(shownStart, shownEnd)}
                         <ChevronDown size={14} color="#94a3b8" />
                         
                         {/* Date Picker Dropdown */}
@@ -308,7 +309,7 @@ export default function InventoryDashboardClient() {
                         )}
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
-                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'Default'].map(p => (
+                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'All time'].map(p => (
                             <button 
                                 key={p} 
                                 onClick={() => handleRangeChange(p)}
@@ -342,15 +343,15 @@ export default function InventoryDashboardClient() {
                 
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label={selectedRange === 'Default' ? 'New This Month' : 'New in Period'} value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
-                    <DashboardCard variant="metric" label={activeLabel} value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
-                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
+                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Businesses Joined' : 'New in Period'} value={overview.newBusinessThisMonth?.value ?? '0'} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label={activeLabel} value={overview.activeToday?.value ?? '0'} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
+                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={overview.totalSubscribingBusiness?.trend ?? ''} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
+                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={allTime ? 'all time' : (overview.totalSubscribingBusiness?.trend ?? '')} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
                     <DashboardCard variant="status" label="Trials Started" value={overview.trialUsers?.value ?? '0'} subValue="in this period" icon={Calendar} accent="#a16207" progress={shareOfTotal(overview.trialUsers?.value)} />
                     <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={shareOfTotal(overview.cancelledBusinesses?.value)} />
                     <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="of ended trials paid" icon={TrendingUp} accent="#22c55e" progress={Math.min(100, Math.round(Number(overview.conversionRate?.value || 0)))} />

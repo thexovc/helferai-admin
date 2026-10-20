@@ -38,7 +38,7 @@ const RevenueTooltip = ({ active, payload, label }: any) => {
 // Local YYYY-MM-DD (toISOString would shift the day to UTC)
 const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// 'Default' is the current month to date
+// 'All time' starts well before the first record; the server trims it to the first one
 const getRangeDates = (range: string, customStart: string, customEnd: string) => {
     const today = new Date();
     const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
@@ -52,7 +52,7 @@ const getRangeDates = (range: string, customStart: string, customEnd: string) =>
         case '6M': return { startDate: toYMD(monthsAgo(6)), endDate: toYMD(today) };
         case '12M': return { startDate: toYMD(monthsAgo(12)), endDate: toYMD(today) };
         case 'Custom': return { startDate: customStart, endDate: customEnd };
-        default: return { startDate: toYMD(new Date(today.getFullYear(), today.getMonth(), 1)), endDate: toYMD(today) };
+        default: return { startDate: '2000-01-01', endDate: toYMD(today) };
     }
 };
 
@@ -63,7 +63,7 @@ const formatDateRange = (start: string, end: string) => {
 };
 
 export default function InventoryFinancePageClient() {
-    const [selectedRange, setSelectedRange] = React.useState('Default');
+    const [selectedRange, setSelectedRange] = React.useState('All time');
     const [showDateDropdown, setShowDateDropdown] = React.useState(false);
     const [customStart, setCustomStart] = React.useState('');
     const [customEnd, setCustomEnd] = React.useState('');
@@ -119,7 +119,8 @@ export default function InventoryFinancePageClient() {
 
     const { kpis, charts, anomalousEvents } = financeData;
     const granularity = charts.granularity || 'month';
-    const comparison = selectedRange === 'Default' ? 'vs last month' : 'vs previous period';
+    const allTime = selectedRange === 'All time';
+    const comparison = selectedRange === 'All time' ? 'all time' : 'vs previous period';
 
     const revenueOverTime = (charts.monthlyRevenue || []).map((d: any) => ({ month: d.month, value: d.amount }));
     const revenueTotal = revenueOverTime.reduce((sum: number, d: any) => sum + d.value, 0);
@@ -167,7 +168,7 @@ export default function InventoryFinancePageClient() {
                             userSelect: 'none', position: 'relative'
                         }}
                     >
-                        {formatDateRange(startDate, endDate)} <ChevronDown size={14} color="#94a3b8" />
+                        {selectedRange === 'All time' ? 'All time' : formatDateRange(startDate, endDate)} <ChevronDown size={14} color="#94a3b8" />
                         {showDateDropdown && (
                             <div
                                 onClick={e => e.stopPropagation()}
@@ -198,7 +199,7 @@ export default function InventoryFinancePageClient() {
                         )}
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'Default'].map(p => (
+                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'All time'].map(p => (
                             <button key={p} onClick={() => { setSelectedRange(p); setShowDateDropdown(false); }} style={{
                                 background: selectedRange === p ? '#fff' : 'transparent',
                                 border: selectedRange === p ? '1px solid #e2e8f0' : 'none',
@@ -215,11 +216,11 @@ export default function InventoryFinancePageClient() {
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* FINANCIAL KPIs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="metric" label="MRR" value={`₦${((kpis.mrr?.value || 0) / 1000).toFixed(1)}k`} trend={kpis.mrr?.trend ?? ''} trendUp={kpis.mrr?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="metric" label="ARR" value={`₦${((kpis.arr?.value || 0) / 1000000).toFixed(2)}M`} trend={kpis.arr?.trend ?? ''} trendUp={kpis.arr?.trendUp ?? true} subtitle={comparison} />
-                    <DashboardCard variant="metric" label="Revenue in Period" value={fmtNaira(kpis.revenuePeriod?.value ?? 0)} trend={kpis.revenuePeriod?.trend ?? ''} trendUp={kpis.revenuePeriod?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="MRR" value={`₦${((kpis.mrr?.value || 0) / 1000).toFixed(1)}k`} trend={allTime ? '' : (kpis.mrr?.trend ?? '')} trendUp={kpis.mrr?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="ARR" value={`₦${((kpis.arr?.value || 0) / 1000000).toFixed(2)}M`} trend={allTime ? '' : (kpis.arr?.trend ?? '')} trendUp={kpis.arr?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="Revenue in Period" value={fmtNaira(kpis.revenuePeriod?.value ?? 0)} trend={allTime ? '' : (kpis.revenuePeriod?.trend ?? '')} trendUp={kpis.revenuePeriod?.trendUp ?? true} subtitle={comparison} />
                     <DashboardCard variant="metric" label="Revenue Today" value={fmtNaira(kpis.revenueToday?.value ?? 0)} trend={kpis.revenueToday?.trend ?? ''} trendUp={kpis.revenueToday?.trendUp ?? true} subtitle="vs yesterday" />
-                    <DashboardCard variant="metric" label="ARPU" value={fmtNaira(kpis.arpu?.value ?? 0)} trend={kpis.arpu?.trend ?? ''} trendUp={kpis.arpu?.trendUp ?? true} subtitle={comparison} />
+                    <DashboardCard variant="metric" label="ARPU" value={fmtNaira(kpis.arpu?.value ?? 0)} trend={allTime ? '' : (kpis.arpu?.trend ?? '')} trendUp={kpis.arpu?.trendUp ?? true} subtitle={comparison} />
                     <DashboardCard variant="status" label="Renewals Due" value={fmtNaira(kpis.pendingRenewalsValue?.value ?? 0)}
                         subValue={`${renewalsCount} in the next 30 days`} icon={Clock} accent="#f59e0b"
                         progress={payingCount > 0 ? Math.min(100, Math.round((renewalsCount / payingCount) * 100)) : 0} />
