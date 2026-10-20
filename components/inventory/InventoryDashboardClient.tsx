@@ -5,13 +5,13 @@ import { useInventoryDashboard } from '@/api/inventory';
 import * as T from '@/api/inventory/inventory.types';
 import { 
     Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, 
-    DollarSign, Repeat, ArrowUpRight, ArrowDownRight, Zap, Download, 
+    DollarSign, ArrowUpRight, ArrowDownRight, Zap, Download, 
     ChevronDown, UserCheck, Flame, PieChart as PieIcon
 } from 'lucide-react';
 import { KPISkeleton } from '../Skeleton';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Cell
+    BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer
 } from 'recharts';
 import DashboardCard from './DashboardCard';
 import ConversionFunnel from './ConversionFunnel';
@@ -34,14 +34,14 @@ const RevenueTooltip = ({ active, payload, label }: any) => {
     );
 };
 
-const CountTooltip = ({ active, payload, label }: any) => {
+const GrowthTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
     return (
         <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-            {payload.map((p: any, i: number) => (
-                <div key={i} style={{ fontWeight: 600 }}>{Number(p.value).toLocaleString()} businesses</div>
-            ))}
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{Number(d.value).toLocaleString()} businesses</div>
+            <div style={{ color: '#cbd5e1', marginTop: 2 }}>+{d.added} joined</div>
         </div>
     );
 };
@@ -72,6 +72,12 @@ const metricName = (key: string) =>
     ['mrr', 'arr', 'rr', 'arpu'].includes(key)
         ? key.toUpperCase()
         : key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+
+// Round step for axis ticks: 1, 2, 5, 10, 20, 50, 100...
+const niceStep = (rough: number) => {
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(rough, 1))));
+    return [1, 2, 5, 10].map(m => m * pow).find(step => rough <= step) ?? 10 * pow;
+};
 
 const csvCell = (v: unknown) => {
     const s = v === null || v === undefined ? '' : String(v);
@@ -145,7 +151,7 @@ export default function InventoryDashboardClient() {
         monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue, count: d.paidSubscriptions ?? 0 })),
         arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
-        businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0 })),
+        businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0, added: d.newBusinesses ?? 0 })),
         retentionData: charts.retentionChurn || []
     };
 
@@ -160,6 +166,17 @@ export default function InventoryDashboardClient() {
     // The charts are split by day, week or month depending on the period length
     const granularity: string = charts.granularity || 'month';
     const revenueTotal = chartData.monthlyRevenue.reduce((sum: number, d: any) => sum + d.value, 0);
+    const latestBusinessTotal = chartData.businessGrowth.length ? chartData.businessGrowth[chartData.businessGrowth.length - 1].value : 0;
+    const businessesAdded = chartData.businessGrowth.reduce((sum: number, d: any) => sum + d.added, 0);
+
+    // Axis starts near the lowest total on round numbers, so growth is visible instead of a flat line at the top
+    const growthValues: number[] = chartData.businessGrowth.map((d: any) => d.value);
+    const growthMin = growthValues.length ? Math.min(...growthValues) : 0;
+    const growthMax = growthValues.length ? Math.max(...growthValues) : 0;
+    const growthStep = niceStep(Math.max(growthMax - growthMin, 4) / 4);
+    const growthLow = Math.max(0, Math.floor(growthMin / growthStep) * growthStep);
+    const growthHigh = Math.max(growthLow + growthStep, Math.ceil(growthMax / growthStep) * growthStep);
+    const growthTicks = Array.from({ length: Math.round((growthHigh - growthLow) / growthStep) + 1 }, (_, i) => growthLow + i * growthStep);
 
     // The active count covers the whole selected period, so name it after the period
     const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', Default: 'Active This Month' };
@@ -349,20 +366,24 @@ export default function InventoryDashboardClient() {
                                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Business Growth</h3>
                                 <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Total businesses at the end of each {granularity}</div>
                             </div>
-                            <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>{latestBusinessTotal.toLocaleString()}</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>+{businessesAdded} in this period</div>
+                            </div>
                         </div>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={chartData.businessGrowth} barSize={40}>
+                            <LineChart data={chartData.businessGrowth}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                                <Tooltip content={<CountTooltip />} />
-                                <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
-                                    {chartData.businessGrowth.map((_item: any, index: number) => (
-                                        <Cell key={index} fill={index === chartData.businessGrowth.length - 1 ? '#6c9e4e' : '#eaf4e3'} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
+                                <YAxis
+                                    domain={[growthLow, growthHigh]}
+                                    ticks={growthTicks}
+                                    allowDecimals={false}
+                                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10}
+                                />
+                                <Tooltip content={<GrowthTooltip />} />
+                                <Line type="monotone" dataKey="value" stroke="#6c9e4e" strokeWidth={3} dot={{ r: 3, fill: '#6c9e4e' }} activeDot={{ r: 5 }} />
+                            </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
