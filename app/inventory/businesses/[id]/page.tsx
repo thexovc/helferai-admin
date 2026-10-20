@@ -9,6 +9,7 @@ import { compactNaira, fullNaira, fullCount } from '@/components/inventory/forma
 import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import CreateProductModal from '@/components/inventory/CreateProductModal';
+import RecordSaleModal from '@/components/inventory/RecordSaleModal';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
@@ -53,6 +54,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [page, setPage] = useState(1);
     const [assignOpen, setAssignOpen] = useState(false);
     const [productOpen, setProductOpen] = useState(false);
+    const [saleOpen, setSaleOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
@@ -92,6 +94,10 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         }
         if (tab === 'products') {
             setProductOpen(true);
+            return;
+        }
+        if (tab === 'sales') {
+            setSaleOpen(true);
             return;
         }
         toast.info(`Create feature for ${tab} coming soon!`);
@@ -249,19 +255,32 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (salesLoading) return loadingEl;
         return (
             <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Receipt #', 'Customer', 'Amount', 'Payment', 'Processing', 'Date', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+                <RecordSaleModal isOpen={saleOpen} onClose={() => setSaleOpen(false)} businessId={businessId} businessName={businessName} />
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1350 }}><thead><tr>{['Receipt #', 'Date', 'Customer', 'Items', 'Total', 'Discount', 'Paid', 'Balance', 'Method', 'Payment', 'Processing', 'Store', 'Sold by', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(sales || []).map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{s.receiptNumber}</td>
-                            <td style={tdStyle}>{s.customer}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(s.totalAmount)}</td>
-                            <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
-                            <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
-                            <td style={tdStyle}>{formatDate(s.createdAt)}</td>
-                            <td style={tdStyle}>{acts(s)}</td>
-                        </tr>)}
+                        {(sales || []).map((s: any, i: number) => {
+                            const none = <span style={{ color: '#9ca3af' }}>—</span>;
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>{s.receiptNumber}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{s.receiptDate || s.createdAt ? formatDate(s.receiptDate || s.createdAt) : '—'}</td>
+                                <td style={tdStyle}>{s.customer || none}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{Number(s.itemsCount || 0).toLocaleString()}{s.unitsCount > s.itemsCount && <span style={{ color: '#9ca3af', fontSize: 11 }}> · {Number(s.unitsCount).toLocaleString()} units</span>}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{fullNaira(s.totalAmount)}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{s.totalDiscount > 0 ? fullNaira(s.totalDiscount) : none}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#15803d' }}>{fullNaira(s.amountPaid || 0)}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: s.amountDue > 0 ? '#dc2626' : '#374151', fontWeight: s.amountDue > 0 ? 700 : 400 }}>{s.amountDue > 0 ? fullNaira(s.amountDue) : none}</td>
+                                <td style={tdStyle}>{s.paymentMethod || none}</td>
+                                <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
+                                <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
+                                <td style={tdStyle}>{s.store || none}</td>
+                                <td style={tdStyle}>{s.salesperson || none}</td>
+                                <td style={tdStyle}>{acts(s)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}

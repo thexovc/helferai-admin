@@ -51,6 +51,13 @@ export const inventoryApi = {
   getBusinessExpenses: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessExpense>>(`/admin/api/inventory/businesses/${id}/expenses?page=${page}&pageSize=${pageSize}`),
   getBusinessWhatsapp: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessWhatsapp>>(`/admin/api/inventory/businesses/${id}/whatsapp?page=${page}&pageSize=${pageSize}`),
   getBusinessIntegrations: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessIntegrationItem>>(`/admin/api/inventory/businesses/${id}/integrations?page=${page}&pageSize=${pageSize}`),
+  getBusinessSaleOptions: (id: string, search = '') => inventoryClient.get<{
+    customers: { id: string; name: string; phone?: string | null }[];
+    products: { id: string; name: string; sku: string; sellingPrice: number; costPrice: number; stock: number }[];
+    paymentMethods: { id: string; name: string }[];
+    salespeople: { id: string; name: string }[];
+  }>(`/admin/api/inventory/businesses/${id}/sale-options?search=${encodeURIComponent(search)}`),
+  createBusinessSale: (id: string, dto: any) => inventoryClient.post<any>(`/admin/api/inventory/businesses/${id}/sales`, dto),
   getBusinessProductOptions: (id: string) => inventoryClient.get<{
     categories: { id: string; name: string }[];
     brands: { id: string; name: string }[];
