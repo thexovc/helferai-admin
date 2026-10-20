@@ -11,22 +11,25 @@ import {
 import { KPISkeleton } from '../Skeleton';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Area, AreaChart, Cell
+    Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import DashboardCard from './DashboardCard';
 import ConversionFunnel from './ConversionFunnel';
 import RecentActions from './RecentActions';
 
-const fmtMillions = (v: number) => v >= 1000000 ? `₦${(v / 1000000).toFixed(1)}M` : `₦${(v / 1000).toFixed(0)}K`;
+// Full amount for tooltips and totals, e.g. ₦16,000
+const fmtNaira = (v: number) => `₦${Math.round(v).toLocaleString()}`;
+// Short axis labels, e.g. ₦0, ₦4K, ₦1.5M
+const fmtNairaShort = (v: number) => v >= 1000000 ? `₦${+(v / 1000000).toFixed(1)}M` : v >= 1000 ? `₦${+(v / 1000).toFixed(1)}K` : `₦${v}`;
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const RevenueTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
     return (
         <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-            {payload.map((p: any, i: number) => (
-                <div key={i} style={{ color: p.color, fontWeight: 600 }}>{fmtMillions(p.value)}</div>
-            ))}
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{fmtNaira(d.value)}</div>
+            <div style={{ color: '#cbd5e1', marginTop: 2 }}>{d.count} paid subscription{d.count === 1 ? '' : 's'}</div>
         </div>
     );
 };
@@ -139,7 +142,7 @@ export default function InventoryDashboardClient() {
     // Adapt chart data for Recharts
     const chartData = {
         mrrTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.mrr })),
-        monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue })),
+        monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue, count: d.paidSubscriptions ?? 0 })),
         arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
         businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0 })),
@@ -156,6 +159,7 @@ export default function InventoryDashboardClient() {
 
     // The charts are split by day, week or month depending on the period length
     const granularity: string = charts.granularity || 'month';
+    const revenueTotal = chartData.monthlyRevenue.reduce((sum: number, d: any) => sum + d.value, 0);
 
     // The active count covers the whole selected period, so name it after the period
     const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', Default: 'Active This Month' };
@@ -315,29 +319,26 @@ export default function InventoryDashboardClient() {
 
                 {/* CHARTS ROW */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
-                    {/* Monthly Revenue Chart */}
+                    {/* Revenue Chart */}
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
                                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Revenue</h3>
                                 <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Subscription income HelferAI collected each {granularity}</div>
                             </div>
-                            <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>{fmtNaira(revenueTotal)}</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>in this period</div>
+                            </div>
                         </div>
                         <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={chartData.monthlyRevenue}>
-                                <defs>
-                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6c9e4e" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#6c9e4e" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
+                            <BarChart data={chartData.monthlyRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tickFormatter={fmtMillions}tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="value" stroke="#6c9e4e" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
-                            </AreaChart>
+                                <YAxis tickFormatter={fmtNairaShort} allowDecimals={false} width={56} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                <Tooltip content={<RevenueTooltip />} cursor={{ fill: '#f8fafc' }} />
+                                <Bar dataKey="value" fill="#6c9e4e" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
 

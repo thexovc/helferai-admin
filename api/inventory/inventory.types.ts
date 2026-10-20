@@ -74,6 +74,7 @@ export interface ChartData {
   arpu: number;
   totalBusiness?: number;
   newBusinesses?: number;
+  paidSubscriptions?: number;
   subscribing?: number;
   salesVolume?: number;
 }
