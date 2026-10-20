@@ -54,7 +54,7 @@ const inventoryNav: NavGroup[] = [
     },
     {
         title: 'Referral System', items: [
-            { href: '/inventory/referral-analytics', icon: <BarChart3 size={18} />, label: 'Referral Analytics' },
+            { href: '/inventory/referral-analytics', icon: <BarChart3 size={18} />, label: 'Reward Analytics' },
             { href: '/inventory/referral-tiers', icon: <Trophy size={18} />, label: 'Referral Tiers' },
             { href: '/inventory/referrals', icon: <UserPlus size={18} />, label: 'Referrals' },
             { href: '/inventory/referral-configs', icon: <Settings size={18} />, label: 'Referral Point Configs' },
