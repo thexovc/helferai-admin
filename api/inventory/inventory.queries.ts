@@ -250,6 +250,16 @@ export const useInventoryFinance = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: inventoryKeys.finance(startDate, endDate),
     queryFn: () => inventoryApi.getFinanceData(startDate, endDate),
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useFinanceSubscriptions = (page = 1, pageSize = 10, searchInput = '', planFilter = '', statusFilter = '') => {
+  const search = useDebouncedValue(searchInput);
+  return useQuery({
+    queryKey: [...inventoryKeys.all, 'finance-subscriptions', page, pageSize, search, planFilter, statusFilter],
+    queryFn: () => inventoryApi.getFinanceSubscriptions({ page, pageSize, search, planFilter, statusFilter }),
+    placeholderData: keepPreviousData,
   });
 };
 

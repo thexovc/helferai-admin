@@ -281,6 +281,14 @@ export const inventoryApi = {
     if (params.length) url += `?${params.join('&')}`;
     return inventoryClient.get<T.UnifiedFinanceData>(url);
   },
+  getFinanceSubscriptions: (params: { page?: number; pageSize?: number; search?: string; planFilter?: string; statusFilter?: string } = {}) => {
+    const { page = 1, pageSize = 10, search = '', planFilter = '', statusFilter = '' } = params;
+    let url = `/admin/api/inventory/finance/subscriptions?page=${page}&pageSize=${pageSize}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (planFilter) url += `&planFilter=${encodeURIComponent(planFilter)}`;
+    if (statusFilter) url += `&statusFilter=${encodeURIComponent(statusFilter)}`;
+    return inventoryClient.get<T.PaginatedResponse<T.FinanceSubscription>>(url);
+  },
   getFinanceSummary: () => inventoryClient.get<T.FinanceSummary>('/admin/api/inventory/finance/summary'),
   getTransactions: (page = 1, pageSize = 10) =>
     inventoryClient.get<T.PaginatedResponse<T.Transaction>>(`/admin/api/inventory/finance/transactions?page=${page}&pageSize=${pageSize}`),

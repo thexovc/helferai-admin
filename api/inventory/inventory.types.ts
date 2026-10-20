@@ -62,6 +62,8 @@ export interface KPIMetrics {
   arpu: KPIValue;
   pendingRenewalsValue?: { value: number };
   pendingRenewals?: { value: number };
+  revenuePeriod?: KPIValue;
+  payingSubscriptions?: { value: number };
   conversionRate?: { value: number; trend?: string; trendUp?: boolean };
   activeVsInactiveRatio?: KPIValue;
   newPayingBusinesses?: KPIValue;
@@ -189,6 +191,7 @@ export interface AnomalousEvent {
   id: number | string;
   type: string;
   clientId: string;
+  businessName?: string;
   time: string;
   amount: number;
   status: string;
@@ -197,8 +200,9 @@ export interface AnomalousEvent {
 export interface UnifiedFinanceData {
   kpis: KPIMetrics;
   charts: {
+    granularity?: 'day' | 'week' | 'month';
     monthlyRevenue: Array<{ month: string; amount: number }>;
-    subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number }>;
+    subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number; platinum?: number }>;
   };
   subscriptions?: FinanceSubscription[];
   anomalousEvents: AnomalousEvent[];
