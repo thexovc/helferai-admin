@@ -92,7 +92,15 @@ export interface ConversionFunnel {
   payingConversionRate: number;
 }
 
-export interface RetentionChurnItem {
+export interface RetentionStats {
+  retained: number;
+  lost: number;
+  new: number;
+  paying: number;
+  retentionRate: number | null;
+}
+
+export interface RetentionChurnItem extends Partial<RetentionStats> {
   week: string;
   active: number;
   inactive: number;
@@ -104,6 +112,7 @@ export interface InventoryCharts {
   pendingRenewalsTimeline: RenewalTimelineItem[];
   conversionFunnel?: ConversionFunnel;
   retentionChurn?: RetentionChurnItem[];
+  retentionSummary?: RetentionStats | null;
 }
 
 export interface RecentAction {

@@ -11,7 +11,7 @@ import {
 import { KPISkeleton } from '../Skeleton';
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer
+    Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import DashboardCard from './DashboardCard';
 import ConversionFunnel from './ConversionFunnel';
@@ -72,6 +72,26 @@ const metricName = (key: string) =>
     ['mrr', 'arr', 'rr', 'arpu'].includes(key)
         ? key.toUpperCase()
         : key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+
+const RetentionTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    const row = (color: string, name: string, value: number) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 99, background: color, display: 'inline-block' }} />
+            <span>{name}: <b>{value}</b></span>
+        </div>
+    );
+    return (
+        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
+            {row('#6c9e4e', 'Kept', d.retained)}
+            {row('#b7d7a0', 'New', d.new)}
+            {row('#ef4444', 'Lost', d.lost)}
+            <div style={{ color: '#cbd5e1', marginTop: 6 }}>{d.paying} paying · {d.retentionRate ?? '–'}% kept</div>
+        </div>
+    );
+};
 
 // Round step for axis ticks: 1, 2, 5, 10, 20, 50, 100...
 const niceStep = (rough: number) => {
@@ -152,7 +172,8 @@ export default function InventoryDashboardClient() {
         arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
         businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0, added: d.newBusinesses ?? 0 })),
-        retentionData: charts.retentionChurn || []
+        // Lost is drawn below the line, so it gets a negative value
+        retentionData: (charts.retentionChurn || []).map((d: any) => ({ ...d, lostBelow: -(d.lost || 0) }))
     };
 
     // Parse YYYY-MM-DD as a local date so the label doesn't slip a day
@@ -166,6 +187,7 @@ export default function InventoryDashboardClient() {
     // The charts are split by day, week or month depending on the period length
     const granularity: string = charts.granularity || 'month';
     const revenueTotal = chartData.monthlyRevenue.reduce((sum: number, d: any) => sum + d.value, 0);
+    const retentionSummary = charts.retentionSummary;
     const latestBusinessTotal = chartData.businessGrowth.length ? chartData.businessGrowth[chartData.businessGrowth.length - 1].value : 0;
     const businessesAdded = chartData.businessGrowth.reduce((sum: number, d: any) => sum + d.added, 0);
 
@@ -198,8 +220,8 @@ export default function InventoryDashboardClient() {
             ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Businesses', 'New Businesses', 'Subscribing', 'Sales by Businesses'],
             ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.newBusinesses ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
             [],
-            ['Period', 'Active', 'Inactive'],
-            ...(charts.retentionChurn || []).map((d: any) => [d.week, d.active, d.inactive]),
+            ['Period', 'Kept', 'New', 'Lost', 'Paying', 'Kept %'],
+            ...(charts.retentionChurn || []).map((d: any) => [d.week, d.retained ?? '', d.new ?? '', d.lost ?? '', d.paying ?? '', d.retentionRate ?? '']),
         ];
         const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
         const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -389,27 +411,39 @@ export default function InventoryDashboardClient() {
                 </div>
 
                 {/* RETENTION & CHURN VELOCITY CHART */}
-                <div style={{ background: '#fff', borderRadius: 20, padding: 40, border: '1.5px solid #3b82f6', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', marginBottom: 32 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                <div style={{ background: '#fff', borderRadius: 20, padding: 40, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', marginBottom: 32 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>Retention & Churn Velocity</h3>
-                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Active vs inactive businesses at the end of each {granularity}</div>
+                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Paying businesses kept, new and lost each {granularity}</div>
+                            <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                                {[['#6c9e4e', 'KEPT'], ['#b7d7a0', 'NEW'], ['#ef4444', 'LOST']].map(([color, name]) => (
+                                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: 99, background: color }} /> {name}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#64748b'
-                    }}>
-                        <div style={{ width: 12, height: 12, borderRadius: 99, background: '#6c9e4e' }} /> ACTIVE
+                        {retentionSummary && (
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{retentionSummary.retentionRate ?? '–'}%</div>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>kept in this period</div>
+                                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                                    <span style={{ color: '#ef4444' }}>{retentionSummary.lost} lost</span> · <span style={{ color: '#6c9e4e' }}>{retentionSummary.new} new</span> · {retentionSummary.paying} paying now
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-                        <div style={{ width: 12, height: 12, borderRadius: 99, background: '#eaf4e3' }} /> INACTIVE
-                    </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={360}>
-                        <BarChart data={chartData.retentionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                            <Tooltip />
-                            <Bar dataKey="active" stackId="a" fill="#6c9e4e" radius={[4, 4, 0, 0]} barSize={50} />
-                            <Bar dataKey="inactive" stackId="a" fill="#eaf4e3" radius={[0, 0, 4, 4]} barSize={50} />
+                    <ResponsiveContainer width="100%" height={320}>
+                        <BarChart data={chartData.retentionData} stackOffset="sign" margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
+                            <YAxis allowDecimals={false} tickFormatter={(v: number) => String(Math.abs(v))} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} width={36} />
+                            <Tooltip content={<RetentionTooltip />} cursor={{ fill: '#f8fafc' }} />
+                            <ReferenceLine y={0} stroke="#cbd5e1" />
+                            <Bar dataKey="retained" stackId="a" fill="#6c9e4e" maxBarSize={48} />
+                            <Bar dataKey="new" stackId="a" fill="#b7d7a0" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                            <Bar dataKey="lostBelow" stackId="a" fill="#ef4444" radius={[0, 0, 4, 4]} maxBarSize={48} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
