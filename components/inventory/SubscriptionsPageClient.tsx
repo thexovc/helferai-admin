@@ -215,6 +215,7 @@ export default function SubscriptionsPageClient() {
                     {[
                         // Short by default (1.2K, ₦375K); click a figure for the exact value
                         { label: 'Total Subscriptions', count: aggregates.totalSubscriptions ?? totalCount, icon: <ShieldCheck size={18} />, accent: '#0ea5e9', sub: 'All started, renewals included' },
+                        { label: 'Total Value', money: aggregates.totalValue ?? 0, icon: <CreditCard size={18} />, accent: '#0f766e', sub: 'All time, paid subscriptions' },
                         { label: 'Active', count: aggregates.totalActive, icon: <CheckCircle size={18} />, accent: '#22c55e', sub: 'Paid & current' },
                         { label: 'On Trial', count: aggregates.totalTrial, icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Free trial period' },
                         { label: 'Expired', count: aggregates.totalExpired, icon: <XCircle size={18} />, accent: '#ef4444', sub: 'Ended, not renewed yet' },
