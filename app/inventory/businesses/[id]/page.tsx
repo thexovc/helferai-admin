@@ -10,6 +10,7 @@ import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import CreateProductModal from '@/components/inventory/CreateProductModal';
 import RecordSaleModal from '@/components/inventory/RecordSaleModal';
+import MerchantLogo from '@/components/inventory/MerchantLogo';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
@@ -461,9 +462,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 <div style={{ background: '#fff', borderRadius: 20, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
                         <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-                            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #6c9e4e, #5b8441)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <span style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{business.name[0]}</span>
-                            </div>
+                            <MerchantLogo name={business.name} logo={business.logo} size={64} radius={18} />
                             <div>
                                 <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{business.name}</h2>
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>

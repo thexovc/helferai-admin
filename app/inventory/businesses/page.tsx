@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Topbar from '../../../components/Topbar';
 import { formatCurrency } from '../../lib/utils';
 import { Search, Building2, Plus, Edit2, Trash2, Mail, Loader2 } from 'lucide-react';
+import MerchantLogo from '@/components/inventory/MerchantLogo';
 import Pagination from '@/components/Pagination';
 import { useInventoryBusinesses } from '@/api/inventory';
 import { useCreateBusiness, useUpdateBusiness, useDeleteBusiness } from '@/api/inventory/inventory.mutations';
@@ -257,9 +258,7 @@ export default function BusinessesPage() {
                                             <td>
                                                 <Link href={`/inventory/businesses/${b.id}`} style={{ textDecoration: 'none' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                        <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eaf4e3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                            <Building2 size={15} color="#6c9e4e" />
-                                                        </div>
+                                                        <MerchantLogo name={b.name} logo={b.logo} />
                                                         <span style={{ fontWeight: 600, fontSize: 13, color: '#6c9e4e' }}>{b.name}</span>
                                                     </div>
                                                 </Link>
