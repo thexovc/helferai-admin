@@ -1,4 +1,4 @@
-export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended';
+export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended' | 'Unpaid checkout';
 export type BillingCycle = 'Monthly' | 'Annual';
 
 export interface PaginatedResponse<T> {
