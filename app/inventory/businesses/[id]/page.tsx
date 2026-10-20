@@ -14,6 +14,7 @@ import ImportRecordsModal from '@/components/inventory/ImportRecordsModal';
 import RecordExpenseModal from '@/components/inventory/RecordExpenseModal';
 import { ViewRowModal, EditUserModal, EditSubscriptionModal, EditProductModal, EditSaleModal, WhatsAppNumberModal, deleteActionFor, type RowKind } from '@/components/inventory/MerchantRowModals';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
+import MerchantListTab, { type ListKind } from '@/components/inventory/MerchantListTab';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
@@ -180,6 +181,10 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     );
 
     const loadingEl = <TableSkeleton rows={5} cols={6} />;
+
+    if (['brands', 'categories', 'customers', 'suppliers'].includes(tab)) {
+        return <MerchantListTab kind={tab as ListKind} businessId={businessId} businessName={businessName} />;
+    }
 
     if (tab === 'users') {
         if (usersLoading) return loadingEl;
