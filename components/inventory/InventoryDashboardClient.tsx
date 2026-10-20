@@ -70,7 +70,8 @@ const getRangeDates = (range: string, customStart: string, customEnd: string): {
 
 // 'totalSubscribingBusiness' -> 'Total Subscribing Business', 'mrr' -> 'MRR'
 const metricName = (key: string) =>
-    ['mrr', 'arr', 'rr', 'arpu'].includes(key)
+    key === 'totalBusiness' ? 'Total Merchants'
+    : ['mrr', 'arr', 'rr', 'arpu'].includes(key)
         ? key.toUpperCase()
         : key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
@@ -219,7 +220,7 @@ export default function InventoryDashboardClient() {
             ['Metric', 'Value', 'Trend'],
             ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
             [],
-            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Businesses', 'New Businesses', 'Subscribing', 'Sales by Businesses'],
+            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Merchants', 'New Merchants', 'Subscribing', 'Sales by Businesses'],
             ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.newBusinesses ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
             [],
             ['Period', 'Kept', 'New', 'Lost', 'Paying', 'Kept %'],
@@ -344,7 +345,7 @@ export default function InventoryDashboardClient() {
                 
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={compactCount(overview.totalBusiness?.value ?? 0)} fullValue={fullCount(overview.totalBusiness?.value ?? 0)} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
+                    <DashboardCard variant="metric" label="Total Merchants" value={compactCount(overview.totalBusiness?.value ?? 0)} fullValue={fullCount(overview.totalBusiness?.value ?? 0)} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
                     <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Businesses Joined' : 'New in Period'} value={compactCount(overview.newBusinessThisMonth?.value ?? 0)} fullValue={fullCount(overview.newBusinessThisMonth?.value ?? 0)} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
                     <DashboardCard variant="metric" label={activeLabel} value={compactCount(overview.activeToday?.value ?? 0)} fullValue={fullCount(overview.activeToday?.value ?? 0)} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="businesses using HelferAI" />
                     <DashboardCard variant="metric" label="MRR" value={compactNaira(overview.mrr?.value ?? 0)} fullValue={fullNaira(overview.mrr?.value ?? 0)} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />

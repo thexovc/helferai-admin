@@ -174,7 +174,7 @@ export default function BusinessesPage() {
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
-                        { label: 'Total Businesses', value: meta.total, color: '#6c9e4e' },
+                        { label: 'Total Merchants', value: meta.total, color: '#6c9e4e' },
                         { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, color: '#22c55e' },
                         { label: 'Trial', value: businesses.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
                         { label: 'Expired', value: businesses.filter(b => b.status === 'Expired').length, color: '#ef4444' },
