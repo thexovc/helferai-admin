@@ -21,7 +21,8 @@ export default function ReferralTiersPageClient() {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTier, setEditingTier] = useState<ReferralTier | null>(null);
-    const [formData, setFormData] = useState({
+    // max_points null = no upper limit (the top tier)
+    const [formData, setFormData] = useState<{ name: string; slug: string; min_points: number; max_points: number | null; color: string; order: number }>({
         name: '',
         slug: '',
         min_points: 0,
@@ -37,19 +38,21 @@ export default function ReferralTiersPageClient() {
                 name: tier.name || '',
                 slug: tier.slug || tier.name.toLowerCase().replace(/\s+/g, '-'),
                 min_points: tier.min_points || 0,
-                max_points: tier.max_points || 500,
+                max_points: tier.max_points ?? null,
                 color: tier.color || '#6c9e4e',
                 order: tier.order || 1
             });
         } else {
             setEditingTier(null);
+            // A new tier starts where the current top tier ends
+            const last = tiers[tiers.length - 1];
             setFormData({
                 name: '',
                 slug: '',
-                min_points: 0,
-                max_points: 500,
+                min_points: last ? (last.max_points ?? last.min_points) + 1 : 0,
+                max_points: null,
                 color: '#6c9e4e',
-                order: 1
+                order: last ? (last.order || tiers.length) + 1 : 1
             });
         }
         setIsModalOpen(true);
@@ -100,7 +103,7 @@ export default function ReferralTiersPageClient() {
 
     return (
         <div>
-            <Topbar title="Referral Tiers" subtitle="Manage tiered rewards and milestones for active referrers." product="inventory" />
+            <Topbar title="Reward Tiers" subtitle="Merchants move up a tier as they earn reward points." product="inventory" />
 
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
@@ -110,8 +113,8 @@ export default function ReferralTiersPageClient() {
                             <Trophy size={24} />
                         </div>
                         <div>
-                            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Referral Tiers</h2>
-                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Configure qualification points and tiers.</p>
+                            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', margin: 0, letterSpacing: '-0.02em' }}>Reward Tiers</h2>
+                            <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Each merchant's tier follows the reward points they've earned.</p>
                         </div>
                     </div>
                     <button
@@ -130,7 +133,7 @@ export default function ReferralTiersPageClient() {
                     <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
                         <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                         <input
-                            placeholder="Search referral tiers..."
+                            placeholder="Search tiers..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{
@@ -142,17 +145,28 @@ export default function ReferralTiersPageClient() {
                     </div>
                 </div>
 
+                {(() => {
+                    const top: any = tiers.find((t: any) => t.isTop);
+                    if (!top || top.max_points == null) return null;
+                    return (
+                        <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+                            The top tier, <b>{top.name}</b>, stops at {Number(top.max_points).toLocaleString()} points.
+                            {top.aboveTop ? <> <b>{top.aboveTop} user{top.aboveTop === 1 ? ' has' : 's have'}</b> more than that; they stay in {top.name}.</> : null}
+                            {' '}To make it open-ended, edit {top.name} and tick “No upper limit”.
+                        </div>
+                    );
+                })()}
+
                 {/* Data Table */}
                 <div className="table-container">
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
-                                <th>Tier Name</th>
-                                <th>Slug</th>
-                                <th>Min Points</th>
-                                <th>Max Points</th>
+                                <th>Tier</th>
+                                <th>Points needed</th>
+                                <th>Users</th>
+                                <th>Merchants</th>
                                 <th>Order</th>
-                                <th>Status</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
@@ -160,12 +174,12 @@ export default function ReferralTiersPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={7}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={6}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No tiers found</td>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No tiers found</td>
                                 </tr>
                             ) : filtered.map((tier: ReferralTier) => (
                                 <tr key={tier.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
@@ -173,19 +187,12 @@ export default function ReferralTiersPageClient() {
                                         <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: tier.color || '#6c9e4e', marginRight: 8 }}></span>
                                         {tier.name}
                                     </td>
-                                    <td style={{ color: '#6b7280', fontFamily: 'monospace' }}>{tier.slug || '—'}</td>
-                                    <td style={{ fontWeight: 600 }}>{tier.min_points ?? 0} pts</td>
-                                    <td>{tier.max_points ? `${tier.max_points} pts` : 'Unlimited'}</td>
-                                    <td>#{tier.order ?? 1}</td>
-                                    <td>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: tier.status === 'Active' ? '#eaf4e3' : '#fef2f2',
-                                            color: tier.status === 'Active' ? '#6c9e4e' : '#ef4444'
-                                        }}>
-                                            {tier.status || 'Active'}
-                                        </span>
+                                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                        {Number(tier.min_points ?? 0).toLocaleString()} {tier.max_points != null ? `to ${Number(tier.max_points).toLocaleString()}` : 'and above'}
                                     </td>
+                                    <td>{Number((tier as any).users ?? 0).toLocaleString()}</td>
+                                    <td>{Number((tier as any).merchants ?? 0).toLocaleString()}</td>
+                                    <td>#{tier.order ?? 1}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
@@ -210,7 +217,7 @@ export default function ReferralTiersPageClient() {
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title={editingTier ? 'Edit Referral Tier' : 'Add New Referral Tier'}
+                title={editingTier ? 'Edit Reward Tier' : 'Add Reward Tier'}
                 footer={
                     <>
                         <button onClick={() => setIsModalOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
@@ -247,10 +254,17 @@ export default function ReferralTiersPageClient() {
                             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Max Points</label>
                             <input
                                 type="number"
-                                value={formData.max_points}
+                                value={formData.max_points ?? ''}
+                                disabled={formData.max_points === null}
+                                placeholder="No limit"
                                 onChange={e => setFormData(prev => ({ ...prev, max_points: Number(e.target.value) }))}
-                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
+                                style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: formData.max_points === null ? '#f3f4f6' : '#f9fafb' }}
                             />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', marginTop: 6, cursor: 'pointer' }}>
+                                <input type="checkbox" checked={formData.max_points === null}
+                                    onChange={e => setFormData(prev => ({ ...prev, max_points: e.target.checked ? null : prev.min_points + 1000 }))} />
+                                No upper limit (top tier)
+                            </label>
                         </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -282,14 +296,14 @@ export default function ReferralTiersPageClient() {
                 onClose={() => setDeleteModal({ isOpen: false, tier: null })}
                 onConfirm={handleConfirmDelete}
                 isLoading={deleteMutation.isPending}
-                title="Delete Referral Tier"
-                description={`Are you sure you want to delete the tier "${deleteModal.tier?.name}"? Users currently at this milestone will be adjusted.`}
+                title="Delete Reward Tier"
+                description={`Delete the "${deleteModal.tier?.name}" tier? ${(deleteModal.tier as any)?.users ? `Its ${(deleteModal.tier as any).users} users will show no tier until they next earn points, then move to whichever tier fits.` : 'No one is in this tier.'}`}
                 details={
                     deleteModal.tier
                         ? [
                               { label: 'Tier Name', value: deleteModal.tier.name },
-                              { label: 'Points Range', value: `${deleteModal.tier.min_points ?? deleteModal.tier.minReferrals ?? 0} - ${deleteModal.tier.max_points ?? '∞'} pts` },
-                              { label: 'Status', value: deleteModal.tier.status || 'Active' },
+                              { label: 'Points Range', value: `${Number(deleteModal.tier.min_points ?? 0).toLocaleString()} - ${deleteModal.tier.max_points != null ? Number(deleteModal.tier.max_points).toLocaleString() : 'no limit'} pts` },
+                              { label: 'Users in tier', value: String((deleteModal.tier as any).users ?? 0) },
                           ]
                         : []
                 }
