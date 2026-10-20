@@ -64,10 +64,17 @@ export default function IntegrationMerchantsModal({ integrationId, onClose }: { 
                             </div>
                         ))}
                     </div>
-                    <div style={{ position: 'relative', maxWidth: 300 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: '0 1 300px' }}>
                         <Search size={14} color="#9ca3af" style={{ position: 'absolute', left: 10, top: 11 }} />
                         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search merchant"
                             style={{ height: 36, width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0 10px 0 30px', fontSize: 13, outline: 'none' }} />
+                    </div>
+                    {isWhatsApp && (
+                        <Link href="/inventory/whatsapp-numbers" style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: '#3f7d2c' }}>
+                            Manage WhatsApp numbers →
+                        </Link>
+                    )}
                     </div>
                     <div style={{ maxHeight: '50vh', overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 10 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
@@ -89,7 +96,12 @@ export default function IntegrationMerchantsModal({ integrationId, onClose }: { 
                                             {m.lastUsed ? <><b>{ago(m.lastUsed)}</b><div style={{ fontSize: 11, color: '#9ca3af' }}>{when(m.lastUsed)}</div></> : <span style={{ color: '#9ca3af' }}>Never</span>}
                                         </td>
                                         {isWhatsApp && <td style={td}>{m.chats.toLocaleString()}</td>}
-                                        {isWhatsApp && <td style={td}>{m.numbers.toLocaleString()}</td>}
+                                        {isWhatsApp && <td style={td}>
+                                            <Link href={`/inventory/whatsapp-numbers?businessId=${m.businessId}&merchant=${encodeURIComponent(m.name)}`} title="See these WhatsApp numbers"
+                                                style={{ color: '#3f7d2c', fontWeight: 700, textDecoration: 'underline' }}>
+                                                {m.numbers.toLocaleString()}
+                                            </Link>
+                                        </td>}
                                         <td style={{ ...td, whiteSpace: 'nowrap' }}>{m.connectedAt ? new Date(m.connectedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
                                     </tr>
                                 ))}

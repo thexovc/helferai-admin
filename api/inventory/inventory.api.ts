@@ -152,8 +152,9 @@ export const inventoryApi = {
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/units/${id}`),
 
   // --- WhatsApp Numbers ---
-  getWhatsappNumbers: (page = 1, pageSize = 10, search = '', status = '') => {
+  getWhatsappNumbers: (page = 1, pageSize = 10, search = '', status = '', businessId = '') => {
     let url = `/admin/api/inventory/whatsapp-numbers?page=${page}&pageSize=${pageSize}`;
+    if (businessId) url += `&businessId=${encodeURIComponent(businessId)}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     return inventoryClient.get<T.PaginatedResponse<T.WhatsappNumber>>(url);

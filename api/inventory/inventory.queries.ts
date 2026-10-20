@@ -195,11 +195,11 @@ export const useInventoryUnits = (page = 1, pageSize = 10, searchInput = '') => 
   });
 };
 
-export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10, searchInput = '', status = '') => {
+export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10, searchInput = '', status = '', businessId = '') => {
   const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.whatsappNumbers(), page, pageSize, search, status],
-    queryFn: () => inventoryApi.getWhatsappNumbers(page, pageSize, search, status),
+    queryKey: [...inventoryKeys.whatsappNumbers(), page, pageSize, search, status, businessId],
+    queryFn: () => inventoryApi.getWhatsappNumbers(page, pageSize, search, status, businessId),
   });
 };
 

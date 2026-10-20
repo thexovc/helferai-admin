@@ -472,6 +472,12 @@ export interface WhatsappNumber {
   status: string;
   lastActive: string;
   createdAt?: string;
+  businessLogo?: string | null;
+  integrationId?: string | null;
+  // The merchant's WhatsApp entry in Business Integrations: active, inactive or not set up
+  integrationStatus?: string;
+  lastUsed?: string | null;
+  merchantLastUsed?: string | null;
 }
 
 export interface ReferralTier {
