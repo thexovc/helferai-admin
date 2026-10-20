@@ -158,14 +158,10 @@ export default function BusinessesPage() {
         } catch (err) { }
     };
 
-    const rawBusinesses = businessesResponse?.data || [];
-    // Sort latest first
-    const businesses = [...rawBusinesses].sort((a: any, b: any) => {
-        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
-        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
-        return timeB - timeA;
-    });
+    // The server already sends newest registrations first
+    const businesses = businessesResponse?.data || [];
     const meta = businessesResponse?.meta || { total: businesses.length, page: 1, pageSize: 10 };
+    const stats = (businessesResponse as any)?.stats as { total: number; active: number; trial: number; expired: number } | undefined;
 
     return (
         <div>
@@ -174,10 +170,11 @@ export default function BusinessesPage() {
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                     {[
-                        { label: 'Total Merchants', value: meta.total, color: '#6c9e4e' },
-                        { label: 'Active', value: businesses.filter(b => b.status === 'Active').length, color: '#22c55e' },
-                        { label: 'Trial', value: businesses.filter(b => b.status === 'Trial').length, color: '#f59e0b' },
-                        { label: 'Expired', value: businesses.filter(b => b.status === 'Expired').length, color: '#ef4444' },
+                        // Counted on the server across all matching merchants, by subscription
+                        { label: 'Total Merchants', value: stats?.total ?? meta.total, color: '#6c9e4e' },
+                        { label: 'Active (paying)', value: stats?.active ?? 0, color: '#22c55e' },
+                        { label: 'On Trial', value: stats?.trial ?? 0, color: '#f59e0b' },
+                        { label: 'Expired / No Plan', value: stats?.expired ?? 0, color: '#ef4444' },
                     ].map(s => (
                         <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</span>
