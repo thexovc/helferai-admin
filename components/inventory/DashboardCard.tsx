@@ -70,9 +70,10 @@ export default function DashboardCard(props: Props) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>{label}</div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: '#1a1a2e' }}>{value}</div>
-                {subValue && <div style={{ fontSize: 14, fontWeight: 600, color: accent }}>{subValue}</div>}
+            {/* Wraps so a long note drops under the number instead of spilling out of the card */}
+            <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: 6, rowGap: 2, minWidth: 0 }}>
+                <div style={{ fontSize: 32, fontWeight: 800, color: '#1a1a2e', overflowWrap: 'anywhere' }}>{value}</div>
+                {subValue && <div style={{ fontSize: 13, fontWeight: 600, color: accent }}>{subValue}</div>}
             </div>
 
             <div style={{ marginTop: 'auto' }}>
