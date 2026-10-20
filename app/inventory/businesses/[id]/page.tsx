@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/
 import { compactNaira, fullNaira, fullCount } from '@/components/inventory/formatNumbers';
 import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
+import CreateProductModal from '@/components/inventory/CreateProductModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
@@ -50,6 +51,7 @@ const ActionBtn = ({ label, color = '#6c9e4e', icon, onClick }: { label: string;
 function TabContent({ tab, businessId, businessName }: { tab: string; businessId: string; businessName?: string }) {
     const [page, setPage] = useState(1);
     const [assignOpen, setAssignOpen] = useState(false);
+    const [productOpen, setProductOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
     const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
@@ -84,6 +86,10 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const handleCreateNew = () => {
         if (tab === 'subscriptions') {
             setAssignOpen(true);
+            return;
+        }
+        if (tab === 'products') {
+            setProductOpen(true);
             return;
         }
         toast.info(`Create feature for ${tab} coming soon!`);
@@ -189,6 +195,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (productsLoading) return loadingEl;
         return (
             <div>{createBtn}
+                <CreateProductModal isOpen={productOpen} onClose={() => setProductOpen(false)} businessId={businessId} businessName={businessName} />
                 <table style={tableStyle}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Price', 'Stock', 'Unit', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(products || []).map((p, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
