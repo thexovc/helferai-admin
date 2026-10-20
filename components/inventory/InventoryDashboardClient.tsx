@@ -31,23 +31,87 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
 };
 
+const CountTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
+            {payload.map((p: any, i: number) => (
+                <div key={i} style={{ fontWeight: 600 }}>{Number(p.value).toLocaleString()} businesses</div>
+            ))}
+        </div>
+    );
+};
+
+// Local YYYY-MM-DD (toISOString would shift the day to UTC)
+const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// 'Default' sends no dates, so the backend uses the current month to date
+const getRangeDates = (range: string, customStart: string, customEnd: string): { startDate?: string; endDate?: string } => {
+    const today = new Date();
+    const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
+    const monthsAgo = (n: number) => { const d = new Date(today); d.setMonth(d.getMonth() - n); return d; };
+    switch (range) {
+        case 'Today': return { startDate: toYMD(today), endDate: toYMD(today) };
+        case 'Yesterday': return { startDate: toYMD(daysAgo(1)), endDate: toYMD(daysAgo(1)) };
+        case '7D': return { startDate: toYMD(daysAgo(6)), endDate: toYMD(today) };
+        case '30D': return { startDate: toYMD(daysAgo(29)), endDate: toYMD(today) };
+        case '3M': return { startDate: toYMD(monthsAgo(3)), endDate: toYMD(today) };
+        case '6M': return { startDate: toYMD(monthsAgo(6)), endDate: toYMD(today) };
+        case '12M': return { startDate: toYMD(monthsAgo(12)), endDate: toYMD(today) };
+        case 'Custom': return { startDate: customStart, endDate: customEnd };
+        default: return {};
+    }
+};
+
+// 'totalSubscribingBusiness' -> 'Total Subscribing Business', 'mrr' -> 'MRR'
+const metricName = (key: string) =>
+    ['mrr', 'arr', 'rr', 'arpu'].includes(key)
+        ? key.toUpperCase()
+        : key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+
+const csvCell = (v: unknown) => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
 export default function InventoryDashboardClient() {
-    const [selectedRange, setSelectedRange] = React.useState('30D');
+    const [selectedRange, setSelectedRange] = React.useState('Default');
     const [showDateDropdown, setShowDateDropdown] = React.useState(false);
-    const [startDate, setStartDate] = React.useState('2023-08-01');
-    const [endDate, setEndDate] = React.useState('2023-08-31');
+    // Applied custom range, plus the draft values being edited in the dropdown
+    const [customStart, setCustomStart] = React.useState('');
+    const [customEnd, setCustomEnd] = React.useState('');
+    const [draftStart, setDraftStart] = React.useState('');
+    const [draftEnd, setDraftEnd] = React.useState('');
 
-    const { data: dashboard, isLoading } = useInventoryDashboard();
+    const { startDate, endDate } = getRangeDates(selectedRange, customStart, customEnd);
+    const { data: dashboard, isLoading, isFetching, isError } = useInventoryDashboard(startDate, endDate);
 
-    // Toggle dropdown
-    const toggleDropdown = () => setShowDateDropdown(!showDateDropdown);
+    // Dates shown in the header; 'Default' is this month so far
+    const today = new Date();
+    const shownStart = startDate ?? toYMD(new Date(today.getFullYear(), today.getMonth(), 1));
+    const shownEnd = endDate ?? toYMD(today);
 
-    // Handle range selection
+    const toggleDropdown = () => {
+        if (!showDateDropdown) {
+            setDraftStart(shownStart);
+            setDraftEnd(shownEnd);
+        }
+        setShowDateDropdown(!showDateDropdown);
+    };
+
     const handleRangeChange = (range: string) => {
         setSelectedRange(range);
-        if (range !== 'Custom') {
-            setShowDateDropdown(false);
-        }
+        setShowDateDropdown(false);
+    };
+
+    const draftValid = !!draftStart && !!draftEnd && draftStart <= draftEnd;
+    const applyCustomRange = () => {
+        if (!draftValid) return;
+        setCustomStart(draftStart);
+        setCustomEnd(draftEnd);
+        setSelectedRange('Custom');
+        setShowDateDropdown(false);
     };
 
     if (isLoading || !dashboard) {
@@ -55,9 +119,15 @@ export default function InventoryDashboardClient() {
             <div>
                 <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
-                        {Array(4).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
-                    </div>
+                    {isError && !isLoading ? (
+                        <div style={{ padding: 24, borderRadius: 12, background: '#fef2f2', color: '#b91c1c', fontSize: 14, fontWeight: 600 }}>
+                            Couldn&apos;t load the dashboard. Check your connection or sign in again.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
+                            {Array(4).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -72,26 +142,40 @@ export default function InventoryDashboardClient() {
         monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue })),
         arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
-        retentionData: [
-            { week: 'W1', active: 85, inactive: 15 },
-            { week: 'W2', active: 82, inactive: 18 },
-            { week: 'W3', active: 78, inactive: 22 },
-            { week: 'W4', active: 75, inactive: 25 },
-            { week: 'W5', active: 72, inactive: 28 },
-            { week: 'W6', active: 70, inactive: 30 },
-            { week: 'W7', active: 68, inactive: 32 },
-            { week: 'W8', active: 65, inactive: 35 },
-            { week: 'W9', active: 63, inactive: 37 },
-            { week: 'W10', active: 60, inactive: 40 },
-            { week: 'W11', active: 58, inactive: 42 },
-            { week: 'W12', active: 55, inactive: 45 },
-        ]
+        businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0 })),
+        retentionData: charts.retentionChurn || []
     };
 
+    // Parse YYYY-MM-DD as a local date so the label doesn't slip a day
     const formatDateRange = (start: string, end: string) => {
-        const s = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const e = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return `${s} - ${e}`;
+        const fmt = (v: string) => new Date(`${v}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return start === end ? fmt(start) : `${fmt(start)} - ${fmt(end)}`;
+    };
+
+    const comparisonSubtitle = selectedRange === 'Default' ? 'vs last month' : 'vs previous period';
+
+    const exportReport = () => {
+        const rows: unknown[][] = [
+            ['HelferAI Inventory Report'],
+            ['Period', formatDateRange(shownStart, shownEnd)],
+            ['Generated', new Date().toLocaleString()],
+            [],
+            ['Metric', 'Value', 'Trend'],
+            ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
+            [],
+            ['Month', 'Revenue', 'MRR', 'ARPU', 'Total Businesses', 'Subscribing'],
+            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.subscribing ?? '']),
+            [],
+            ['Week', 'Active', 'Inactive'],
+            ...(charts.retentionChurn || []).map((d: any) => [d.week, d.active, d.inactive]),
+        ];
+        const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventory-report-${shownStart}-to-${shownEnd}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -119,7 +203,7 @@ export default function InventoryDashboardClient() {
                             userSelect: 'none', position: 'relative'
                         }}
                     >
-                        {selectedRange === 'Custom' ? formatDateRange(startDate, endDate) : (selectedRange === '30D' ? 'Aug 1, 2023 - Aug 31, 2023' : `Last ${selectedRange}`)}
+                        {formatDateRange(shownStart, shownEnd)}
                         <ChevronDown size={14} color="#94a3b8" />
                         
                         {/* Date Picker Dropdown */}
@@ -139,8 +223,9 @@ export default function InventoryDashboardClient() {
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>START DATE</div>
                                         <input 
                                             type="date" 
-                                            value={startDate} 
-                                            onChange={e => { setStartDate(e.target.value); setSelectedRange('Custom'); }}
+                                            value={draftStart}
+                                            max={toYMD(today)}
+                                            onChange={e => setDraftStart(e.target.value)}
                                             style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }} 
                                         />
                                     </div>
@@ -148,14 +233,19 @@ export default function InventoryDashboardClient() {
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>END DATE</div>
                                         <input 
                                             type="date" 
-                                            value={endDate} 
-                                            onChange={e => { setEndDate(e.target.value); setSelectedRange('Custom'); }}
+                                            value={draftEnd}
+                                            max={toYMD(today)}
+                                            onChange={e => setDraftEnd(e.target.value)}
                                             style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }} 
                                         />
                                     </div>
-                                    <button 
-                                        onClick={() => setShowDateDropdown(false)}
-                                        style={{ background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}
+                                    {!draftValid && draftStart && draftEnd && (
+                                        <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>Start date must be before end date.</div>
+                                    )}
+                                    <button
+                                        onClick={applyCustomRange}
+                                        disabled={!draftValid}
+                                        style={{ background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700, cursor: draftValid ? 'pointer' : 'not-allowed', opacity: draftValid ? 1 : 0.5, marginTop: 8 }}
                                     >
                                         Apply Range
                                     </button>
@@ -181,8 +271,11 @@ export default function InventoryDashboardClient() {
                             </button>
                         ))}
                     </div>
+                    {isFetching && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>Updating…</span>
+                    )}
                 </div>
-                <button style={{ 
+                <button onClick={exportReport} style={{
                     background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px 20px', 
                     borderRadius: 10, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', 
                     gap: 8, cursor: 'pointer', boxShadow: '0 4px 10px rgba(108, 158, 78, 0.2)'
@@ -196,9 +289,9 @@ export default function InventoryDashboardClient() {
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
                     <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label="New This Month" value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label={selectedRange === 'Default' ? 'New This Month' : 'New in Period'} value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
                     <DashboardCard variant="metric" label="Active Today" value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="daily active rate" />
-                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
@@ -246,14 +339,14 @@ export default function InventoryDashboardClient() {
                             <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
                         </div>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={chartData.monthlyRevenue} barSize={40}>
+                            <BarChart data={chartData.businessGrowth} barSize={40}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
                                 <YAxis tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                                <Tooltip content={<CustomTooltip />} />
+                                <Tooltip content={<CountTooltip />} />
                                 <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
-                                    {chartData.monthlyRevenue.map((_item: any, index: number) => (
-                                        <Cell key={index} fill={index === chartData.monthlyRevenue.length - 2 ? '#6c9e4e' : '#eaf4e3'} />
+                                    {chartData.businessGrowth.map((_item: any, index: number) => (
+                                        <Cell key={index} fill={index === chartData.businessGrowth.length - 1 ? '#6c9e4e' : '#eaf4e3'} />
                                     ))}
                                 </Bar>
                             </BarChart>

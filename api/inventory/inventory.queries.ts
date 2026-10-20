@@ -51,6 +51,7 @@ export const useInventoryDashboard = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: inventoryKeys.dashboard(startDate, endDate),
     queryFn: () => inventoryApi.getDashboardData(startDate, endDate),
+    placeholderData: keepPreviousData,
   });
 };
 
