@@ -17,7 +17,7 @@ import DashboardCard from './DashboardCard';
 import RevenueEvent from './RevenueEvent';
 import Pagination from '../Pagination';
 
-const fmtK = (v: number) => v >= 1000000 ? `₦${(v / 1000000).toFixed(1)}M` : `₦${(v / 1000).toFixed(0)}K`;
+const fmtK = (v: number) => v >= 1000000 ? `₦${+(v / 1000000).toFixed(1)}M` : v >= 1000 ? `₦${+(v / 1000).toFixed(1)}K` : `₦${v}`;
 const PLAN_COLORS = ['#6c9e4e', '#7c5cbf', '#3b82f6', '#f59e0b'];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -113,7 +113,8 @@ export default function InventoryFinancePageClient() {
                     <DashboardCard variant="metric" label="Revenue Today" value={`₦${kpis.revenueToday?.value?.toLocaleString()}`} trend={kpis.revenueToday?.trend ?? ''} trendUp={kpis.revenueToday?.trendUp ?? true} subtitle="vs yesterday" />
                     <DashboardCard variant="metric" label="Rev. This Month" value={`₦${(kpis.revenueMonth?.value / 1000).toFixed(1)}k`} trend={kpis.revenueMonth?.trend ?? ''} trendUp={kpis.revenueMonth?.trendUp ?? true} subtitle="vs last month" />
                     <DashboardCard variant="metric" label="ARPU" value={`₦${kpis.arpu?.value?.toLocaleString()}`} trend={kpis.arpu?.trend ?? ''} trendUp={kpis.arpu?.trendUp ?? true} subtitle="vs last month" />
-                    <DashboardCard variant="status" label="Pending Renewals" value={kpis.pendingRenewalsValue?.value?.toLocaleString() ?? '0'} subValue="Due soon" icon={Clock} accent="#f59e0b" progress={65} />
+                    {/* The server sends the number of subscriptions ending in the next 30 days as pendingRenewals */}
+                    <DashboardCard variant="status" label="Pending Renewals" value={(kpis.pendingRenewals?.value ?? kpis.pendingRenewalsValue?.value ?? 0).toLocaleString()} subValue="due in 30 days" icon={Clock} accent="#f59e0b" progress={0} />
                 </div>
 
                 {/* CHARTS ROW */}
@@ -131,7 +132,7 @@ export default function InventoryFinancePageClient() {
                             <BarChart data={revenueOverTime} barSize={40}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tickFormatter={v => `₦${v / 1000000}M`} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
+                                <YAxis tickFormatter={fmtK} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
                                     {revenueOverTime.map((_, index) => (
