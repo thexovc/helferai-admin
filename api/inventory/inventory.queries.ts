@@ -203,7 +203,7 @@ export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10, searchInput
   });
 };
 
-export const useInventorySubscriptions = (rawParams: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string } = {}) => {
+export const useInventorySubscriptions = (rawParams: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string; expiringDays?: number } = {}) => {
   const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.subscriptions(), params],

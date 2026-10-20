@@ -14,7 +14,7 @@ import SearchableSelect from '../SearchableSelect';
 import ToggleValue from './ToggleValue';
 import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
-const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
+const STATUS_OPTIONS = ['All', 'Expiring soon', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
 const BILLING_OPTIONS = ['All', 'Monthly', 'Annual'];
 
 const statusStyle: Record<string, { bg: string; color: string }> = {
@@ -44,6 +44,9 @@ export default function SubscriptionsPageClient() {
     const [planFilter, setPlanFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [billingFilter, setBillingFilter] = useState('All');
+    // "Expiring soon": running subscriptions that end within this many days
+    const [expiringDays, setExpiringDays] = useState('5');
+    const daysValue = Math.min(Math.max(parseInt(expiringDays) || 0, 1), 365);
 
     React.useEffect(() => {
         const handler = setTimeout(() => {
@@ -58,7 +61,8 @@ export default function SubscriptionsPageClient() {
         pageSize,
         search: debouncedSearch,
         plan: planFilter === 'All' ? '' : planFilter,
-        status: statusFilter === 'All' ? '' : statusFilter,
+        status: statusFilter === 'All' ? '' : statusFilter === 'Expiring soon' ? 'expiring' : statusFilter,
+        expiringDays: statusFilter === 'Expiring soon' ? daysValue : undefined,
         billing: billingFilter === 'All' ? '' : billingFilter,
     });
 
@@ -269,6 +273,15 @@ export default function SubscriptionsPageClient() {
                             </select>
                         ))}
 
+                        {statusFilter === 'Expiring soon' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid #fde68a', background: '#fffbeb' }}>
+                                within
+                                <input type="number" min={1} max={365} value={expiringDays}
+                                    onChange={e => { setExpiringDays(e.target.value.replace(/[^0-9]/g, '')); setPage(1); }}
+                                    style={{ width: 52, height: 26, border: '1px solid #e5e7eb', borderRadius: 6, padding: '0 6px', fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                                days
+                            </label>
+                        )}
                         <button
                             onClick={() => handleOpenModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 34, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>

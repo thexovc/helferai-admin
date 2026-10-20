@@ -86,8 +86,8 @@ export const inventoryApi = {
   deleteProduct: (id: string) => inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/products/${id}`),
 
   // --- Subscriptions ---
-  getSubscriptions: (params: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string } = {}) => {
-    const { page = 1, pageSize = 10, search = '', plan = '', status = '', startDate = '', endDate = '', billing = '' } = params;
+  getSubscriptions: (params: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string; expiringDays?: number } = {}) => {
+    const { page = 1, pageSize = 10, search = '', plan = '', status = '', startDate = '', endDate = '', billing = '', expiringDays } = params;
     let url = `/admin/api/inventory/subscriptions?page=${page}&pageSize=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (plan) url += `&plan=${encodeURIComponent(plan)}`;
@@ -95,6 +95,7 @@ export const inventoryApi = {
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
     if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
     if (billing) url += `&billing=${encodeURIComponent(billing)}`;
+    if (expiringDays) url += `&expiringDays=${expiringDays}`;
     return inventoryClient.get<T.SubscriptionsResponse>(url);
   },
   getSubscriptionPlans: () => inventoryClient.get<T.SubscriptionPlan[]>('/admin/api/inventory/subscriptions/plans'),
