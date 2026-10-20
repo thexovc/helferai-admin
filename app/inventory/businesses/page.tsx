@@ -169,7 +169,7 @@ export default function BusinessesPage() {
 
     return (
         <div>
-            <Topbar title="Business Management" subtitle="Manage all customer businesses, subscription cycles, and profiles." product="inventory" />
+            <Topbar title="Merchant Management" subtitle="Manage all merchants, subscription cycles, and profiles. Newest sign-ups first." product="inventory" />
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -233,7 +233,7 @@ export default function BusinessesPage() {
                         <table style={{ minWidth: 900 }}>
                             <thead>
                                 <tr>
-                                    {['Business Name', 'Owner', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
+                                    {['Business Name', 'Owner', 'Date Created', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>
@@ -242,12 +242,12 @@ export default function BusinessesPage() {
                                 {isLoading && !businessesResponse ? (
                                     [1, 2, 3, 4, 5].map((item) => (
                                         <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                            <td colSpan={8}><div style={{ height: 32, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                            <td colSpan={9}><div style={{ height: 32, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                         </tr>
                                     ))
                                 ) : businesses.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No businesses found matching your search.</td>
+                                        <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No businesses found matching your search.</td>
                                     </tr>
                                 ) : (
                                     businesses.map((b, i) => (
@@ -263,6 +263,9 @@ export default function BusinessesPage() {
                                                 </Link>
                                             </td>
                                             <td style={{ color: '#6b7280', fontSize: 13 }}>{b.email}</td>
+                                            <td style={{ color: '#6b7280', fontSize: 13, whiteSpace: 'nowrap' }}>
+                                                {b.dateJoined ? new Date(b.dateJoined).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                            </td>
                                             <td>
                                                 <span style={{
                                                     padding: '4px 10px',

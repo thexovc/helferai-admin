@@ -34,7 +34,7 @@ const inventoryNav: NavGroup[] = [
         ],
     },
     {
-        title: 'Business Management', items: [
+        title: 'Merchant Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
             { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
         ],
