@@ -451,11 +451,7 @@ export default function InventoryDashboardClient() {
                 {/* BOTTOM ROW (Funnel and Actions) */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
                     {/* Businesses that joined in the selected period, and how far they got */}
-                    <ConversionFunnel data={{
-                        registered: charts.conversionFunnel?.registered ?? overview.totalBusiness?.value ?? 0,
-                        trialing: charts.conversionFunnel?.trialing ?? overview.trialUsers?.value ?? 0,
-                        paying: charts.conversionFunnel?.paying ?? overview.totalSubscribingBusiness?.value ?? 0
-                    }} />
+                    <ConversionFunnel data={charts.conversionFunnel} />
                     <RecentActions actions={recentActions} />
                 </div>
 

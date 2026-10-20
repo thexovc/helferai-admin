@@ -90,6 +90,9 @@ export interface ConversionFunnel {
   paying: number;
   trialConversionRate: number;
   payingConversionRate: number;
+  stillTrialing?: number;
+  trialEnded?: number;
+  trialToPaidRate?: number | null;
 }
 
 export interface RetentionStats {
