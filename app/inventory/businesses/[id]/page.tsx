@@ -10,6 +10,7 @@ import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import CreateProductModal from '@/components/inventory/CreateProductModal';
 import RecordSaleModal from '@/components/inventory/RecordSaleModal';
+import ImportSalesModal from '@/components/inventory/ImportSalesModal';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
@@ -56,6 +57,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [assignOpen, setAssignOpen] = useState(false);
     const [productOpen, setProductOpen] = useState(false);
     const [saleOpen, setSaleOpen] = useState(false);
+    const [importSalesOpen, setImportSalesOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
@@ -255,8 +257,17 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     if (tab === 'sales') {
         if (salesLoading) return loadingEl;
         return (
-            <div>{createBtn}
+            <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setImportSalesOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Import
+                    </button>
+                </div>
                 <RecordSaleModal isOpen={saleOpen} onClose={() => setSaleOpen(false)} businessId={businessId} businessName={businessName} />
+                <ImportSalesModal isOpen={importSalesOpen} onClose={() => setImportSalesOpen(false)} businessId={businessId} businessName={businessName} />
                 <div style={{ overflowX: 'auto' }}>
                 <table style={{ ...tableStyle, minWidth: 1350 }}><thead><tr>{['Receipt #', 'Date', 'Customer', 'Items', 'Total', 'Discount', 'Paid', 'Balance', 'Method', 'Payment', 'Processing', 'Store', 'Sold by', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
