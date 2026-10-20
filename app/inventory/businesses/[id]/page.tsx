@@ -9,6 +9,7 @@ import { compactNaira, fullNaira, fullCount } from '@/components/inventory/forma
 import ToggleValue from '@/components/inventory/ToggleValue';
 import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
 import CreateProductModal from '@/components/inventory/CreateProductModal';
+import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
@@ -52,6 +53,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [page, setPage] = useState(1);
     const [assignOpen, setAssignOpen] = useState(false);
     const [productOpen, setProductOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
     const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
@@ -194,8 +196,17 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     if (tab === 'products') {
         if (productsLoading) return loadingEl;
         return (
-            <div>{createBtn}
+            <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setBulkOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Bulk Upload
+                    </button>
+                </div>
                 <CreateProductModal isOpen={productOpen} onClose={() => setProductOpen(false)} businessId={businessId} businessName={businessName} />
+                <BulkUploadProductsModal isOpen={bulkOpen} onClose={() => setBulkOpen(false)} businessId={businessId} businessName={businessName} />
                 <div style={{ overflowX: 'auto' }}>
                 <table style={{ ...tableStyle, minWidth: 1100 }}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Vendor', 'Cost', 'Price', 'Margin', 'Stock', 'Unit', 'Added', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
