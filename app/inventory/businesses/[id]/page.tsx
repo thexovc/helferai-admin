@@ -12,6 +12,7 @@ import CreateProductModal from '@/components/inventory/CreateProductModal';
 import RecordSaleModal from '@/components/inventory/RecordSaleModal';
 import ImportRecordsModal from '@/components/inventory/ImportRecordsModal';
 import RecordExpenseModal from '@/components/inventory/RecordExpenseModal';
+import { ViewRowModal, EditUserModal, EditSubscriptionModal, EditProductModal, EditSaleModal, WhatsAppNumberModal, deleteActionFor, type RowKind } from '@/components/inventory/MerchantRowModals';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
 import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
@@ -27,6 +28,8 @@ import {
     useBusinessIntegrations,
     useBusinessAi
 } from '@/api/inventory';
+import { inventoryKeys } from '@/api/inventory/inventory.queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 
@@ -61,6 +64,10 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     const [importSalesOpen, setImportSalesOpen] = useState(false);
     const [expenseOpen, setExpenseOpen] = useState(false);
     const [importExpensesOpen, setImportExpensesOpen] = useState(false);
+    const [whatsappOpen, setWhatsappOpen] = useState(false);
+    // The row whose View or Edit window is open
+    const [rowAction, setRowAction] = useState<{ type: 'view' | 'edit'; row: any } | null>(null);
+    const queryClient = useQueryClient();
     const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
@@ -110,19 +117,42 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
             setExpenseOpen(true);
             return;
         }
+        if (tab === 'whatsapp') {
+            setWhatsappOpen(true);
+            return;
+        }
         toast.info(`Create feature for ${tab} coming soon!`);
     };
 
-    const handleAction = (type: 'view' | 'edit' | 'delete', item: any) => {
-        const name = item.name || item.receiptNumber || item.plan || item.purpose || 'item';
-        if (type === 'delete') {
-            if (confirm(`Are you sure you want to delete ${name}?`)) {
-                toast.success(`${name} deleted successfully`);
-            }
-        } else {
-            toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)}ing ${name}...`);
+    const handleAction = async (type: 'view' | 'edit' | 'delete', item: any) => {
+        if (type !== 'delete') {
+            setRowAction({ type, row: item });
+            return;
+        }
+        const action = deleteActionFor(tab as RowKind, item, businessId);
+        if (!action || !confirm(action.question)) return;
+        try {
+            const result: any = await action.run();
+            // The app can skip products that have sales; show its own message then
+            toast.success(result?.message && tab === 'products' ? result.message : action.done);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not delete');
         }
     };
+
+    // View and Edit windows for whichever row was clicked
+    const close = () => setRowAction(null);
+    const rowModal = rowAction && (
+        rowAction.type === 'view' ? <ViewRowModal kind={tab as RowKind} row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'users' ? <EditUserModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'subscriptions' ? <EditSubscriptionModal row={rowAction.row} onClose={close} />
+            : tab === 'products' ? <EditProductModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'sales' ? <EditSaleModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'expenses' ? <RecordExpenseModal isOpen onClose={close} businessId={businessId} businessName={businessName} expense={rowAction.row} />
+            : tab === 'whatsapp' ? <WhatsAppNumberModal row={rowAction.row} businessId={businessId} businessName={businessName} onClose={close} />
+            : null
+    );
 
     const createBtn = (
         <button
@@ -132,17 +162,20 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         </button>
     );
 
+    // Integrations are connected by the merchant in the app, so the admin can only view them
+    const canChange = tab !== 'integrations';
     const acts = (item: any) => (
         <div style={{ display: 'flex', gap: 4 }}>
-            <button
+            {rowModal && rowAction?.row === item ? rowModal : null}
+            <button title="View"
                 onClick={() => handleAction('view', item)}
                 style={{ padding: 5, background: '#f0f9f0', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#6c9e4e', display: 'flex' }}><Eye size={12} /></button>
-            <button
+            {canChange && <button title="Edit"
                 onClick={() => handleAction('edit', item)}
-                style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
-            <button
+                style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>}
+            {canChange && <button title={tab === 'users' ? 'Deactivate' : 'Delete'}
                 onClick={() => handleAction('delete', item)}
-                style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
+                style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}>{tab === 'users' ? <Ban size={12} /> : <Trash2 size={12} />}</button>}
         </div>
     );
 
@@ -152,6 +185,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
         if (usersLoading) return loadingEl;
         return (
             <div>{createBtn}
+                {whatsappOpen && <WhatsAppNumberModal businessId={businessId} businessName={businessName} onClose={() => setWhatsappOpen(false)} />}
                 <table style={tableStyle}><thead><tr>{['Name', 'Email', 'Role', 'Status', 'Joined', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(users || []).map((u, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
@@ -393,7 +427,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
     if (tab === 'integrations') {
         if (integrationsLoading) return loadingEl;
         return (
-            <div>{createBtn}
+            <div>
                 <table style={tableStyle}><thead><tr>{['Name', 'Status', 'Connected At', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(integrations || []).map((item, i) => (

@@ -54,7 +54,7 @@ export const inventoryApi = {
   getBusinessExpenseOptions: (id: string) => inventoryClient.get<{
     purposes: { id: string; name: string }[];
     accounts: { id: string; name: string }[];
-    people: { id: string; name: string; hasLogin: boolean }[];
+    people: { id: string; name: string; hasLogin: boolean; userId?: string | null }[];
   }>(`/admin/api/inventory/businesses/${id}/expense-options`),
   getBusinessSaleOptions: (id: string, search = '') => inventoryClient.get<{
     customers: { id: string; name: string; phone?: string | null }[];

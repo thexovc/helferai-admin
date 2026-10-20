@@ -25,8 +25,9 @@ const newReference = () => {
     return `EX${String(d.getFullYear()).slice(-2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${Math.floor(1000 + Math.random() * 9000)}`;
 };
 
-export default function RecordExpenseModal({ isOpen, onClose, businessId, businessName }: {
-    isOpen: boolean; onClose: () => void; businessId: string; businessName?: string;
+// Pass `expense` (a row from the Expenses tab) to edit it instead of recording a new one
+export default function RecordExpenseModal({ isOpen, onClose, businessId, businessName, expense }: {
+    isOpen: boolean; onClose: () => void; businessId: string; businessName?: string; expense?: any;
 }) {
     const queryClient = useQueryClient();
     const { data: opts } = useQuery({
@@ -48,9 +49,23 @@ export default function RecordExpenseModal({ isOpen, onClose, businessId, busine
 
     React.useEffect(() => {
         if (!isOpen) return;
+        if (expense) {
+            setPurposeId(expense.purposeId || ''); setDate(expense.date ? new Date(expense.date).toISOString().slice(0, 10) : toYMD(new Date()));
+            setAmount(withCommas(String(expense.amount ?? ''))); setAccountId(expense.accountId || '');
+            setReference(expense.referenceNumber || ''); setDescription(expense.description || ''); setReceipt(null);
+            return;
+        }
         setPurposeId(''); setDate(toYMD(new Date())); setEmployeeId(''); setSupervisorId('');
         setAmount(''); setAccountId(''); setReference(newReference()); setDescription(''); setReceipt(null);
-    }, [isOpen]);
+    }, [isOpen, expense]);
+
+    // The expense stores logins, the form picks staff: match them up once staff load
+    React.useEffect(() => {
+        if (!isOpen || !expense || !opts?.people) return;
+        const byUser = (uid?: string | null) => opts.people.find(p => uid && p.userId === uid)?.id || '';
+        setEmployeeId(byUser(expense.employeeUserId));
+        setSupervisorId(byUser(expense.approvedByUserId));
+    }, [isOpen, expense, opts]);
 
     const valid = !!purposeId && !!date && !!employeeId && !!supervisorId && toNumber(amount) > 0 && !!accountId && reference.trim().length > 0;
 
@@ -71,14 +86,14 @@ export default function RecordExpenseModal({ isOpen, onClose, businessId, busine
             if (description.trim()) form.append('description', description.trim());
             if (receipt) form.append('receipt', receipt);
             const token = localStorage.getItem('inventoryToken');
-            const res = await fetch(`${API_BASE}/admin/api/inventory/businesses/${businessId}/expenses`, {
-                method: 'POST',
+            const res = await fetch(`${API_BASE}/admin/api/inventory/businesses/${businessId}/expenses${expense ? `/${expense.id}` : ''}`, {
+                method: expense ? 'PATCH' : 'POST',
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
                 body: form,
             });
             const json = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(json.message || 'Could not record the expense');
-            toast.success(`Expense ${reference.trim()} recorded`);
+            toast.success(`Expense ${reference.trim()} ${expense ? 'updated' : 'recorded'}`);
             queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
             onClose();
         } catch (err: any) {
@@ -93,14 +108,14 @@ export default function RecordExpenseModal({ isOpen, onClose, businessId, busine
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`Record Expense${businessName ? ` · ${businessName}` : ''}`}
+            title={`${expense ? 'Edit' : 'Record'} Expense${businessName ? ` · ${businessName}` : ''}`}
             maxWidth={620}
             footer={
                 <>
                     <button onClick={onClose} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                     <button onClick={save} disabled={!valid || saving}
                         style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: valid ? 'pointer' : 'not-allowed', opacity: valid ? 1 : 0.5 }}>
-                        {saving ? 'Saving...' : 'Record Expense'}
+                        {saving ? 'Saving...' : expense ? 'Save changes' : 'Record Expense'}
                     </button>
                 </>
             }
@@ -172,12 +187,12 @@ export default function RecordExpenseModal({ isOpen, onClose, businessId, busine
                                 if (f && f.size > 10 * 1024 * 1024) { toast.error('Receipt size should not exceed 10MB'); return; }
                                 setReceipt(f);
                             }} />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{receipt ? receipt.name : 'Attach a receipt (optional)'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{receipt ? receipt.name : expense?.receiptUrl ? 'Replace the attached receipt (optional)' : 'Attach a receipt (optional)'}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>Image or PDF, up to 10 MB</div>
                     </label>
                 </div>
                 <div style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
-                    Recorded exactly like an expense in the HelferAI app, filed under the employee you pick.
+                    {expense ? 'Saved exactly like an edit in the HelferAI app.' : 'Recorded exactly like an expense in the HelferAI app, filed under the employee you pick.'}
                 </div>
             </div>
         </Modal>
