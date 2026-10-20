@@ -226,6 +226,7 @@ export default function TestimonialsPageClient() {
                             onPageChange={setPage}
                             totalItems={totalCount}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>

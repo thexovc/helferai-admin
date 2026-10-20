@@ -72,7 +72,7 @@ export default function InventoryFinancePageClient() {
     const [draftEnd, setDraftEnd] = React.useState('');
 
     const [page, setPage] = React.useState(1);
-    const pageSize = 10;
+    const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
     const [planFilter, setPlanFilter] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('');
@@ -356,7 +356,7 @@ export default function InventoryFinancePageClient() {
                     </div>
                     {subsMeta && (
                         <div style={{ marginTop: 16 }}>
-                            <Pagination currentPage={page} totalPages={subsMeta.totalPages ?? 1} onPageChange={setPage} totalItems={subsMeta.total} pageSize={pageSize} />
+                            <Pagination currentPage={page} totalPages={subsMeta.totalPages ?? 1} onPageChange={setPage} totalItems={subsMeta.total} pageSize={pageSize} onPageSizeChange={(n) => { setPageSize(n); setPage(1); }} />
                         </div>
                     )}
                 </div>

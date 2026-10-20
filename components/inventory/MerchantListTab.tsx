@@ -160,7 +160,7 @@ export default function MerchantListTab({ kind, businessId, businessName }: { ki
     const [form, setForm] = React.useState<{ row?: any } | null>(null);
     const [viewing, setViewing] = React.useState<any>(null);
     const [relationship, setRelationship] = React.useState('all');
-    const pageSize = 10;
+    const [pageSize, setPageSize] = React.useState(10);
     // Where a row's edits and deletes go: on the combined tab, its own list
     const rowKind = (r: any) => (kind === 'contacts' ? (r.relationship === 'customer' ? 'customers' : 'suppliers') : kind);
 
@@ -250,7 +250,7 @@ export default function MerchantListTab({ kind, businessId, businessName }: { ki
                 </div>
             )}
             <div style={{ marginTop: 20 }}>
-                <Pagination currentPage={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} totalItems={total} pageSize={pageSize} />
+                <Pagination currentPage={page} totalPages={Math.ceil(total / pageSize)} onPageChange={setPage} totalItems={total} pageSize={pageSize} onPageSizeChange={(n) => { setPageSize(n); setPage(1); }} />
             </div>
         </div>
     );

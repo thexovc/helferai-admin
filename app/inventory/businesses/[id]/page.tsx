@@ -213,6 +213,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(usersResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -245,6 +246,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(subsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -298,6 +300,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(productsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -351,6 +354,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(salesResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -401,6 +405,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(expensesResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -430,6 +435,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(whatsappResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -459,6 +465,7 @@ function TabContent({ tab, businessId, businessName }: { tab: string; businessId
                         onPageChange={setPage}
                         totalItems={getMeta(integrationsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
