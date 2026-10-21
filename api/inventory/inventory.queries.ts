@@ -69,11 +69,11 @@ export const useInventoryCharts = (startDate?: string, endDate?: string) => {
   });
 };
 
-export const useInventoryBusinesses = (page = 1, pageSize = 10, searchInput = '', filter = '') => {
+export const useInventoryBusinesses = (page = 1, pageSize = 10, searchInput = '', filter = '', managerId = '') => {
   const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter],
-    queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter),
+    queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter, managerId],
+    queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter, managerId),
     placeholderData: keepPreviousData,
   });
 };

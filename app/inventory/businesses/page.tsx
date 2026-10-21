@@ -6,7 +6,9 @@ import { formatCurrency } from '../../lib/utils';
 import { Search, Building2, Plus, Edit2, Trash2, Mail, Loader2 } from 'lucide-react';
 import MerchantLogo from '@/components/inventory/MerchantLogo';
 import Pagination from '@/components/Pagination';
-import { useInventoryBusinesses } from '@/api/inventory';
+import { useInventoryBusinesses, useInventoryAdmins } from '@/api/inventory';
+import { inventoryApi } from '@/api/inventory/inventory.api';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCreateBusiness, useUpdateBusiness, useDeleteBusiness } from '@/api/inventory/inventory.mutations';
 import { toast } from 'sonner';
 import Modal from '@/components/Modal';
@@ -63,7 +65,22 @@ export default function BusinessesPage() {
         return '';
     })();
 
-    const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey);
+    const [managerFilter, setManagerFilter] = useState('');
+    const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey, managerFilter);
+    // Admins who can look after a merchant (Merchant Manager)
+    const { data: adminsResponse } = useInventoryAdmins(1, 100, '');
+    const adminOptions: any[] = adminsResponse?.data || [];
+    const queryClient = useQueryClient();
+    const changeManager = async (b: any, adminId: string) => {
+        try {
+            await inventoryApi.setAccountManager(b.id, adminId || null);
+            const name = adminOptions.find(a => a.id === adminId)?.name;
+            toast.success(name ? `${b.name} is now managed by ${name}` : `${b.name} has no merchant manager now`);
+            queryClient.invalidateQueries({ queryKey: ['inventory', 'businesses'] });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not change the merchant manager');
+        }
+    };
 
     const createBusinessMutation = useCreateBusiness();
     const updateBusinessMutation = useUpdateBusiness();
@@ -225,6 +242,11 @@ export default function BusinessesPage() {
                             <option>All</option>
                             {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s}>{s}</option>)}
                         </select>
+                        <select value={managerFilter} onChange={e => { setManagerFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
+                            <option value="">All merchant managers</option>
+                            <option value="none">No merchant manager</option>
+                            {adminOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
                         <button
                             onClick={() => handleOpenModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>
@@ -233,10 +255,10 @@ export default function BusinessesPage() {
                     </div>
 
                     <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
-                        <table style={{ minWidth: 900 }}>
+                        <table style={{ minWidth: 1040 }}>
                             <thead>
                                 <tr>
-                                    {['Merchant Name', 'Owner', 'Date Created', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
+                                    {['Merchant Name', 'Owner', 'Merchant Manager', 'Date Created', 'Status', 'Current Plan', 'Billing Renewal', 'Paying', 'Cycle', 'Actions'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>
@@ -245,12 +267,12 @@ export default function BusinessesPage() {
                                 {isLoading && !businessesResponse ? (
                                     [1, 2, 3, 4, 5].map((item) => (
                                         <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                            <td colSpan={9}><div style={{ height: 32, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                            <td colSpan={10}><div style={{ height: 32, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                         </tr>
                                     ))
                                 ) : businesses.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No merchants found matching your search.</td>
+                                        <td colSpan={10} style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>No merchants found matching your search.</td>
                                     </tr>
                                 ) : (
                                     businesses.map((b, i) => (
@@ -264,6 +286,16 @@ export default function BusinessesPage() {
                                                 </Link>
                                             </td>
                                             <td style={{ color: '#6b7280', fontSize: 13 }}>{b.email}</td>
+                                            <td>
+                                                <select
+                                                    value={(b as any).accountManager?.id || ''}
+                                                    onChange={e => changeManager(b, e.target.value)}
+                                                    title="Account manager for this merchant"
+                                                    style={{ height: 30, maxWidth: 160, borderRadius: 6, border: '1px solid #e5e7eb', padding: '0 6px', fontSize: 12, background: (b as any).accountManager ? '#eaf4e3' : '#fff', color: (b as any).accountManager ? '#3f7d2c' : '#9ca3af', fontWeight: 600, outline: 'none', cursor: 'pointer' }}>
+                                                    <option value="">Not assigned</option>
+                                                    {adminOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                                </select>
+                                            </td>
                                             <td style={{ color: '#6b7280', fontSize: 13, whiteSpace: 'nowrap' }}>
                                                 {b.dateJoined ? new Date(b.dateJoined).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                             </td>

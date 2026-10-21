@@ -29,8 +29,10 @@ export const inventoryApi = {
   },
 
   // --- Businesses ---
-  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '') =>
-    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}`),
+  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '', managerId = '') =>
+    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}&managerId=${encodeURIComponent(managerId)}`),
+  setAccountManager: (id: string, adminId: string | null) =>
+    inventoryClient.put<{ accountManager: { id: string; name: string } | null }>(`/admin/api/inventory/businesses/${id}/account-manager`, { adminId }),
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),
   getBusinessMetrics: (id: string) => inventoryClient.get<T.BusinessMetrics>(`/admin/api/inventory/businesses/${id}/metrics`),
   getBusinessRoles: (id: string) => inventoryClient.get<Array<{ id: number; name: string; description?: string }>>(`/admin/api/inventory/businesses/${id}/roles`),
