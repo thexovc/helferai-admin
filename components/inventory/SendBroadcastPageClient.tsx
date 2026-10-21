@@ -17,7 +17,10 @@ export default function SendBroadcastPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
-    const { data: response, isLoading } = useInventoryBroadcasts(page, pageSize, search);
+    // Your broadcasts, or the app's automatic in-app notifications (same table)
+    const [kind, setKind] = useState<'admin' | 'automatic'>('admin');
+    const { data: response, isLoading } = useInventoryBroadcasts(page, pageSize, search, kind);
+    const counts = (response as any)?.counts;
 
     const deleteBroadcastMutation = useDeleteBroadcast();
 
@@ -86,7 +89,15 @@ export default function SendBroadcastPageClient() {
                 </div>
 
                 {/* Filters Row */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 10, padding: 3 }}>
+                        {([['admin', 'Sent from admin'], ['automatic', 'Automatic notifications']] as const).map(([k, label]) => (
+                            <button key={k} onClick={() => { setKind(k); setPage(1); }}
+                                style={{ border: 'none', borderRadius: 8, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', background: kind === k ? '#fff' : 'transparent', color: kind === k ? '#1a1a2e' : '#6b7280', boxShadow: kind === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                                {label}{counts ? ` (${Number(counts[k]).toLocaleString()})` : ''}
+                            </button>
+                        ))}
+                    </div>
                     <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
                         <Search size={18} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                         <input
@@ -137,7 +148,7 @@ export default function SendBroadcastPageClient() {
                                         <td style={{ fontWeight: 600, color: '#1a1a2e' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 {isEmail ? <Mail size={16} color="#6c9e4e" /> : <MessageSquare size={16} color="#2563eb" />}
-                                                <span>{b.title}</span>
+                                                <span>{b.title}{(b as any).autoType && <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{(b as any).autoType}</div>}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -158,8 +169,8 @@ export default function SendBroadcastPageClient() {
                                         <td>
                                             <span style={{
                                                 padding: '4px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                                                background: b.status === 'Sent' ? '#dcfce7' : b.status === 'Sending' ? '#fef3c7' : '#f3f4f6',
-                                                color: b.status === 'Sent' ? '#15803d' : b.status === 'Sending' ? '#b45309' : '#6b7280'
+                                                background: b.status === 'Sent' ? '#dcfce7' : b.status === 'Sending' ? '#fef3c7' : (b.status === 'Failed' || b.status === 'Not finished') ? '#fee2e2' : '#f3f4f6',
+                                                color: b.status === 'Sent' ? '#15803d' : b.status === 'Sending' ? '#b45309' : (b.status === 'Failed' || b.status === 'Not finished') ? '#b91c1c' : '#6b7280'
                                             }}>
                                                 {b.status}
                                             </span>

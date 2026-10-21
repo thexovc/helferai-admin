@@ -116,11 +116,11 @@ export const useInventoryAiUsage = () => {
   });
 };
 
-export const useInventoryBroadcasts = (page = 1, pageSize = 10, searchInput = '') => {
+export const useInventoryBroadcasts = (page = 1, pageSize = 10, searchInput = '', kind = 'admin') => {
   const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.broadcasts(), page, pageSize, search],
-    queryFn: () => inventoryApi.getBroadcastHistory(page, pageSize, search),
+    queryKey: [...inventoryKeys.broadcasts(), page, pageSize, search, kind],
+    queryFn: () => inventoryApi.getBroadcastHistory(page, pageSize, search, kind),
   });
 };
 

@@ -208,8 +208,8 @@ export const inventoryApi = {
     inventoryClient.patch<{ id: string; status: string }>(`/admin/api/inventory/users/${userId}/status`, { status }),
 
   // --- Broadcasts ---
-  getBroadcastHistory: (page = 1, pageSize = 10, search = '') => {
-    let url = `/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}`;
+  getBroadcastHistory: (page = 1, pageSize = 10, search = '', kind = 'admin') => {
+    let url = `/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}&kind=${kind}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     return inventoryClient.get<T.PaginatedResponse<T.Broadcast>>(url);
   },
