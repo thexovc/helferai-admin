@@ -16,7 +16,7 @@ const AVAILABLE_PERMISSIONS = [
     'users.view', 'users.manage', 'broadcasts.send', 'settings.manage', 'roles.manage'
 ];
 
-export default function RolesPageClient() {
+export default function RolesPageClient({ embedded = false }: { embedded?: boolean }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [search, setSearch] = useState('');
@@ -112,7 +112,7 @@ export default function RolesPageClient() {
 
     return (
         <div>
-            <Topbar title="Roles & Permissions" subtitle="Define RBAC roles and granular permission sets." product="inventory" />
+            {!embedded && <Topbar title="Roles & Permissions" subtitle="Define RBAC roles and granular permission sets." product="inventory" />}
 
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
@@ -186,7 +186,7 @@ export default function RolesPageClient() {
                                     <td style={{ color: '#6b7280', fontSize: 13 }}>{role.description || 'Custom administrative role'}</td>
                                     <td>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                                            <Users size={12} /> {role.adminCount || 0} admins
+                                            <Users size={12} /> {(role as any).userCount ?? role.adminCount ?? 0} admins
                                         </span>
                                     </td>
                                     <td>
@@ -308,7 +308,7 @@ export default function RolesPageClient() {
                               { label: 'Role Name', value: deleteModal.role.name },
                               { label: 'Description', value: deleteModal.role.description || 'No description' },
                               { label: 'Permissions Count', value: `${deleteModal.role.permissions?.length || 0} permissions` },
-                              { label: 'Assigned Admins', value: `${deleteModal.role.adminCount || 0} admins` },
+                              { label: 'Assigned Admins', value: `${(deleteModal.role as any).userCount ?? 0} admins` },
                           ]
                         : []
                 }

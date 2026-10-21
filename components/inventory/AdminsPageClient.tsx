@@ -11,7 +11,10 @@ import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import SearchableSelect from '../SearchableSelect';
 
-export default function AdminsPageClient() {
+// Backend sends the role as its name; older shapes had { name }
+const roleName = (a: any) => (typeof a?.role === 'string' ? a.role : a?.role?.name) || 'No role';
+
+export default function AdminsPageClient({ embedded = false }: { embedded?: boolean }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
@@ -120,7 +123,7 @@ export default function AdminsPageClient() {
 
     return (
         <div>
-            <Topbar title="Admins" subtitle="Manage administrative accounts, credentials, and role assignments." product="inventory" />
+            {!embedded && <Topbar title="Admins" subtitle="Manage administrative accounts, credentials, and role assignments." product="inventory" />}
 
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
@@ -173,8 +176,8 @@ export default function AdminsPageClient() {
                                 <th>Admin Name</th>
                                 <th>Email</th>
                                 <th>Assigned Role</th>
-                                <th>Status</th>
-                                <th>Created Date</th>
+                                <th>Last sign-in</th>
+                                <th>Added</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
@@ -195,18 +198,10 @@ export default function AdminsPageClient() {
                                     <td style={{ color: '#6b7280' }}>{admin.email}</td>
                                     <td>
                                         <span style={{ padding: '3px 10px', background: '#dbeafe', color: '#1d4ed8', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
-                                            {admin.role?.name || 'Administrator'}
+                                            {roleName(admin)}
                                         </span>
                                     </td>
-                                    <td>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: admin.isActive !== false ? '#dcfce7' : '#fee2e2',
-                                            color: admin.isActive !== false ? '#166534' : '#991b1b'
-                                        }}>
-                                            {admin.isActive !== false ? 'Active' : 'Suspended'}
-                                        </span>
-                                    </td>
+                                    <td style={{ color: '#6b7280', fontSize: 12 }}>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : 'Not recorded yet'}</td>
                                     <td>{admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : '—'}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
@@ -324,7 +319,7 @@ export default function AdminsPageClient() {
                         ? [
                               { label: 'Admin Name', value: deleteModal.admin.name },
                               { label: 'Email', value: deleteModal.admin.email },
-                              { label: 'Assigned Role', value: deleteModal.admin.role?.name || 'Administrator' },
+                              { label: 'Assigned Role', value: roleName(deleteModal.admin) },
                           ]
                         : []
                 }

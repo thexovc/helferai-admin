@@ -1,3 +1,4 @@
+import React from 'react';
 import { Bell, Search, User, Menu } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 
@@ -9,6 +10,11 @@ interface Props {
 
 export default function Topbar({ title, subtitle, product = 'admin' }: Props) {
     const { setMobileOpen } = useLayout();
+    // The admin who is signed in (saved at login)
+    const [me, setMe] = React.useState<{ name?: string; role?: string } | null>(null);
+    React.useEffect(() => {
+        try { setMe(JSON.parse(localStorage.getItem(product === 'studio' ? 'adminUser' : 'inventoryUser') || 'null')); } catch { }
+    }, [product]);
     const accent = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
     return (
         <header style={{
@@ -51,8 +57,8 @@ export default function Topbar({ title, subtitle, product = 'admin' }: Props) {
                         <User size={16} />
                     </div>
                     <div className="desktop-only" style={{ lineHeight: 1.2 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', whiteSpace: 'nowrap' }}>Daniel O.</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>SuperAdmin</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', whiteSpace: 'nowrap' }}>{me?.name || 'Admin'}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{me?.role || ''}</div>
                     </div>
                 </div>
             </div>

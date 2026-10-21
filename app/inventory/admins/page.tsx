@@ -1,5 +1,5 @@
-import AdminsPageContent from '@/components/platform/AdminsPageContent';
+import AdminsRbacPageClient from '@/components/inventory/AdminsRbacPageClient';
 
 export default function InventoryAdminsPage() {
-    return <AdminsPageContent product="inventory" />;
+    return <AdminsRbacPageClient />;
 }
