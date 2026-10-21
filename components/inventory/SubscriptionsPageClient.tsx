@@ -289,6 +289,14 @@ export default function SubscriptionsPageClient() {
                         </button>
                     </div>
 
+                    {/* Unpaid checkouts are left out of "All"; say how many, so totals match the merchant page */}
+                    {statusFilter === 'All' && Number(aggregates.totalUnpaidCheckouts || 0) > 0 && (
+                        <div style={{ padding: '8px 20px', fontSize: 12, color: '#9a3412', background: '#fff7ed', borderBottom: '1px solid #fed7aa' }}>
+                            {Number(aggregates.totalUnpaidCheckouts).toLocaleString()} unpaid checkout{Number(aggregates.totalUnpaidCheckouts) === 1 ? '' : 's'} (payment pages opened but never paid) {Number(aggregates.totalUnpaidCheckouts) === 1 ? 'is' : 'are'} not shown.{' '}
+                            <button onClick={() => { setStatusFilter('Unpaid checkout'); setPage(1); }} style={{ border: 'none', background: 'none', color: '#c2410c', fontWeight: 700, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Show them</button>
+                        </div>
+                    )}
+
                     {/* Table */}
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>

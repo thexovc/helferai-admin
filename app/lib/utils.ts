@@ -45,6 +45,7 @@ export function getStatusColor(status: string): { bg: string; text: string } {
     case 'Cancelled': return { bg: '#f3f4f6', text: '#4b5563' };
     case 'Suspended': return { bg: '#ffedd5', text: '#c2410c' };
     case 'Inactive':  return { bg: '#f3f4f6', text: '#6b7280' };
+    case 'Unpaid checkout': return { bg: '#fff7ed', text: '#c2410c' };
     default:          return { bg: '#f3f4f6', text: '#6b7280' };
   }
 }
