@@ -70,11 +70,6 @@ const inventoryNav: NavGroup[] = [
     },
 
     {
-        title: 'Analytics', items: [
-            { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
-        ],
-    },
-    {
         title: 'Content Management', items: [
             { href: '/inventory/testimonials', icon: <MessageSquare size={18} />, label: 'Testimonials' },
         ],
@@ -82,6 +77,7 @@ const inventoryNav: NavGroup[] = [
     {
         title: 'Platform', items: [
             { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
+            { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
             { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
