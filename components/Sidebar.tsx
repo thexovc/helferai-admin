@@ -79,6 +79,7 @@ export const inventoryNav: NavGroup[] = [
         title: 'Platform', items: [
             { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
             { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
+            { href: '/inventory/admin-referrals', icon: <Gift size={18} />, label: 'Admin Referrals' },
             { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
