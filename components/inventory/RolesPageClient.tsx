@@ -5,16 +5,16 @@ import { Plus, Search, Users, Edit2, Trash2, ShieldCheck, Key } from 'lucide-rea
 import { useInventoryRoles } from '@/api/inventory/inventory.queries';
 import { useCreateRole, useUpdateRole, useDeleteRole } from '@/api/inventory/inventory.mutations';
 import { AdminRoleRecord } from '@/api/inventory/inventory.types';
+import { inventoryNav } from '../Sidebar';
+import { pageKeyOf } from '@/api/auth/useMyAccess';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 
-const AVAILABLE_PERMISSIONS = [
-    'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete',
-    'businesses.manage', 'subscriptions.manage', 'finance.view', 'finance.manage',
-    'users.view', 'users.manage', 'broadcasts.send', 'settings.manage', 'roles.manage'
-];
+// A role's permissions are the admin pages it can open, grouped like the sidebar
+const PAGE_GROUPS = inventoryNav.map(g => ({ title: g.title || 'Overview', pages: g.items.map(i => ({ key: pageKeyOf(i.href), label: i.label })) }));
+const PAGE_LABEL: Record<string, string> = Object.fromEntries(PAGE_GROUPS.flatMap(g => g.pages.map(p => [p.key, p.label])));
 
 export default function RolesPageClient({ embedded = false }: { embedded?: boolean }) {
     const [page, setPage] = useState(1);
@@ -42,14 +42,15 @@ export default function RolesPageClient({ embedded = false }: { embedded?: boole
             setFormData({
                 name: role.name || '',
                 description: role.description || '',
-                permissions: role.permissions || []
+                // Keep only page permissions; older roles saved merchant-app names
+                permissions: (role.permissions || []).filter(p => PAGE_LABEL[p])
             });
         } else {
             setEditingRole(null);
             setFormData({
                 name: '',
                 description: '',
-                permissions: ['inventory.view', 'businesses.manage']
+                permissions: ['dashboard']
             });
         }
         setIsModalOpen(true);
@@ -165,7 +166,7 @@ export default function RolesPageClient({ embedded = false }: { embedded?: boole
                                 <th>Role Name</th>
                                 <th>Description</th>
                                 <th>Assigned Admins</th>
-                                <th>Permissions Included</th>
+                                <th>Pages</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
@@ -190,18 +191,20 @@ export default function RolesPageClient({ embedded = false }: { embedded?: boole
                                         </span>
                                     </td>
                                     <td>
+                                        {(role as any).isSuperAdmin ? <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>All pages (Super Admin)</span> :
                                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 400 }}>
-                                            {(role.permissions || []).slice(0, 4).map(p => (
-                                                <span key={p} style={{ padding: '2px 6px', background: '#eaf4e3', color: '#5b8441', borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}>
-                                                    {p}
+                                            {(role.permissions || []).filter(p => PAGE_LABEL[p]).length === 0 && <span style={{ fontSize: 12, color: '#b91c1c' }}>No pages yet</span>}
+                                            {(role.permissions || []).filter(p => PAGE_LABEL[p]).slice(0, 4).map(p => (
+                                                <span key={p} style={{ padding: '2px 6px', background: '#eaf4e3', color: '#5b8441', borderRadius: 4, fontSize: 11 }}>
+                                                    {PAGE_LABEL[p]}
                                                 </span>
                                             ))}
-                                            {(role.permissions || []).length > 4 && (
+                                            {(role.permissions || []).filter(p => PAGE_LABEL[p]).length > 4 && (
                                                 <span style={{ padding: '2px 6px', background: '#f3f4f6', color: '#6b7280', borderRadius: 4, fontSize: 10 }}>
-                                                    +{(role.permissions || []).length - 4} more
+                                                    +{(role.permissions || []).filter(p => PAGE_LABEL[p]).length - 4} more
                                                 </span>
                                             )}
-                                        </div>
+                                        </div>}
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
@@ -272,21 +275,29 @@ export default function RolesPageClient({ embedded = false }: { embedded?: boole
                     </div>
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>
-                            <Key size={14} /> Permissions
+                            <Key size={14} /> Pages this role can open
                         </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, maxHeight: 180, overflowY: 'auto', padding: '10px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                            {AVAILABLE_PERMISSIONS.map(p => {
-                                const checked = formData.permissions.includes(p);
+                        {(editingRole as any)?.isSuperAdmin && <div style={{ fontSize: 12, color: '#92400e', marginBottom: 8 }}>Super Admin always has every page.</div>}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                            {PAGE_GROUPS.map(g => {
+                                const keys = g.pages.map(p => p.key);
+                                const all = keys.every(k => formData.permissions.includes(k));
                                 return (
-                                    <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#334155', cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            onChange={() => handleTogglePermission(p)}
-                                            style={{ accentColor: '#6c9e4e', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ fontFamily: 'monospace' }}>{p}</span>
-                                    </label>
+                                    <div key={g.title}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: 6, cursor: 'pointer' }}>
+                                            <input type="checkbox" checked={all} style={{ accentColor: '#6c9e4e' }}
+                                                onChange={() => setFormData(prev => ({ ...prev, permissions: all ? prev.permissions.filter(k => !keys.includes(k)) : Array.from(new Set([...prev.permissions, ...keys])) }))} />
+                                            {g.title}
+                                        </label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, paddingLeft: 22 }}>
+                                            {g.pages.map(p => (
+                                                <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#334155', cursor: 'pointer' }}>
+                                                    <input type="checkbox" checked={formData.permissions.includes(p.key)} onChange={() => handleTogglePermission(p.key)} style={{ accentColor: '#6c9e4e', cursor: 'pointer' }} />
+                                                    {p.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>

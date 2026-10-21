@@ -10,6 +10,7 @@ import {
     MessageSquare, Camera, DollarSign, CreditCard
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
+import { useMyAccess, pageKeyOf } from '@/api/auth/useMyAccess';
 
 interface NavItem {
     href: string;
@@ -26,7 +27,7 @@ interface Props {
     product: 'inventory' | 'studio';
 }
 
-const inventoryNav: NavGroup[] = [
+export const inventoryNav: NavGroup[] = [
     { items: [{ href: '/inventory/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }] },
     {
         title: 'Finance', items: [
@@ -111,7 +112,11 @@ export default function Sidebar({ product }: Props) {
     const { mobileOpen, setMobileOpen } = useLayout();
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
-    const nav = product === 'inventory' ? inventoryNav : studioNav;
+    const { canOpen } = useMyAccess();
+    // Only the pages the admin's role includes
+    const nav = product === 'inventory'
+        ? inventoryNav.map(g => ({ ...g, items: g.items.filter(i => canOpen(pageKeyOf(i.href))) })).filter(g => g.items.length)
+        : studioNav;
     const isInventory = product === 'inventory';
     const accentColor = isInventory ? '#6c9e4e' : '#7c5cbf';
     const lightBg = isInventory ? '#eaf4e3' : '#f0ebff';
