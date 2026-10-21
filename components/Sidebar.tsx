@@ -113,6 +113,14 @@ export default function Sidebar({ product }: Props) {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
     const { canOpen } = useMyAccess();
+    // Sign out of this product and go back to the Inventory / Studio choice
+    const logout = () => {
+        try {
+            const keys = product === 'inventory' ? ['inventoryToken', 'inventoryUser'] : ['adminToken', 'adminUser'];
+            keys.forEach(k => localStorage.removeItem(k));
+        } catch { }
+        window.location.href = '/select';
+    };
     // Only the pages the admin's role includes
     const nav = product === 'inventory'
         ? inventoryNav.map(g => ({ ...g, items: g.items.filter(i => canOpen(pageKeyOf(i.href))) })).filter(g => g.items.length)
@@ -207,15 +215,15 @@ export default function Sidebar({ product }: Props) {
 
                 {/* Bottom */}
                 <div style={{ padding: collapsed ? '12px 0' : '12px', borderTop: '1px solid #f5f5f5', flexShrink: 0 }}>
-                    <Link href="/signin" style={{
+                    <button onClick={logout} style={{
                         display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '10px' : '10px 12px',
-                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', background: 'none', border: 'none', cursor: 'pointer',
                         color: '#ef4444', textDecoration: 'none', fontSize: 13, fontWeight: 500,
                         borderRadius: 8, transition: 'background 0.15s',
                     }}>
                         <LogOut size={16} />
                         {!collapsed && 'Logout'}
-                    </Link>
+                    </button>
                 </div>
             </aside>
         </>
