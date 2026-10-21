@@ -24,12 +24,15 @@ export default function UsersPageContent({ product }: Props) {
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
+    // Merchants where nobody has logged in for this many hours (0 = no filter)
+    const [inactiveHours, setInactiveHours] = useState(0);
 
     const { data: usersResponse, isLoading } = usePlatformUsers({
         page,
         pageSize,
         search,
-        status: filterStatus === 'All' ? '' : filterStatus
+        status: filterStatus === 'All' ? '' : filterStatus,
+        inactiveHours: inactiveHours || undefined,
     });
 
     const updateStatusMutation = useUpdatePlatformUserStatus();
@@ -50,13 +53,8 @@ export default function UsersPageContent({ product }: Props) {
     const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
     const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
 
-    const rawUsers = usersResponse?.data || [];
-    // Sort latest first
-    const users = [...rawUsers].sort((a: any, b: any) => {
-        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
-        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
-        return timeB - timeA;
-    });
+    // The server already returns newest first across all pages
+    const users = usersResponse?.data || [];
     const totalCount = usersResponse?.meta?.total || users.length;
 
     const handleToggleStatus = (user: PlatformUserRecord) => {
@@ -119,6 +117,21 @@ export default function UsersPageContent({ product }: Props) {
                             <option value="All">All Statuses</option>
                             {['Active', 'Suspended', 'Inactive'].map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
+                        <select
+                            value={inactiveHours}
+                            onChange={e => {
+                                setInactiveHours(Number(e.target.value));
+                                setPage(1);
+                            }}
+                            title="Merchants where nobody has logged in for this long"
+                            style={{ height: 36, borderRadius: 8, border: inactiveHours ? '1px solid #fde68a' : '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: inactiveHours ? '#fffbeb' : '#f9fafb', color: '#374151', outline: 'none' }}>
+                            <option value={0}>Any login activity</option>
+                            <option value={24}>No login in 24 hours</option>
+                            <option value={72}>No login in 72 hours</option>
+                            <option value={168}>No login in 7 days</option>
+                            <option value={720}>No login in 30 days</option>
+                            <option value={2160}>No login in 90 days</option>
+                        </select>
                     </div>
 
                     {/* Table */}
@@ -126,7 +139,7 @@ export default function UsersPageContent({ product }: Props) {
                         <table style={{ minWidth: 1000 }}>
                             <thead>
                                 <tr>
-                                    {['Name', 'Email', 'Role / Business', 'Status', 'Last Login', 'Created', 'Actions'].map(h => (
+                                    {['Name', 'Email', 'Merchant / Store', 'Role', 'Status', 'Last Login', 'Last Login IP', 'Actions'].map(h => (
                                         <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -135,12 +148,12 @@ export default function UsersPageContent({ product }: Props) {
                                 {isLoading ? (
                                     [1, 2, 3, 4, 5].map(i => (
                                         <tr key={i}>
-                                            <td colSpan={7}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                            <td colSpan={8}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                         </tr>
                                     ))
                                 ) : users.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>No platform users found</td>
+                                        <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>No platform users found</td>
                                     </tr>
                                 ) : (
                                     users.map((u: PlatformUserRecord, i) => (
@@ -155,8 +168,14 @@ export default function UsersPageContent({ product }: Props) {
                                             </td>
                                             <td style={{ fontSize: 13, color: '#6b7280' }}>{u.email}</td>
                                             <td>
-                                                <span style={{ padding: '3px 10px', background: '#dbeafe', color: '#1d4ed8', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
-                                                    {u.role || u.businesses?.[0]?.name || 'Platform User'}
+                                                {u.businessId
+                                                    ? <a href={`/inventory/businesses/${u.businessId}`} style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e', textDecoration: 'none' }}>{u.businessName}</a>
+                                                    : <span style={{ color: '#9ca3af', fontSize: 13 }}>No merchant</span>}
+                                                {u.storeName && <div style={{ fontSize: 11, color: '#9ca3af' }}>{u.storeName} store</div>}
+                                            </td>
+                                            <td>
+                                                <span style={{ padding: '3px 10px', background: '#dbeafe', color: '#1d4ed8', borderRadius: 99, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                                    {u.isPrimaryUser ? 'Owner' : (u.role || 'User')}
                                                 </span>
                                             </td>
                                             <td>
@@ -168,8 +187,11 @@ export default function UsersPageContent({ product }: Props) {
                                                     {u.status || 'Active'}
                                                 </span>
                                             </td>
-                                            <td style={{ fontSize: 12, color: '#6b7280' }}>{u.lastLogin ? formatDateTime(u.lastLogin) : '—'}</td>
-                                            <td style={{ fontSize: 12, color: '#6b7280' }}>{u.createdAt ? formatDate(u.createdAt) : '—'}</td>
+                                            <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                                {u.lastLogin ? formatDateTime(u.lastLogin) : <span style={{ color: '#9ca3af' }}>Never</span>}
+                                                {u.lastActive && <div style={{ fontSize: 11, color: '#9ca3af' }}>Last active {formatDateTime(u.lastActive)}</div>}
+                                            </td>
+                                            <td style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{u.lastLoginIp || <span style={{ color: '#9ca3af', fontFamily: 'inherit' }}>Not recorded</span>}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                                                     <button

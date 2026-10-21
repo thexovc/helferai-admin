@@ -18,6 +18,7 @@ export default function UserActivityLogsPageClient() {
     const filtered = (logs || []).filter(l => {
         const matchSearch =
             l.adminName.toLowerCase().includes(search.toLowerCase()) ||
+            (l.businessName || '').toLowerCase().includes(search.toLowerCase()) ||
             (l.targetId || '').toLowerCase().includes(search.toLowerCase()) ||
             l.action.toLowerCase().includes(search.toLowerCase());
         return matchSearch;
@@ -64,6 +65,7 @@ export default function UserActivityLogsPageClient() {
                         <thead>
                             <tr>
                                 <th>User</th>
+                                <th>Business</th>
                                 <th>Action</th>
                                 <th>Resource</th>
                                 <th>IP Address</th>
@@ -75,17 +77,22 @@ export default function UserActivityLogsPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={6}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={7}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No logs found</td>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No logs found</td>
                                 </tr>
                             ) : (
                                 filtered.map((l: any) => (
                                     <tr key={l.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{l.adminName}</td>
+                                        <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{l.adminName}{l.userEmail && <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>{l.userEmail}</div>}</td>
+                                        <td>
+                                            {l.businessName
+                                                ? <a href={`/inventory/businesses/${l.businessId}`} style={{ color: '#3f7d2c', fontWeight: 600, textDecoration: 'none' }}>{l.businessName}</a>
+                                                : <span style={{ color: '#9ca3af' }}>—</span>}
+                                        </td>
                                         <td style={{ color: '#374151' }}>{l.action}</td>
                                         <td style={{ color: '#6b7280', fontFamily: 'monospace', fontSize: 12 }}>{l.targetId}</td>
                                         <td style={{ color: '#6b7280', fontSize: 12 }}>{l.ip}</td>

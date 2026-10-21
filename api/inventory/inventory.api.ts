@@ -194,12 +194,13 @@ export const inventoryApi = {
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/roles/${id}`),
 
   // --- Platform Users ---
-  getPlatformUsers: (params: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string } = {}) => {
-    const { page = 1, pageSize = 10, search = '', status = '', businessId = '' } = params;
+  getPlatformUsers: (params: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string; inactiveHours?: number } = {}) => {
+    const { page = 1, pageSize = 10, search = '', status = '', businessId = '', inactiveHours } = params;
     let url = `/admin/api/inventory/users?page=${page}&pageSize=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     if (businessId) url += `&businessId=${encodeURIComponent(businessId)}`;
+    if (inactiveHours) url += `&inactiveHours=${inactiveHours}`;
     return inventoryClient.get<T.PaginatedResponse<T.PlatformUserRecord>>(url);
   },
   getUserActivities: (userId: string, page = 1, pageSize = 20) =>

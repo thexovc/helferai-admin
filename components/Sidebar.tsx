@@ -37,6 +37,7 @@ const inventoryNav: NavGroup[] = [
         title: 'Merchant Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Merchants' },
             { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
+            { href: '/inventory/users', icon: <Users size={18} />, label: 'Platform Users' },
         ],
     },
     {
@@ -81,7 +82,6 @@ const inventoryNav: NavGroup[] = [
     {
         title: 'Platform', items: [
             { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
-            { href: '/inventory/users', icon: <Users size={18} />, label: 'Users' },
             { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },

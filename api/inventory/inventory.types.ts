@@ -567,6 +567,10 @@ export interface PlatformUserRecord {
   role?: string;
   status: string;
   lastLogin?: string;
+  lastLoginIp?: string | null;
+  lastActive?: string | null;
+  storeName?: string | null;
+  isPrimaryUser?: boolean;
   createdAt: string;
   totalSales?: number;
   totalExpenses?: number;

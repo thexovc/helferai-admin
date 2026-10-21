@@ -279,7 +279,7 @@ export const useInventoryRoles = (page = 1, pageSize = 20, searchInput = '') => 
   });
 };
 
-export const usePlatformUsers = (rawParams: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string } = {}) => {
+export const usePlatformUsers = (rawParams: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string; inactiveHours?: number } = {}) => {
   const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.platformUsers(), params],
