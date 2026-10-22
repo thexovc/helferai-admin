@@ -7,7 +7,7 @@ import {
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
     LogOut, Home, X, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare, Camera, DollarSign, CreditCard, Bell
+    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { useMyAccess, pageKeyOf } from '@/api/auth/useMyAccess';
@@ -81,6 +81,7 @@ export const inventoryNav: NavGroup[] = [
             { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
             { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
             { href: '/inventory/admin-referrals', icon: <Gift size={18} />, label: 'Admin Referrals' },
+            { href: '/inventory/blog', icon: <FileText size={18} />, label: 'Blog' },
             { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
