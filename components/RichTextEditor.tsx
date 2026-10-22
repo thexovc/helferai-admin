@@ -21,6 +21,8 @@ interface RichTextEditorProps {
     onChange: (html: string) => void;
     placeholder?: string;
     minHeight?: number;
+    // Hide email-only tools (CTA button, {{variables}}), e.g. for blog articles
+    hideEmailTools?: boolean;
 }
 
 const TEXT_COLORS = [
@@ -54,6 +56,7 @@ export default function RichTextEditor({
     onChange,
     placeholder = 'Compose your formatted email message here...',
     minHeight = 280,
+    hideEmailTools = false,
 }: RichTextEditorProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -393,7 +396,7 @@ export default function RichTextEditor({
 
                 {/* Group 7: Interactive Pills (CTA Button, Colors, Variables, Clear) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {/* CTA Button Generator */}
+                    {!hideEmailTools && (<>{/* CTA Button Generator */}
                     <button
                         type="button"
                         onClick={() => setIsButtonModalOpen(true)}
@@ -402,7 +405,7 @@ export default function RichTextEditor({
                     >
                         <MousePointerClick size={14} />
                         <span>+ CTA Button</span>
-                    </button>
+                    </button></>)}
 
                     {/* Color & Highlight Menu */}
                     <div style={{ position: 'relative' }}>
@@ -496,7 +499,7 @@ export default function RichTextEditor({
                         )}
                     </div>
 
-                    {/* Personalization Variables Menu */}
+                    {!hideEmailTools && (<>{/* Personalization Variables Menu */}
                     <div style={{ position: 'relative' }}>
                         <button
                             type="button"
@@ -554,7 +557,7 @@ export default function RichTextEditor({
                                 ))}
                             </div>
                         )}
-                    </div>
+                    </div></>)}
 
                     {/* Clear Formatting */}
                     <button

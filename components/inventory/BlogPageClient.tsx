@@ -2,14 +2,17 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FileText, Plus, Edit2, Trash2, Search, X } from 'lucide-react';
+import { FileText, Plus, Edit2, Trash2, Search, X, ChevronUp, ChevronDown, Check, Layers } from 'lucide-react';
 import Topbar from '../Topbar';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import dynamic from 'next/dynamic';
+const RichTextEditor = dynamic(() => import('../RichTextEditor'), { ssr: false });
 import { inventoryClient } from '@/api/api-client';
 import { useDebouncedValue } from '@/app/lib/useDebouncedValue';
 
 const BASE = '/admin/api/inventory/blog';
+type Section = { name: string; articles: number };
 type Post = {
     id: string; title: string; slug: string; section: string; tags: string[]; excerpt: string | null; content: string;
     coverImageUrl: string | null; authorName: string | null; status: 'draft' | 'published'; publishedAt: string | null;
@@ -20,23 +23,7 @@ const td: React.CSSProperties = { padding: '12px 14px', fontSize: 13, color: '#3
 const input: React.CSSProperties = { height: 40, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 12px', fontSize: 14, outline: 'none', background: '#f9fafb', color: '#1a1a2e' };
 const label: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-const blank = () => ({ title: '', section: 'Inventory tips', tags: [] as string[], excerpt: '', content: '', coverImageUrl: '', authorName: '', slug: '' });
-
-// Small Markdown preview: headings, bold, italic, links, lists and paragraphs
-function mdToHtml(md: string) {
-    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const inline = (s: string) => esc(s)
-        .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>')
-        .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
-    return md.split(/\n{2,}/).map(block => {
-        const lines = block.split('\n');
-        const h = block.match(/^(#{1,3})\s+(.*)/);
-        if (h) return `<h${h[1].length + 1}>${inline(h[2])}</h${h[1].length + 1}>`;
-        if (lines.every(l => /^\s*[-*]\s+/.test(l))) return `<ul>${lines.map(l => `<li>${inline(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
-        if (lines.every(l => /^\s*\d+\.\s+/.test(l))) return `<ol>${lines.map(l => `<li>${inline(l.replace(/^\s*\d+\.\s+/, ''))}</li>`).join('')}</ol>`;
-        return `<p>${lines.map(inline).join('<br/>')}</p>`;
-    }).join('');
-}
+const blank = (section = '') => ({ title: '', section, tags: [] as string[], excerpt: '', content: '', coverImageUrl: '', authorName: '', slug: '' });
 
 // Articles for the website blog: write, publish and tag them here
 export default function BlogPageClient() {
@@ -51,26 +38,40 @@ export default function BlogPageClient() {
     const [open, setOpen] = useState(false);
     const [form, setForm] = useState(blank());
     const [tagDraft, setTagDraft] = useState('');
-    const [preview, setPreview] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [sectionsOpen, setSectionsOpen] = useState(false);
+    const [newSection, setNewSection] = useState('');
+    const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
+
+    // Add, rename, reorder or delete sections; every change refreshes the list
+    const sectionCall = async (fn: () => Promise<any>, ok: string) => {
+        try { await fn(); toast.success(ok); refresh(); return true; }
+        catch (err: any) { toast.error(err?.message || 'Could not change the section'); return false; }
+    };
+    const addSection = async () => {
+        const name = newSection.trim();
+        if (!name) return;
+        if (await sectionCall(() => inventoryClient.post(`${BASE}/sections`, { name }), `Section "${name}" added`)) setNewSection('');
+    };
 
     const qs = new URLSearchParams({ page: String(page), pageSize: String(pageSize), ...(debounced && { search: debounced }), ...(section && { section }), ...(status && { status }) });
     const { data, isLoading } = useQuery({
         queryKey: ['inventory', 'blog', page, pageSize, debounced, section, status],
-        queryFn: () => inventoryClient.get<{ posts: Post[]; meta: { total: number }; sections: string[] }>(`${BASE}?${qs}`),
+        queryFn: () => inventoryClient.get<{ posts: Post[]; meta: { total: number }; sections: Section[] }>(`${BASE}?${qs}`),
         placeholderData: keepPreviousData,
     });
     const posts = data?.posts || [];
-    const sections = data?.sections || ['Inventory tips', 'Selling', 'Business copilot', 'Product updates', 'Our story'];
+    const sectionRows: Section[] = data?.sections || [];
+    const sections = sectionRows.map(x => x.name);
     const total = data?.meta?.total || 0;
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['inventory', 'blog'] });
     const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
-    const openNew = () => { setEditing(null); setForm(blank()); setTagDraft(''); setPreview(false); setOpen(true); };
+    const openNew = () => { setEditing(null); setForm(blank(sections[0] || '')); setTagDraft(''); setOpen(true); };
     const openEdit = (p: Post) => {
         setEditing(p);
         setForm({ title: p.title, section: p.section, tags: p.tags, excerpt: p.excerpt || '', content: p.content, coverImageUrl: p.coverImageUrl || '', authorName: p.authorName || '', slug: p.slug });
-        setTagDraft(''); setPreview(false); setOpen(true);
+        setTagDraft(''); setOpen(true);
     };
     const addTag = () => {
         const t = tagDraft.trim().toLowerCase().replace(/,$/, '');
@@ -80,7 +81,7 @@ export default function BlogPageClient() {
 
     const save = async (nextStatus: 'draft' | 'published') => {
         if (!form.title.trim()) return toast.error('Add a title');
-        if (!form.content.trim()) return toast.error('Write the article');
+        if (!form.content.replace(/<[^>]*>/g, '').trim()) return toast.error('Write the article');
         setSaving(true);
         const dto = { ...form, tags: tagDraft.trim() ? [...form.tags, tagDraft.trim().toLowerCase()] : form.tags, status: nextStatus };
         try {
@@ -119,9 +120,14 @@ export default function BlogPageClient() {
                             <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{total} article{total === 1 ? '' : 's'}. Only published ones show on the website.</p>
                         </div>
                     </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setSectionsOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#fff', color: '#3f7d2c', border: '1.5px solid #6c9e4e', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        <Layers size={15} /> Sections
+                    </button>
                     <button onClick={openNew} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                         <Plus size={15} /> New article
                     </button>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -191,9 +197,12 @@ export default function BlogPageClient() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                                <span style={label}>Section</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={label}>Section</span>
+                                    <button type="button" onClick={() => setSectionsOpen(true)} style={{ border: 'none', background: 'none', color: '#6c9e4e', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, marginBottom: 6 }}>+ Add a section</button>
+                                </div>
                                 <select value={form.section} onChange={e => set('section', e.target.value)} style={input}>
-                                    {(sections.includes(form.section) ? sections : [form.section, ...sections]).map(s => <option key={s}>{s}</option>)}
+                                    {(!form.section || sections.includes(form.section) ? sections : [form.section, ...sections]).map(s => <option key={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -228,18 +237,48 @@ export default function BlogPageClient() {
                             </div>
                         </div>
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                <span style={{ ...label, marginBottom: 0 }}>Article</span>
-                                <div style={{ display: 'inline-flex', gap: 2, background: '#f3f4f6', borderRadius: 8, padding: 3 }}>
-                                    {[['Write', false], ['Preview', true]].map(([l, v]) => (
-                                        <button key={String(l)} onClick={() => setPreview(v as boolean)} style={{ padding: '4px 12px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: preview === v ? '#fff' : 'transparent', color: preview === v ? '#1a1a2e' : '#6b7280' }}>{l as string}</button>
-                                    ))}
-                                </div>
-                            </div>
-                            {preview
-                                ? <div className="blog-preview" style={{ minHeight: 260, border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '6px 16px', fontSize: 14, color: '#374151', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: mdToHtml(form.content) || '<p style="color:#9ca3af">Nothing written yet</p>' }} />
-                                : <textarea value={form.content} onChange={e => set('content', e.target.value)} placeholder={'Write the article. Formatting:\n## Heading\n**bold**, *italic*, [link](https://...)\n- list item'} style={{ ...input, height: 260, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />}
+                            <span style={label}>Article</span>
+                            <RichTextEditor value={form.content} onChange={html => set('content', html)} placeholder="Write the article. Use the toolbar for headings, bold, lists and links." minHeight={300} hideEmailTools />
                         </div>
+                    </div>
+                </Modal>
+            )}
+
+            {sectionsOpen && (
+                <Modal isOpen onClose={() => { setSectionsOpen(false); setRenaming(null); }} title="Blog sections" maxWidth={520}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ fontSize: 13, color: '#6b7280' }}>These are the filters on the website blog, in this order.</div>
+                        <div style={{ border: '1px solid #f0f0f0', borderRadius: 12 }}>
+                            {sectionRows.map((sec, i) => (
+                                <div key={sec.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderTop: i ? '1px solid #f5f5f5' : 'none' }}>
+                                    {renaming?.from === sec.name ? (
+                                        <>
+                                            <input autoFocus value={renaming.to} onChange={e => setRenaming({ ...renaming, to: e.target.value })} style={{ ...input, height: 34, flex: 1 }}
+                                                onKeyDown={async e => { if (e.key === 'Enter' && await sectionCall(() => inventoryClient.put(`${BASE}/sections/${encodeURIComponent(sec.name)}`, { name: renaming.to }), 'Section renamed')) setRenaming(null); }} />
+                                            <button title="Save" onClick={async () => { if (await sectionCall(() => inventoryClient.put(`${BASE}/sections/${encodeURIComponent(sec.name)}`, { name: renaming.to }), 'Section renamed')) setRenaming(null); }} style={{ background: '#dcfce7', border: 'none', color: '#15803d', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }}><Check size={14} /></button>
+                                            <button title="Cancel" onClick={() => setRenaming(null)} style={{ background: '#f3f4f6', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 6, borderRadius: 6, display: 'flex' }}><X size={14} /></button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ flex: 1 }}>
+                                                <b style={{ fontSize: 14, color: '#1a1a2e' }}>{sec.name}</b>
+                                                <div style={{ fontSize: 11, color: '#9ca3af' }}>{sec.articles} article{sec.articles === 1 ? '' : 's'}</div>
+                                            </div>
+                                            <button title="Move up" disabled={i === 0} onClick={() => sectionCall(() => inventoryClient.put(`${BASE}/sections/${encodeURIComponent(sec.name)}`, { move: 'up' }), 'Order updated')} style={{ background: '#f3f4f6', border: 'none', color: i === 0 ? '#d1d5db' : '#6b7280', cursor: i === 0 ? 'default' : 'pointer', padding: 5, borderRadius: 6, display: 'flex' }}><ChevronUp size={14} /></button>
+                                            <button title="Move down" disabled={i === sectionRows.length - 1} onClick={() => sectionCall(() => inventoryClient.put(`${BASE}/sections/${encodeURIComponent(sec.name)}`, { move: 'down' }), 'Order updated')} style={{ background: '#f3f4f6', border: 'none', color: i === sectionRows.length - 1 ? '#d1d5db' : '#6b7280', cursor: i === sectionRows.length - 1 ? 'default' : 'pointer', padding: 5, borderRadius: 6, display: 'flex' }}><ChevronDown size={14} /></button>
+                                            <button title="Rename" onClick={() => setRenaming({ from: sec.name, to: sec.name })} style={{ background: '#f0f9ff', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 5, borderRadius: 6, display: 'flex' }}><Edit2 size={14} /></button>
+                                            <button title={sec.articles ? 'Move its articles to another section first' : 'Delete'} onClick={() => { if (confirm(`Delete the "${sec.name}" section?`)) sectionCall(() => inventoryClient.delete(`${BASE}/sections/${encodeURIComponent(sec.name)}`), 'Section deleted'); }} style={{ background: '#fee2e2', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 5, borderRadius: 6, display: 'flex' }}><Trash2 size={14} /></button>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                            {sectionRows.length === 0 && <div style={{ padding: 16, fontSize: 13, color: '#9ca3af' }}>No sections yet.</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <input value={newSection} onChange={e => setNewSection(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSection(); }} placeholder="New section name, e.g. Customer stories" style={{ ...input, flex: 1 }} maxLength={100} />
+                            <button onClick={addSection} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 16px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}><Plus size={14} /> Add</button>
+                        </div>
+                        <div style={{ fontSize: 11, color: '#9ca3af' }}>Renaming a section moves its articles with it. A section can only be deleted when no article uses it.</div>
                     </div>
                 </Modal>
             )}
