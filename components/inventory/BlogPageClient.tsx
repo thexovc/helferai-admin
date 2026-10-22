@@ -52,6 +52,7 @@ export default function BlogPageClient() {
     const [tagDraft, setTagDraft] = useState('');
     const [saving, setSaving] = useState(false);
     const [uploadingCover, setUploadingCover] = useState(false);
+    const [previewing, setPreviewing] = useState(false);
     const [sectionsOpen, setSectionsOpen] = useState(false);
     const [newSection, setNewSection] = useState('');
     const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
@@ -201,6 +202,7 @@ export default function BlogPageClient() {
                 <Modal isOpen onClose={() => setOpen(false)} title={editing ? 'Edit article' : 'New article'} maxWidth={820}
                     footer={<>
                         <button onClick={() => setOpen(false)} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#6b7280', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                        <button onClick={() => setPreviewing(true)} style={{ padding: '10px 18px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer' }}>Preview</button>
                         <button onClick={() => save('draft')} disabled={saving} style={{ padding: '10px 18px', borderRadius: 8, border: '1.5px solid #6c9e4e', background: '#fff', color: '#3f7d2c', fontWeight: 700, cursor: 'pointer' }}>{editing?.status === 'published' ? 'Unpublish (save as draft)' : 'Save draft'}</button>
                         <button onClick={() => save('published')} disabled={saving} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#6c9e4e', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{saving ? 'Saving...' : editing?.status === 'published' ? 'Update' : 'Publish'}</button>
                     </>}>
@@ -272,6 +274,26 @@ export default function BlogPageClient() {
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>The short summary on the article card is made from the start of the article.</div>
                         </div>
                     </div>
+                </Modal>
+            )}
+
+            {previewing && (
+                <Modal isOpen onClose={() => setPreviewing(false)} title="Preview: how it will look on the blog" maxWidth={860}>
+                    <article style={{ color: '#1a1a2e' }}>
+                        <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 99, background: '#f0f7eb', color: '#3f7d2c', fontSize: 12, fontWeight: 700 }}>{form.section || 'Section'}</span>
+                        <h1 style={{ fontSize: 34, lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em', margin: '14px 0 10px' }}>{form.title || 'Your title'}</h1>
+                        <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 18 }}>
+                            {[form.authorName, new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), `${Math.max(1, Math.round(form.content.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length / 200))} min read`].filter(Boolean).join(' · ')}
+                        </div>
+                        {form.coverImageUrl && <img src={form.coverImageUrl} alt="" style={{ width: '100%', maxHeight: 380, objectFit: 'cover', borderRadius: 18, marginBottom: 22 }} />}
+                        <div className="blog-article-preview" style={{ fontSize: 16, lineHeight: 1.7, color: '#374151' }} dangerouslySetInnerHTML={{ __html: form.content || '<p style="color:#9ca3af">Nothing written yet.</p>' }} />
+                        {form.tags.length > 0 && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 22, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+                                {form.tags.map(t => <span key={t} style={{ padding: '3px 10px', borderRadius: 99, fontSize: 12, background: '#f3f4f6', color: '#4b5563' }}>#{t}</span>)}
+                            </div>
+                        )}
+                    </article>
+                    <style>{`.blog-article-preview img{max-width:100%;height:auto;border-radius:12px}.blog-article-preview h1,.blog-article-preview h2,.blog-article-preview h3{color:#1a1a2e;line-height:1.25;margin:1.2em 0 .5em}.blog-article-preview ul,.blog-article-preview ol{padding-left:1.4em}.blog-article-preview a{color:#6c9e4e}.blog-article-preview blockquote{border-left:3px solid #6c9e4e;margin:1em 0;padding:.2em 1em;color:#4b5563;background:#f9fafb}`}</style>
                 </Modal>
             )}
 
