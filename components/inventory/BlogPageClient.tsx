@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { FileText, Plus, Edit2, Trash2, Search, X, ChevronUp, ChevronDown, Check, Layers } from 'lucide-react';
+import { FileText, Plus, Edit2, Trash2, Search, X, ChevronUp, ChevronDown, Check, Layers, ImagePlus, Loader2 } from 'lucide-react';
 import Topbar from '../Topbar';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
@@ -12,6 +12,18 @@ import { inventoryClient } from '@/api/api-client';
 import { useDebouncedValue } from '@/app/lib/useDebouncedValue';
 
 const BASE = '/admin/api/inventory/blog';
+const API_BASE = process.env.NEXT_PUBLIC_INVENTORY_API_URL || 'http://localhost:3000/api';
+
+// Upload an image for an article; returns its link
+async function uploadBlogImage(file: File): Promise<string> {
+    if (file.size > 10 * 1024 * 1024) { toast.error('Images can be up to 10 MB'); throw new Error('too big'); }
+    const form = new FormData();
+    form.append('image', file);
+    const res = await fetch(`${API_BASE}${BASE}/images`, { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('inventoryToken')}` }, body: form });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.url) { toast.error(json.message || 'Could not upload the image'); throw new Error('upload failed'); }
+    return json.url;
+}
 type Section = { name: string; articles: number };
 type Post = {
     id: string; title: string; slug: string; section: string; tags: string[]; excerpt: string | null; content: string;
@@ -39,6 +51,7 @@ export default function BlogPageClient() {
     const [form, setForm] = useState(blank());
     const [tagDraft, setTagDraft] = useState('');
     const [saving, setSaving] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [sectionsOpen, setSectionsOpen] = useState(false);
     const [newSection, setNewSection] = useState('');
     const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
@@ -223,11 +236,31 @@ export default function BlogPageClient() {
                                     placeholder={form.tags.length ? '' : 'Type a tag and press Enter, e.g. stock'} style={{ flex: 1, minWidth: 140, border: 'none', outline: 'none', background: 'transparent', fontSize: 13 }} />
                             </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-                            <div>
-                                <span style={label}>Cover image link (optional)</span>
-                                <input value={form.coverImageUrl} onChange={e => set('coverImageUrl', e.target.value)} placeholder="https://..." style={input} />
+                        <div>
+                            <span style={label}>Article image (cover)</span>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                <div style={{ width: 140, height: 84, borderRadius: 10, border: '1.5px dashed #d1d5db', background: form.coverImageUrl ? `center / cover no-repeat url("${form.coverImageUrl}")` : '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 11, flexShrink: 0 }}>
+                                    {!form.coverImageUrl && 'No image'}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px solid #6c9e4e', color: '#3f7d2c', fontWeight: 700, fontSize: 12, cursor: uploadingCover ? 'default' : 'pointer' }}>
+                                            {uploadingCover ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />} {form.coverImageUrl ? 'Change image' : 'Upload image'}
+                                            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" style={{ display: 'none' }} disabled={uploadingCover}
+                                                onChange={async e => {
+                                                    const file = e.target.files?.[0]; e.target.value = '';
+                                                    if (!file) return;
+                                                    setUploadingCover(true);
+                                                    try { set('coverImageUrl', await uploadBlogImage(file)); } catch { } finally { setUploadingCover(false); }
+                                                }} />
+                                        </label>
+                                        {form.coverImageUrl && <button type="button" onClick={() => set('coverImageUrl', '')} style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Remove</button>}
+                                    </div>
+                                    <input value={form.coverImageUrl} onChange={e => set('coverImageUrl', e.target.value)} placeholder="or paste an image link" style={{ ...input, height: 34, fontSize: 12 }} />
+                                </div>
                             </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
                             <div>
                                 <span style={label}>Web address</span>
                                 <input value={form.slug} onChange={e => set('slug', e.target.value)} placeholder="made from the title" style={input} />
@@ -235,7 +268,7 @@ export default function BlogPageClient() {
                         </div>
                         <div>
                             <span style={label}>Article</span>
-                            <RichTextEditor value={form.content} onChange={html => set('content', html)} placeholder="Write the article. Use the toolbar for headings, bold, lists and links." minHeight={300} hideEmailTools />
+                            <RichTextEditor value={form.content} onChange={html => set('content', html)} placeholder="Write the article. Use the toolbar for headings, bold, lists and links." minHeight={300} hideEmailTools onUploadImage={uploadBlogImage} />
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>The short summary on the article card is made from the start of the article.</div>
                         </div>
                     </div>

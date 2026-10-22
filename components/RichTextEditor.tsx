@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
@@ -13,8 +13,25 @@ import {
     AlignLeft, AlignCenter, AlignRight, AlignJustify,
     List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3,
     Link as LinkIcon, Unlink, Undo, Redo, Minus, Eraser,
-    Sparkles, MousePointerClick, ChevronDown, Check
+    Sparkles, MousePointerClick, ChevronDown, Check, ImagePlus, Loader2
 } from 'lucide-react';
+
+// Images inside the text (e.g. blog articles)
+const ImageNode = Node.create({
+    name: 'image',
+    group: 'block',
+    draggable: true,
+    atom: true,
+    addAttributes() {
+        return { src: { default: null }, alt: { default: null } };
+    },
+    parseHTML() {
+        return [{ tag: 'img[src]' }];
+    },
+    renderHTML({ HTMLAttributes }) {
+        return ['img', mergeAttributes(HTMLAttributes, { style: 'max-width: 100%; height: auto; border-radius: 10px; margin: 8px 0;' })];
+    },
+});
 
 interface RichTextEditorProps {
     value: string;
@@ -23,6 +40,8 @@ interface RichTextEditorProps {
     minHeight?: number;
     // Hide email-only tools (CTA button, {{variables}}), e.g. for blog articles
     hideEmailTools?: boolean;
+    // When given, shows an image button; returns the uploaded image's link
+    onUploadImage?: (file: File) => Promise<string>;
 }
 
 const TEXT_COLORS = [
@@ -57,7 +76,10 @@ export default function RichTextEditor({
     placeholder = 'Compose your formatted email message here...',
     minHeight = 280,
     hideEmailTools = false,
+    onUploadImage,
 }: RichTextEditorProps) {
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const imageInput = React.useRef<HTMLInputElement>(null);
     const [isMounted, setIsMounted] = useState(false);
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
@@ -98,6 +120,7 @@ export default function RichTextEditor({
             TextStyle,
             Color,
             Highlight.configure({ multicolor: true }),
+            ImageNode,
         ],
         content: value,
         onUpdate: ({ editor }) => {
@@ -370,6 +393,36 @@ export default function RichTextEditor({
                     >
                         <Minus size={15} />
                     </button>
+                    {onUploadImage && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => imageInput.current?.click()}
+                                disabled={uploadingImage}
+                                style={toolbarIconBtn(false, uploadingImage)}
+                                title="Insert Image"
+                            >
+                                {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+                            </button>
+                            <input
+                                ref={imageInput}
+                                type="file"
+                                accept="image/png,image/jpeg,image/gif,image/webp"
+                                style={{ display: 'none' }}
+                                onChange={async e => {
+                                    const file = e.target.files?.[0];
+                                    e.target.value = '';
+                                    if (!file) return;
+                                    setUploadingImage(true);
+                                    try {
+                                        const src = await onUploadImage(file);
+                                        editor.chain().focus().insertContent({ type: 'image', attrs: { src, alt: file.name } }).run();
+                                    } catch { /* the uploader shows its own error */ }
+                                    finally { setUploadingImage(false); }
+                                }}
+                            />
+                        </>
+                    )}
                 </div>
 
                 {/* Group 6: Links */}
