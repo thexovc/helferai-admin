@@ -83,7 +83,8 @@ export default function BlogPageClient() {
         if (!form.title.trim()) return toast.error('Add a title');
         if (!form.content.replace(/<[^>]*>/g, '').trim()) return toast.error('Write the article');
         setSaving(true);
-        const dto = { ...form, tags: tagDraft.trim() ? [...form.tags, tagDraft.trim().toLowerCase()] : form.tags, status: nextStatus };
+        const { excerpt, ...rest } = form;
+        const dto = { ...rest, tags: tagDraft.trim() ? [...form.tags, tagDraft.trim().toLowerCase()] : form.tags, status: nextStatus };
         try {
             if (editing) await inventoryClient.put(`${BASE}/${editing.id}`, dto);
             else await inventoryClient.post(BASE, dto);
@@ -222,10 +223,6 @@ export default function BlogPageClient() {
                                     placeholder={form.tags.length ? '' : 'Type a tag and press Enter, e.g. stock'} style={{ flex: 1, minWidth: 140, border: 'none', outline: 'none', background: 'transparent', fontSize: 13 }} />
                             </div>
                         </div>
-                        <div>
-                            <span style={label}>Short summary (shown on the article card)</span>
-                            <textarea value={form.excerpt} onChange={e => set('excerpt', e.target.value)} placeholder="One or two sentences" style={{ ...input, height: 60, padding: '10px 12px', resize: 'none', fontFamily: 'inherit' }} maxLength={400} />
-                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
                             <div>
                                 <span style={label}>Cover image link (optional)</span>
@@ -239,6 +236,7 @@ export default function BlogPageClient() {
                         <div>
                             <span style={label}>Article</span>
                             <RichTextEditor value={form.content} onChange={html => set('content', html)} placeholder="Write the article. Use the toolbar for headings, bold, lists and links." minHeight={300} hideEmailTools />
+                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>The short summary on the article card is made from the start of the article.</div>
                         </div>
                     </div>
                 </Modal>
