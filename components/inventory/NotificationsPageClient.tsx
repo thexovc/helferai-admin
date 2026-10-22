@@ -213,14 +213,15 @@ export default function NotificationsPageClient() {
                             {form.kind === 'banner' ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: '#1a1a2e', color: '#fff', fontSize: 13 }}>
                                     <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.message || 'Your one-line message'}</span>
-                                    {form.buttonText && <span style={{ fontWeight: 700, color: '#a7d38a' }}>{form.buttonText} ›</span>}
+                                    {form.buttonText.trim() && <span style={{ fontWeight: 700, color: '#a7d38a' }}>{form.buttonText} ›</span>}
                                     <X size={14} style={{ opacity: 0.7 }} />
                                 </div>
                             ) : (
-                                <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, padding: 18, background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', maxWidth: 340, margin: '0 auto', textAlign: 'center' }}>
+                                <div style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: 14, padding: '18px 28px', background: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', maxWidth: 340, margin: '0 auto', textAlign: 'center' }}>
+                                    <X size={16} style={{ position: 'absolute', top: 10, right: 10, color: '#9ca3af' }} />
                                     <div style={{ fontWeight: 800, fontSize: 16, color: '#1a1a2e' }}>{form.title || 'Title'}</div>
-                                    <div style={{ fontSize: 13, color: '#6b7280', margin: '8px 0 14px', whiteSpace: 'pre-wrap' }}>{form.message || 'Your message'}</div>
-                                    <div style={{ padding: '9px 0', borderRadius: 8, background: '#6c9e4e', color: '#fff', fontWeight: 700, fontSize: 13 }}>{form.buttonText || 'OK'}</div>
+                                    <div style={{ fontSize: 13, color: '#6b7280', marginTop: 8, whiteSpace: 'pre-wrap' }}>{form.message || 'Your message'}</div>
+                                    {form.buttonText.trim() && <div style={{ marginTop: 14, padding: '9px 0', borderRadius: 8, background: '#6c9e4e', color: '#fff', fontWeight: 700, fontSize: 13 }}>{form.buttonText}</div>}
                                 </div>
                             )}
                         </div>
