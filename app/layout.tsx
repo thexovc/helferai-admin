@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "./providers/QueryProvider";
+import ServiceWorker from "./providers/ServiceWorker";
 import { Toaster } from "sonner";
 
 const inter = Inter({
@@ -14,6 +15,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "HelferAI Admin",
   description: "HelferAI Admin Dashboard — Inventory & Studio",
+  applicationName: "Helfer Admin",
+  appleWebApp: { capable: true, title: "Helfer Admin", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b1424",
 };
 
 export default function RootLayout({
@@ -26,6 +34,7 @@ export default function RootLayout({
           {children}
         </QueryProvider>
         <Toaster position="top-right" richColors />
+        <ServiceWorker />
       </body>
     </html>
   );
