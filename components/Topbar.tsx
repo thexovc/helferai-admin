@@ -2,11 +2,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Search, User, Menu, Building2, CreditCard, ShieldAlert, CalendarClock } from 'lucide-react';
+import { Bell, Search, User, Menu, Building2, CreditCard, ShieldAlert, CalendarClock, UserPlus, Hourglass, Gift } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { inventoryClient } from '@/api/api-client';
 
-type Alert = { id: string; kind: 'merchant' | 'payment' | 'security' | 'expiring'; title: string; detail: string; at: string; endsAt?: string; link: string };
+type Alert = { id: string; kind: 'merchant' | 'payment' | 'security' | 'expiring' | 'staff' | 'trial' | 'referral'; title: string; detail: string; at: string; endsAt?: string; link: string };
 const SEEN_KEY = 'adminAlertsSeenAt';
 const ago = (d: string) => {
     const m = Math.round((Date.now() - new Date(d).getTime()) / 60000);
@@ -19,10 +19,14 @@ const KIND = {
     payment: { icon: CreditCard, bg: '#e0f2fe', color: '#0369a1' },
     security: { icon: ShieldAlert, bg: '#fee2e2', color: '#b91c1c' },
     expiring: { icon: CalendarClock, bg: '#fef3c7', color: '#b45309' },
+    trial: { icon: Hourglass, bg: '#fef3c7', color: '#b45309' },
+    staff: { icon: UserPlus, bg: '#f3e8ff', color: '#7c3aed' },
+    referral: { icon: Gift, bg: '#eaf4e3', color: '#3f7d2c' },
 };
 
-// Bell: new merchants, payments and failed admin sign-ins; the count is what
-// arrived since this admin last opened it
+// Bell: what happened on the pages this admin's role can open (new merchants,
+// staff, payments, plans and trials ending, referrals, failed admin sign-ins);
+// the count is what arrived since they last opened it
 function AlertsBell({ accent }: { accent: string }) {
     const [open, setOpen] = React.useState(false);
     const [seenAt, setSeenAt] = React.useState(0);
@@ -68,7 +72,7 @@ function AlertsBell({ accent }: { accent: string }) {
                                     <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{i.title}</div>
                                     <div style={{ fontSize: 12, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.detail}</div>
                                 </div>
-                                <div style={{ fontSize: 11, color: i.kind === 'expiring' ? '#b45309' : '#9ca3af', whiteSpace: 'nowrap' }}>{i.kind === 'expiring' && i.endsAt ? new Date(i.endsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ago(i.at)}</div>
+                                <div style={{ fontSize: 11, color: i.endsAt ? '#b45309' : '#9ca3af', whiteSpace: 'nowrap' }}>{i.endsAt ? new Date(i.endsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ago(i.at)}</div>
                             </Link>
                         );
                     })}
