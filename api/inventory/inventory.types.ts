@@ -568,6 +568,7 @@ export interface PlatformUserRecord {
   status: string;
   lastLogin?: string;
   lastLoginIp?: string | null;
+  lastLoginDevice?: string | null;
   lastActive?: string | null;
   storeName?: string | null;
   isPrimaryUser?: boolean;

@@ -139,7 +139,7 @@ export default function UsersPageContent({ product }: Props) {
                         <table style={{ minWidth: 1000 }}>
                             <thead>
                                 <tr>
-                                    {['Name', 'Email', 'Merchant / Store', 'Role', 'Status', 'Last Login', 'Last Login IP', 'Actions'].map(h => (
+                                    {['Name', 'Email', 'Merchant / Store', 'Role', 'Status', 'Last Login', 'Last Login IP', 'Last Login Device', 'Actions'].map(h => (
                                         <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -148,12 +148,12 @@ export default function UsersPageContent({ product }: Props) {
                                 {isLoading ? (
                                     [1, 2, 3, 4, 5].map(i => (
                                         <tr key={i}>
-                                            <td colSpan={8}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                            <td colSpan={9}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                         </tr>
                                     ))
                                 ) : users.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>No platform users found</td>
+                                        <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>No platform users found</td>
                                     </tr>
                                 ) : (
                                     users.map((u: PlatformUserRecord, i) => (
@@ -192,6 +192,7 @@ export default function UsersPageContent({ product }: Props) {
                                                 {u.lastActive && <div style={{ fontSize: 11, color: '#9ca3af' }}>Last active {formatDateTime(u.lastActive)}</div>}
                                             </td>
                                             <td style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{u.lastLoginIp || <span style={{ color: '#9ca3af', fontFamily: 'inherit' }}>Not recorded</span>}</td>
+                                            <td style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>{u.lastLoginDevice || <span style={{ color: '#9ca3af' }}>Not recorded</span>}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                                                     <button
