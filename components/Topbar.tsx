@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bell, Search, User, Menu, Building2, CreditCard, ShieldAlert, CalendarClock, UserPlus, Hourglass, Gift } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { inventoryClient } from '@/api/api-client';
+import PushToggle from './PushToggle';
 
 type Alert = { id: string; kind: 'merchant' | 'payment' | 'security' | 'expiring' | 'staff' | 'trial' | 'referral'; title: string; detail: string; at: string; endsAt?: string; link: string };
 const SEEN_KEY = 'adminAlertsSeenAt';
@@ -62,6 +63,7 @@ function AlertsBell({ accent }: { accent: string }) {
             {open && (
                 <div style={{ position: 'absolute', right: 0, top: 44, width: 'min(340px, calc(100vw - 24px))', maxHeight: 440, overflowY: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', zIndex: 200 }}>
                     <div style={{ padding: '12px 14px', fontSize: 13, fontWeight: 800, color: '#1a1a2e', borderBottom: '1px solid #f0f0f0' }}>Recent activity</div>
+                    <PushToggle accent={accent} />
                     {items.length === 0 ? <div style={{ padding: 20, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>Nothing new yet.</div> : items.map(i => {
                         const k = KIND[i.kind] || KIND.merchant; const Icon = k.icon;
                         const isNew = new Date(i.at).getTime() > seenAt;
