@@ -237,6 +237,8 @@ export default function InventoryDashboardClient() {
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 60 }}>
+            {/* Page title, and the menu button on phones */}
+            <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
             {/* Custom Header with Date Selector */}
             <div style={{ 
                 padding: '16px var(--content-padding)', 
@@ -250,7 +252,7 @@ export default function InventoryDashboardClient() {
                 position: 'relative',
                 zIndex: 50
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                     <div 
                         onClick={toggleDropdown}
                         style={{ 
@@ -310,7 +312,8 @@ export default function InventoryDashboardClient() {
                             </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    {/* Scrolls sideways on narrow screens instead of widening the page */}
+                    <div style={{ display: 'flex', gap: 4, overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                         {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'All time'].map(p => (
                             <button 
                                 key={p} 
@@ -320,7 +323,7 @@ export default function InventoryDashboardClient() {
                                     border: selectedRange === p ? '1px solid #e2e8f0' : 'none', 
                                     padding: '6px 12px', fontSize: 12, fontWeight: 700,
                                     color: selectedRange === p ? '#1a1a2e' : '#94a3b8', cursor: 'pointer',
-                                    borderRadius: 6,
+                                    borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0,
                                     boxShadow: selectedRange === p ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
                                 }}
                             >
@@ -360,7 +363,7 @@ export default function InventoryDashboardClient() {
                 </div>
 
                 {/* CHARTS ROW */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: 24, marginBottom: 32 }}>
                     {/* Revenue Chart */}
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -452,7 +455,7 @@ export default function InventoryDashboardClient() {
                 </div>
 
                 {/* BOTTOM ROW (Funnel and Actions) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 32 }}>
                     {/* Businesses that joined in the selected period, and how far they got */}
                     <ConversionFunnel data={charts.conversionFunnel} />
                     <RecentActions actions={recentActions} />
