@@ -39,6 +39,7 @@ export const inventoryNav: NavGroup[] = [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Merchants' },
             { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
             { href: '/inventory/users', icon: <Users size={18} />, label: 'Platform Users' },
+            { href: '/inventory/analysis', icon: <LineChart size={18} />, label: 'Analysis' },
         ],
     },
     {
