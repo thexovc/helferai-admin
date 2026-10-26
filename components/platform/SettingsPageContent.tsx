@@ -1,178 +1,189 @@
 'use client';
 import React, { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import Topbar from '../Topbar';
-import { ACTIVE_SESSIONS } from '@/app/lib/data';
-import { Lock, Shield, Monitor, LogOut, Eye, EyeOff, Wifi, AlertTriangle, CheckCircle } from 'lucide-react';
+import PushToggle from '../PushToggle';
+import { inventoryClient } from '@/api/api-client';
+import { useMyAccess } from '@/api/auth/useMyAccess';
+import { Lock, Monitor, LogOut, Eye, EyeOff, Bell, History, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
     product: 'inventory' | 'studio' | 'admin';
 }
 
-export default function SettingsPageContent({ product }: Props) {
-    const [showCurrentPass, setShowCurrentPass] = useState(false);
-    const [showNewPass, setShowNewPass] = useState(false);
-    const [twoFAEnabled, setTwoFAEnabled] = useState(true);
-    const [saved, setSaved] = useState(false);
-    const [sessions, setSessions] = useState(ACTIVE_SESSIONS);
+type ActivityItem = { id: string; action: string; ok: boolean; ip: string | null; userAgent: string | null; at: string | null };
+type MyActivity = { signIns: ActivityItem[]; actions: ActivityItem[] };
 
-    const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
-    const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
+const inputStyle: React.CSSProperties = { height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb', color: '#1a1a2e', boxSizing: 'border-box' };
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
+const muted: React.CSSProperties = { fontSize: 13, color: '#6b7280', margin: 0 };
 
-    const inputStyle: React.CSSProperties = { height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb', color: '#1a1a2e' };
+// "iPhone · Safari" from a browser's user agent
+function deviceName(ua: string | null) {
+    if (!ua) return '';
+    const device = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+        : /Macintosh|Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : /Linux/.test(ua) ? 'Linux' : 'Device';
+    const browser = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet'
+        : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '';
+    return browser ? `${device} · ${browser}` : device;
+}
 
-    function handleSavePassword() {
-        setSaved(true);
-        toast.success('Password updated successfully');
-        setTimeout(() => setSaved(false), 2500);
-    }
+function timeAgo(at: string | null) {
+    if (!at) return '';
+    const s = Math.max(0, (Date.now() - new Date(at).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+    if (s < 7 * 86400) return `${Math.floor(s / 86400)} day${s < 2 * 86400 ? '' : 's'} ago`;
+    return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
-    const handleToggle2FA = () => {
-        const newState = !twoFAEnabled;
-        setTwoFAEnabled(newState);
-        toast.success(`Two-Factor Authentication ${newState ? 'enabled' : 'disabled'}`);
-    };
-
-    const handleRevokeSession = (id: string, device: string) => {
-        if (confirm(`Are you sure you want to revoke the session for ${device}?`)) {
-            setSessions(prev => prev.filter(s => s.id !== id));
-            toast.success(`Session for ${device} revoked`);
-        }
-    };
-
-    const handleLogoutAll = () => {
-        if (confirm('Are you sure you want to log out from all other devices?')) {
-            setSessions(prev => prev.filter(s => s.current));
-            toast.success('Logged out from all other devices');
-        }
-    };
-
-    const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 24 }}>
-            <div style={{ padding: '18px 24px', borderBottom: '1px solid #f5f5f5', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: lightBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accentColor }}>{icon}</div>
+// Defined outside the page so its contents (and the typed passwords) aren't wiped on every re-render
+function SectionCard({ title, icon, accent, lightBg, children }: { title: string; icon: React.ReactNode; accent: string; lightBg: string; children: React.ReactNode }) {
+    return (
+        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f5f5f5', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: lightBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent, flexShrink: 0 }}>{icon}</div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{title}</h2>
             </div>
-            <div style={{ padding: 24 }}>{children}</div>
+            <div style={{ padding: 20 }}>{children}</div>
         </div>
     );
+}
+
+function PasswordInput({ value, onChange, show, onToggle, accent, autoComplete }: { value: string; onChange: (v: string) => void; show?: boolean; onToggle?: () => void; accent: string; autoComplete: string }) {
+    return (
+        <div style={{ position: 'relative' }}>
+            <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)} autoComplete={autoComplete} placeholder="••••••••"
+                style={{ ...inputStyle, paddingRight: onToggle ? 42 : 14 }}
+                onFocus={e => (e.target.style.borderColor = accent)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
+            {onToggle && (
+                <button type="button" onClick={onToggle} aria-label={show ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', padding: 8 }}>
+                    {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+            )}
+        </div>
+    );
+}
+
+function ActivityRow({ item, title, last }: { item: ActivityItem; title: string; last: boolean }) {
+    return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: last ? 'none' : '1px solid #f5f5f5' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.ok ? '#22c55e' : '#ef4444', flexShrink: 0, marginTop: 6 }} />
+                <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: '#1a1a2e', fontWeight: 500, overflowWrap: 'anywhere' }}>{title}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af', overflowWrap: 'anywhere' }}>{[deviceName(item.userAgent), item.ip].filter(Boolean).join(' · ')}</div>
+                </div>
+            </div>
+            <div style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeAgo(item.at)}</div>
+        </div>
+    );
+}
+
+export default function SettingsPageContent({ product }: Props) {
+    const accentColor = product === 'studio' ? '#7c5cbf' : '#6c9e4e';
+    const lightBg = product === 'studio' ? '#f0ebff' : '#eaf4e3';
+    const card = { accent: accentColor, lightBg };
+
+    const { me } = useMyAccess();
+    const activity = useQuery({
+        queryKey: ['admin-auth', 'my-activity'],
+        queryFn: () => inventoryClient.get<MyActivity>('/admin/auth/my-activity'),
+    });
+
+    const [current, setCurrent] = useState('');
+    const [next, setNext] = useState('');
+    const [confirm, setConfirm] = useState('');
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNext, setShowNext] = useState(false);
+
+    const changePassword = useMutation({
+        mutationFn: () => inventoryClient.put('/admin/auth/password', { currentPassword: current, newPassword: next }),
+        onSuccess: () => {
+            toast.success('Password changed. Use the new one next time you sign in.');
+            setCurrent(''); setNext(''); setConfirm('');
+            activity.refetch();
+        },
+        onError: (e: any) => toast.error(e?.message || 'Could not change your password'),
+    });
+
+    function handleSavePassword(e: React.FormEvent) {
+        e.preventDefault();
+        if (!current || !next || !confirm) return toast.error('Please fill in all three password boxes');
+        if (next.length < 8) return toast.error('New password must be at least 8 characters');
+        if (next !== confirm) return toast.error('The new passwords don\'t match');
+        if (next === current) return toast.error('The new password must be different from the current one');
+        changePassword.mutate();
+    }
+
+    const signOut = () => {
+        try {
+            const keys = product === 'inventory' ? ['inventoryToken', 'inventoryUser'] : ['adminToken', 'adminUser'];
+            keys.forEach(k => localStorage.removeItem(k));
+        } catch { }
+        window.location.href = '/select';
+    };
+
+    const empty = (text: string) => <p style={muted}>{text}</p>;
+    const list = (items: ActivityItem[] | undefined, titleOf: (i: ActivityItem) => string, none: string) =>
+        activity.isLoading ? empty('Loading…')
+            : activity.isError ? empty('Could not load this right now.')
+                : !items?.length ? empty(none)
+                    : items.map((i, n) => <ActivityRow key={i.id} item={i} title={titleOf(i)} last={n === items.length - 1} />);
 
     return (
         <div>
-            <Topbar title="Settings" subtitle="Security & account preferences" product={product} />
+            <Topbar title="Settings" subtitle="Your account & security" product={product} />
             <div style={{ padding: 'var(--content-padding)', maxWidth: 800, margin: '0 auto' }}>
-                {/* Success Toast */}
-                {saved && (
-                    <div style={{ marginBottom: 16, padding: '12px 20px', background: lightBg, border: `1px solid ${accentColor}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, color: '#374151', fontSize: 14, fontWeight: 500 }}>
-                        <CheckCircle size={16} color={accentColor} /> Settings saved successfully!
-                    </div>
-                )}
-
-                {/* Change Password */}
-                <SectionCard title="Change Password" icon={<Lock size={16} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Current Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <input type={showCurrentPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
-                                <button onClick={() => setShowCurrentPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex' }}>
-                                    {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
-                            </div>
+                <SectionCard title="Your Account" icon={<UserCircle size={16} />} {...card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e' }}>{me?.name || '…'}</div>
+                            <div style={{ ...muted, overflowWrap: 'anywhere' }}>{me?.email}</div>
+                            {me?.role && <span style={{ display: 'inline-block', marginTop: 6, fontSize: 11, padding: '2px 8px', background: lightBg, color: accentColor, borderRadius: 99, fontWeight: 700 }}>{me.role}</span>}
                         </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>New Password</label>
-                            <div style={{ position: 'relative' }}>
-                                <input type={showNewPass ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: 42 }} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
-                                <button onClick={() => setShowNewPass(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex' }}>
-                                    {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Confirm New Password</label>
-                            <input type="password" placeholder="••••••••" style={inputStyle} onFocus={e => (e.target.style.borderColor = accentColor)} onBlur={e => (e.target.style.borderColor = '#e5e7eb')} />
-                        </div>
-                    </div>
-                    <button onClick={handleSavePassword} style={{ marginTop: 20, padding: '10px 24px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: `0 2px 8px ${accentColor}4d` }}>
-                        Update Password
-                    </button>
-                </SectionCard>
-
-                {/* 2FA */}
-                <SectionCard title="Two-Factor Authentication" icon={<Shield size={16} />}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <p style={{ margin: '0 0 4px', fontWeight: 600, color: '#1a1a2e', fontSize: 14 }}>
-                                2FA is currently <span style={{ color: twoFAEnabled ? '#22c55e' : '#ef4444' }}>{twoFAEnabled ? 'Enabled' : 'Disabled'}</span>
-                            </p>
-                            <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Adds an extra layer of security to your admin account.</p>
-                        </div>
-                        <button onClick={handleToggle2FA} style={{ padding: '10px 20px', background: twoFAEnabled ? '#fee2e2' : lightBg, color: twoFAEnabled ? '#dc2626' : accentColor, border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                            {twoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+                        <button onClick={signOut} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                            <LogOut size={14} /> Sign out of this device
                         </button>
                     </div>
-                    {twoFAEnabled && (
-                        <div style={{ marginTop: 16, padding: '12px 16px', background: '#f0fdf4', borderRadius: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <CheckCircle size={15} color="#22c55e" />
-                            <span style={{ fontSize: 13, color: '#15803d' }}>Your account is protected with 2FA via email OTP.</span>
+                </SectionCard>
+
+                <SectionCard title="Change Password" icon={<Lock size={16} />} {...card}>
+                    <form onSubmit={handleSavePassword}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 16 }}>
+                            <div>
+                                <label style={labelStyle}>Current Password</label>
+                                <PasswordInput value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} accent={accentColor} autoComplete="current-password" />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>New Password</label>
+                                <PasswordInput value={next} onChange={setNext} show={showNext} onToggle={() => setShowNext(v => !v)} accent={accentColor} autoComplete="new-password" />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Confirm New Password</label>
+                                <PasswordInput value={confirm} onChange={setConfirm} show={showNext} accent={accentColor} autoComplete="new-password" />
+                            </div>
                         </div>
-                    )}
+                        <p style={{ ...muted, fontSize: 12, marginTop: 10 }}>At least 8 characters.</p>
+                        <button type="submit" disabled={changePassword.isPending} style={{ marginTop: 14, padding: '10px 24px', background: accentColor, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: changePassword.isPending ? 'default' : 'pointer', opacity: changePassword.isPending ? 0.7 : 1, boxShadow: `0 2px 8px ${accentColor}4d` }}>
+                            {changePassword.isPending ? 'Saving…' : 'Update Password'}
+                        </button>
+                    </form>
                 </SectionCard>
 
-                {/* Active Sessions */}
-                <SectionCard title="Active Sessions" icon={<Monitor size={16} />}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {sessions.map(session => (
-                            <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: session.current ? lightBg : '#fafafa', borderRadius: 12, border: session.current ? `1.5px solid ${accentColor}` : '1px solid #f0f0f0' }}>
-                                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                                    <div style={{ width: 38, height: 38, borderRadius: 10, background: session.current ? lightBg : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <Wifi size={16} color={session.current ? accentColor : '#9ca3af'} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', display: 'flex', gap: 8, alignItems: 'center' }}>
-                                            {session.device}
-                                            {session.current && <span style={{ fontSize: 10, padding: '2px 7px', background: accentColor, color: '#fff', borderRadius: 99, fontWeight: 700 }}>CURRENT</span>}
-                                        </div>
-                                        <div style={{ fontSize: 12, color: '#6b7280' }}>{session.location} · {session.ip} · {session.time}</div>
-                                    </div>
-                                </div>
-                                {!session.current && (
-                                    <button
-                                        onClick={() => handleRevokeSession(session.id, session.device)}
-                                        style={{ padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Revoke</button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    <button
-                        onClick={handleLogoutAll}
-                        style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                        <LogOut size={14} /> Logout from All Devices
-                    </button>
+                <SectionCard title="Alerts on This Device" icon={<Bell size={16} />} {...card}>
+                    <p style={{ ...muted, marginBottom: 10 }}>Get the bell alerts (new merchants, payments, expiring plans) as phone or computer notifications.</p>
+                    <PushToggle accent={accentColor} />
                 </SectionCard>
 
-                {/* Activity */}
-                <SectionCard title="Recent Activity" icon={<AlertTriangle size={16} />}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {[
-                            { action: 'Sign in from MacBook Pro', time: '2 minutes ago', ip: '102.90.45.12', ok: true },
-                            { action: 'Password changed', time: '3 days ago', ip: '102.90.45.12', ok: true },
-                            { action: 'Failed sign-in attempt', time: '5 days ago', ip: '185.11.22.44', ok: false },
-                            { action: 'Role updated: Support → Admin', time: '1 week ago', ip: '102.90.45.12', ok: true },
-                        ].map((act, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 3 ? '1px solid #f5f5f5' : 'none' }}>
-                                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: act.ok ? '#22c55e' : '#ef4444', flexShrink: 0 }} />
-                                    <span style={{ fontSize: 13, color: '#374151' }}>{act.action}</span>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: 12, color: '#6b7280' }}>{act.time}</div>
-                                    <div style={{ fontSize: 11, color: '#9ca3af' }}>{act.ip}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <SectionCard title="Recent Sign-ins" icon={<Monitor size={16} />} {...card}>
+                    {list(activity.data?.signIns, i => (i.ok ? 'Signed in' : 'Failed sign-in attempt'), 'No sign-ins recorded yet.')}
+                </SectionCard>
+
+                <SectionCard title="Your Recent Changes" icon={<History size={16} />} {...card}>
+                    {list(activity.data?.actions, i => i.action, 'You haven\'t made any changes yet.')}
                 </SectionCard>
             </div>
         </div>
