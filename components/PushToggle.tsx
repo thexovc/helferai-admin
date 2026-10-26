@@ -11,6 +11,64 @@ const urlKey = (base64: string) => {
     return Uint8Array.from(raw, c => c.charCodeAt(0));
 };
 
+const pushSupported = () => typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+// Asks for permission if needed, then signs this device up for alerts
+export async function enablePush(): Promise<'on' | 'blocked'> {
+    if (Notification.permission !== 'granted' && (await Notification.requestPermission()) !== 'granted') return 'blocked';
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+        const { publicKey } = await inventoryClient.get<{ publicKey: string }>('/admin/auth/push/key');
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(publicKey) });
+    }
+    await inventoryClient.post('/admin/auth/push/subscribe', sub.toJSON());
+    return 'on';
+}
+
+const PROMPT_KEY = 'adminPushPromptHiddenAt';
+
+// Alerts are on by default: where the browser already allows them this device
+// is signed up quietly; otherwise a card asks once (browsers only allow the
+// permission question after a tap). "Not now" hides it for a week.
+export function PushPrompt({ accent }: { accent: string }) {
+    const [show, setShow] = React.useState(false);
+    const [busy, setBusy] = React.useState(false);
+    React.useEffect(() => {
+        if (!pushSupported() || !localStorage.getItem('inventoryToken')) return;
+        if (Notification.permission === 'granted') { enablePush().catch(() => undefined); return; }
+        if (Notification.permission !== 'default') return;
+        let hiddenAt = 0;
+        try { hiddenAt = Number(localStorage.getItem(PROMPT_KEY)) || 0; } catch { }
+        if (Date.now() - hiddenAt > 7 * 86400000) setShow(true);
+    }, []);
+    if (!show) return null;
+    const hide = () => { try { localStorage.setItem(PROMPT_KEY, String(Date.now())); } catch { } setShow(false); };
+    const turnOn = async () => {
+        setBusy(true);
+        try {
+            if ((await enablePush()) === 'on') toast.success('Alerts are on for this device');
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not turn on alerts');
+        } finally {
+            setBusy(false);
+            setShow(false);
+        }
+    };
+    return (
+        <div style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))', maxWidth: 400, marginLeft: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, boxShadow: '0 12px 32px rgba(0,0,0,0.15)', padding: 16, zIndex: 300, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>Turn on alerts</div>
+                <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>Get new merchants, payments and other bell alerts on this device, even when the admin is closed.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={hide} disabled={busy} style={{ border: '1px solid #e5e7eb', background: '#fff', color: '#374151', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Not now</button>
+                <button onClick={turnOn} disabled={busy} style={{ border: 'none', background: accent, color: '#fff', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Turn on</button>
+            </div>
+        </div>
+    );
+}
+
 // Phone/computer alerts for the bell: turns push on or off for this device
 export default function PushToggle({ accent }: { accent: string }) {
     const [state, setState] = React.useState<State>('loading');
@@ -19,7 +77,7 @@ export default function PushToggle({ accent }: { accent: string }) {
     React.useEffect(() => {
         const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
         const installed = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
-        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        if (!pushSupported()) {
             // iPhones only allow alerts once the admin is added to the home screen
             setState(ios && !installed ? 'ios-install' : 'unsupported');
             return;
@@ -34,13 +92,9 @@ export default function PushToggle({ accent }: { accent: string }) {
     const turnOn = async () => {
         setBusy(true);
         try {
-            if ((await Notification.requestPermission()) !== 'granted') { setState('blocked'); return; }
-            const { publicKey } = await inventoryClient.get<{ publicKey: string }>('/admin/auth/push/key');
-            const reg = await navigator.serviceWorker.ready;
-            const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(publicKey) });
-            await inventoryClient.post('/admin/auth/push/subscribe', sub.toJSON());
-            setState('on');
-            toast.success('Alerts are on for this device');
+            const r = await enablePush();
+            setState(r === 'blocked' ? 'blocked' : 'on');
+            if (r === 'on') toast.success('Alerts are on for this device');
         } catch (e: any) {
             toast.error(e?.message || 'Could not turn on alerts');
         } finally {

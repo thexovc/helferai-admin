@@ -22,6 +22,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0b1424",
+  // Fixed size on phones: no pinch-zoom or sliding the page around
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
