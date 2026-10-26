@@ -272,7 +272,7 @@ export default function InventoryDashboardClient() {
                                 style={{
                                     position: 'absolute', top: '100%', left: 0, marginTop: 8,
                                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 280,
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 'min(280px, calc(100vw - 32px))', boxSizing: 'border-box',
                                     zIndex: 100
                                 }}
                             >

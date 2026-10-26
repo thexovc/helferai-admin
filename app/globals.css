@@ -113,8 +113,9 @@ body {
 
 @media (max-width: 768px) {
   /* Never wider than the phone: wide bits scroll inside themselves */
-  html, body { overflow-x: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; }
-  .main-content { min-width: 0; max-width: 100vw; overflow-x: hidden; }
+  /* clip, not hidden: hidden would stop the top bar from staying at the top */
+  html, body { overflow-x: clip; overscroll-behavior: none; touch-action: pan-x pan-y; }
+  .main-content { min-width: 0; max-width: 100vw; overflow-x: clip; }
   .sidebar-container {
     transform: translateX(-100%);
   }

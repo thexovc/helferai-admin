@@ -142,7 +142,8 @@ export default function InventoryFinancePageClient() {
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 60 }}>
-            {/* Header with Date Selector */}
+            <Topbar title="Financial Dashboard" subtitle="Core business performance & growth analysis" product="inventory" />
+            {/* Date Selector */}
             <div style={{
                 padding: '16px var(--content-padding)',
                 display: 'flex',
@@ -155,10 +156,6 @@ export default function InventoryFinancePageClient() {
                 position: 'relative',
                 zIndex: 50
             }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: '#1a1a2e' }}>Financial Dashboard</h1>
-                    <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>Core Business Performance & Growth Analysis</p>
-                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <div
                         onClick={toggleDropdown}
@@ -174,9 +171,9 @@ export default function InventoryFinancePageClient() {
                             <div
                                 onClick={e => e.stopPropagation()}
                                 style={{
-                                    position: 'absolute', top: '100%', right: 0, marginTop: 8,
+                                    position: 'absolute', top: '100%', left: 0, marginTop: 8,
                                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 280, zIndex: 100
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 'min(280px, calc(100vw - 32px))', boxSizing: 'border-box', zIndex: 100
                                 }}
                             >
                                 <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 12 }}>Select Custom Range</div>
