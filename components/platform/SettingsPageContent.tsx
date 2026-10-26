@@ -98,6 +98,7 @@ export default function SettingsPageContent({ product }: Props) {
     const [confirm, setConfirm] = useState('');
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNext, setShowNext] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const changePassword = useMutation({
         mutationFn: () => inventoryClient.put('/admin/auth/password', { currentPassword: current, newPassword: next }),
@@ -163,7 +164,7 @@ export default function SettingsPageContent({ product }: Props) {
                             </div>
                             <div>
                                 <label style={labelStyle}>Confirm New Password</label>
-                                <PasswordInput value={confirm} onChange={setConfirm} show={showNext} accent={accentColor} autoComplete="new-password" />
+                                <PasswordInput value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} accent={accentColor} autoComplete="new-password" />
                             </div>
                         </div>
                         <p style={{ ...muted, fontSize: 12, marginTop: 10 }}>At least 8 characters.</p>
