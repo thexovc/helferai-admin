@@ -562,8 +562,9 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, auto)', gap: '4px 24px', fontSize: 13, color: '#6b7280' }}>
                                     <span>📧 {business.email}</span>
-                                    <span>🌐 {business.website}</span>
+                                    <span>📞 {business.phone ? <a href={`tel:${business.phone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{business.phone}</a> : 'N/A'}</span>
                                     <span>📍 {business.address}</span>
+                                    <span>🌐 {business.website}</span>
                                     <span>🏭 {business.industry} · {business.country}</span>
                                     <span>📋 Reg: {business.registrationNumber}</span>
                                     <span>💰 Tax: {business.taxNumber}</span>
