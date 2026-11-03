@@ -15,6 +15,7 @@ export interface Business {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   logo?: string;
   address?: string;
   registrationNumber?: string;
