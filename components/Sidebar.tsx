@@ -7,7 +7,7 @@ import {
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
     LogOut, Home, X, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText
+    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText, Coins
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { useMyAccess, pageKeyOf } from '@/api/auth/useMyAccess';
@@ -32,6 +32,7 @@ export const inventoryNav: NavGroup[] = [
     {
         title: 'Finance', items: [
             { href: '/inventory/finance', icon: <DollarSign size={18} />, label: 'Finance' },
+            { href: '/inventory/currencies', icon: <Coins size={18} />, label: 'Currencies' },
         ],
     },
     {
