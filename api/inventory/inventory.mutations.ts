@@ -676,3 +676,34 @@ export const useDeleteTestimonial = () => {
     },
   });
 };
+
+export const useUpdateContactRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string | number; dto: { status?: string } }) =>
+      inventoryApi.updateContactRequest(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.contactRequests() });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.contactRequestStats() });
+      toast.success('Support request updated');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update support request');
+    },
+  });
+};
+
+export const useDeleteContactRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => inventoryApi.deleteContactRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.contactRequests() });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.contactRequestStats() });
+      toast.success('Support request deleted');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to delete support request');
+    },
+  });
+};

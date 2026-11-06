@@ -20,6 +20,8 @@ export const inventoryKeys = {
   referralsList: () => [...inventoryKeys.all, 'referrals', 'list'] as const,
   integrations: () => [...inventoryKeys.all, 'integrations'] as const,
   testimonials: () => [...inventoryKeys.all, 'testimonials'] as const,
+  contactRequests: () => [...inventoryKeys.all, 'contact-requests'] as const,
+  contactRequestStats: () => [...inventoryKeys.all, 'contact-requests', 'stats'] as const,
   activityLogs: () => [...inventoryKeys.all, 'activity-logs'] as const,
   brands: () => [...inventoryKeys.all, 'brands'] as const,
   categories: () => [...inventoryKeys.all, 'categories'] as const,
@@ -160,6 +162,21 @@ export const useInventoryTestimonials = (page = 1, pageSize = 10) => {
   return useQuery({
     queryKey: [...inventoryKeys.testimonials(), page, pageSize],
     queryFn: () => inventoryApi.getTestimonials(page, pageSize),
+  });
+};
+
+export const useInventoryContactRequests = (rawParams: { search?: string; status?: string; page?: number; per_page?: number; sort_by?: string; sort_order?: string } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
+  return useQuery({
+    queryKey: [...inventoryKeys.contactRequests(), params],
+    queryFn: () => inventoryApi.getContactRequests(params),
+  });
+};
+
+export const useInventoryContactRequestStats = () => {
+  return useQuery({
+    queryKey: inventoryKeys.contactRequestStats(),
+    queryFn: () => inventoryApi.getContactRequestStats(),
   });
 };
 

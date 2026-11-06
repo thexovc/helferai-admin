@@ -7,7 +7,7 @@ import {
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
     LogOut, Home, X, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText, Coins
+    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText, Coins, Headphones
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { useMyAccess, pageKeyOf } from '@/api/auth/useMyAccess';
@@ -70,6 +70,7 @@ export const inventoryNav: NavGroup[] = [
             { href: '/inventory/send-broadcast', icon: <Send size={18} />, label: 'Send Broadcast' },
             { href: '/inventory/broadcast-history', icon: <Mail size={18} />, label: 'Broadcast History' },
             { href: '/inventory/notifications', icon: <Bell size={18} />, label: 'Notifications' },
+            { href: '/inventory/contact-requests', icon: <Headphones size={18} />, label: 'Support & Inquiries' },
         ],
     },
 
