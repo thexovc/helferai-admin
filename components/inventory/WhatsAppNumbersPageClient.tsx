@@ -1,8 +1,12 @@
 'use client';
 import React, { useState } from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Phone, Edit2, Trash2, Building2 } from 'lucide-react';
-import { useInventoryWhatsappNumbers } from '@/api/inventory/inventory.queries';
+import { Plus, Search, Phone, Edit2, Trash2, Building2, Link2, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import MerchantLogo from './MerchantLogo';
+import IntegrationMerchantsModal from './IntegrationMerchantsModal';
+import { useInventoryWhatsappNumbers, useInventoryIntegrations } from '@/api/inventory/inventory.queries';
 import { useCreateWhatsappNumber, useUpdateWhatsappNumber, useDeleteWhatsappNumber } from '@/api/inventory/inventory.mutations';
 import Pagination from '../Pagination';
 import { toast } from 'sonner';
@@ -15,7 +19,20 @@ export default function WhatsAppNumbersPageClient() {
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
 
-    const { data: numbersResponse, isLoading } = useInventoryWhatsappNumbers(page, pageSize, search);
+    // Opened from Business Integrations > WhatsApp for one merchant
+    const router = useRouter();
+    const params = useSearchParams();
+    const businessFilter = params.get('businessId') || '';
+    const merchantName = params.get('merchant') || '';
+    const [showIntegration, setShowIntegration] = useState(false);
+    // The WhatsApp row in Business Integrations (works even when no numbers are listed)
+    const { data: integrationsResp } = useInventoryIntegrations();
+    const whatsappIntegrationId: string | undefined = ((integrationsResp as any)?.data || (Array.isArray(integrationsResp) ? integrationsResp : []))
+        .find((i: any) => (i.name || '').toLowerCase() === 'whatsapp')?.id;
+    // Clicking a merchant's numbers in the integration window lands back here: close it and start at page 1
+    React.useEffect(() => { setPage(1); setShowIntegration(false); }, [businessFilter]);
+
+    const { data: numbersResponse, isLoading } = useInventoryWhatsappNumbers(page, pageSize, search, '', businessFilter);
 
     const createWhatsappMutation = useCreateWhatsappNumber();
     const updateWhatsappMutation = useUpdateWhatsappNumber();
@@ -121,16 +138,40 @@ export default function WhatsAppNumbersPageClient() {
                             <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Manage and organize your whatsapp numbers.</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => handleOpenModal()}
-                        style={{
-                            background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8,
-                            padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(108,158,78,0.2)'
-                        }}>
-                        <Plus size={18} /> Add New
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                            onClick={() => setShowIntegration(true)}
+                            disabled={!whatsappIntegrationId}
+                            style={{
+                                background: '#fff', color: '#3f7d2c', border: '1px solid #c7ddb8', borderRadius: 8,
+                                padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 8,
+                            }}>
+                            <Link2 size={16} /> WhatsApp integration
+                        </button>
+                        <button
+                            onClick={() => handleOpenModal()}
+                            style={{
+                                background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8,
+                                padding: '10px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(108,158,78,0.2)'
+                            }}>
+                            <Plus size={18} /> Add New
+                        </button>
+                    </div>
                 </div>
+                {showIntegration && whatsappIntegrationId && (
+                    <IntegrationMerchantsModal integrationId={whatsappIntegrationId} onClose={() => setShowIntegration(false)} />
+                )}
+                {businessFilter && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: '#f0f7eb', border: '1px solid #c7ddb8', fontSize: 13, color: '#3f7d2c' }}>
+                        Showing WhatsApp numbers for <b>{merchantName || numbers[0]?.businessName || 'this merchant'}</b>
+                        <button onClick={() => router.push('/inventory/whatsapp-numbers')}
+                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', color: '#3f7d2c', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                            <X size={14} /> Show all numbers
+                        </button>
+                    </div>
+                )}
 
                 {/* Filters Row */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -158,9 +199,10 @@ export default function WhatsAppNumbersPageClient() {
                         <thead>
                             <tr>
                                 <th>Phone Number</th>
-                                <th>Business Name</th>
+                                <th>Merchant Name</th>
+                                <th>WhatsApp Integration</th>
                                 <th>Status</th>
-                                <th>Last Active</th>
+                                <th>Last Used</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
@@ -168,17 +210,33 @@ export default function WhatsAppNumbersPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={6}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
                             ) : numbers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No numbers found</td>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No numbers found</td>
                                 </tr>
                             ) : numbers.map((n: any) => (
                                 <tr key={n.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{n.phoneNumber || n.number}</td>
-                                    <td>{n.businessName || 'General'}</td>
+                                    <td>
+                                        <Link href={`/inventory/businesses/${n.businessId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#1a1a2e' }}>
+                                            <MerchantLogo name={n.businessName} logo={n.businessLogo} size={26} radius={7} />
+                                            {n.businessName || 'General'}
+                                        </Link>
+                                    </td>
+                                    <td>
+                                        {/* The merchant's WhatsApp entry in Business Integrations */}
+                                        <button onClick={() => setShowIntegration(true)} title="Open WhatsApp in Business Integrations"
+                                            style={{
+                                                border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, textTransform: 'capitalize',
+                                                background: n.integrationStatus === 'active' ? '#dcfce7' : n.integrationStatus === 'inactive' ? '#f3f4f6' : '#fff7ed',
+                                                color: n.integrationStatus === 'active' ? '#166534' : n.integrationStatus === 'inactive' ? '#6b7280' : '#c2410c',
+                                            }}>
+                                            {n.integrationStatus === 'inactive' ? 'Switched off' : n.integrationStatus || 'not set up'}
+                                        </button>
+                                    </td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -188,7 +246,10 @@ export default function WhatsAppNumbersPageClient() {
                                             {n.status}
                                         </span>
                                     </td>
-                                    <td>{n.lastActive ? new Date(n.lastActive).toLocaleString() : 'N/A'}</td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>
+                                        {/* When this number last messaged the WhatsApp assistant */}
+                                        {n.lastUsed ? new Date(n.lastUsed).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : <span style={{ color: '#9ca3af' }}>Never</span>}
+                                    </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button
@@ -215,6 +276,7 @@ export default function WhatsAppNumbersPageClient() {
                             onPageChange={setPage}
                             totalItems={totalCount}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>
@@ -250,7 +312,7 @@ export default function WhatsAppNumbersPageClient() {
                     </div>
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            <Building2 size={14} /> Business Name
+                            <Building2 size={14} /> Merchant Name
                         </label>
                         <input
                             value={formData.businessName}
@@ -274,7 +336,7 @@ export default function WhatsAppNumbersPageClient() {
                     deleteModal.number
                         ? [
                               { label: 'Phone Number', value: deleteModal.number.number || deleteModal.number.phoneNumber },
-                              { label: 'Business Name', value: deleteModal.number.businessName },
+                              { label: 'Merchant Name', value: deleteModal.number.businessName },
                               { label: 'Status', value: deleteModal.number.status },
                           ]
                         : []

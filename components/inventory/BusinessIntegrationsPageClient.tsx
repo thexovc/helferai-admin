@@ -1,12 +1,14 @@
 'use client';
 import React from 'react';
 import Topbar from '../Topbar';
-import { Plus, Search, Building, MoreVertical } from 'lucide-react';
+import { Plus, Search, Building, MoreVertical, Eye } from 'lucide-react';
+import IntegrationMerchantsModal from './IntegrationMerchantsModal';
 import { useInventoryIntegrations } from '@/api/inventory/inventory.queries';
 
 export default function BusinessIntegrationsPageClient() {
     const { data: integrationsResp, isLoading } = useInventoryIntegrations();
     const integrations = (integrationsResp as any)?.data || (Array.isArray(integrationsResp) ? integrationsResp : []);
+    const [viewing, setViewing] = React.useState<string | null>(null);
 
     return (
         <div>
@@ -81,8 +83,8 @@ export default function BusinessIntegrationsPageClient() {
                                 <tr key={int.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{int.name}</td>
                                     <td>{int.category}</td>
-                                    <td>{int.activeUsers.toLocaleString()}</td>
-                                    <td>{new Date(int.lastSync).toLocaleString()}</td>
+                                    <td>{Number(int.activeUsers || 0).toLocaleString()}</td>
+                                    <td>{int.lastSync ? new Date(int.lastSync).toLocaleString() : '—'}</td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -93,8 +95,9 @@ export default function BusinessIntegrationsPageClient() {
                                         </span>
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <button style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 4 }}>
-                                            <MoreVertical size={16} />
+                                        <button title="View connected merchants" onClick={() => setViewing(int.id)}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0f9f0', border: 'none', color: '#6c9e4e', cursor: 'pointer', padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+                                            <Eye size={13} /> View
                                         </button>
                                     </td>
                                 </tr>
@@ -102,7 +105,7 @@ export default function BusinessIntegrationsPageClient() {
                         </tbody>
                     </table>
                 </div>
-
+                {viewing && <IntegrationMerchantsModal integrationId={viewing} onClose={() => setViewing(null)} />}
             </div>
         </div>
     );

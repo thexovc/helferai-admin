@@ -1,6 +1,6 @@
 import React from 'react';
-import ReferralAnalyticsPageClient from '../../../components/inventory/ReferralAnalyticsPageClient';
+import RewardAnalyticsPageClient from '../../../components/inventory/RewardAnalyticsPageClient';
 
-export default function ReferralAnalyticsPage() {
-    return <ReferralAnalyticsPageClient />;
+export default function RewardAnalyticsPage() {
+    return <RewardAnalyticsPageClient />;
 }

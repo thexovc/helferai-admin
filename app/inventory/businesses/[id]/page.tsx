@@ -4,7 +4,19 @@ import Link from 'next/link';
 import Topbar from '../../../../components/Topbar';
 import Pagination from '../../../../components/Pagination';
 import StatusBadge from '../../../../components/StatusBadge';
-import { formatCurrency, formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
+import { formatDate, formatDateTime, getDaysRemainingColor } from '../../../lib/utils';
+import { compactNaira, fullNaira, fullCount } from '@/components/inventory/formatNumbers';
+import ToggleValue from '@/components/inventory/ToggleValue';
+import AssignSubscriptionModal from '@/components/inventory/AssignSubscriptionModal';
+import CreateProductModal from '@/components/inventory/CreateProductModal';
+import RecordSaleModal from '@/components/inventory/RecordSaleModal';
+import ImportRecordsModal from '@/components/inventory/ImportRecordsModal';
+import RecordExpenseModal from '@/components/inventory/RecordExpenseModal';
+import { ViewRowModal, EditUserModal, EditSubscriptionModal, EditProductModal, EditSaleModal, WhatsAppNumberModal, deleteActionFor, type RowKind } from '@/components/inventory/MerchantRowModals';
+import MerchantLogo from '@/components/inventory/MerchantLogo';
+import DateRangeFilter, { type DateRange } from '@/components/inventory/DateRangeFilter';
+import MerchantListTab, { type ListKind } from '@/components/inventory/MerchantListTab';
+import BulkUploadProductsModal from '@/components/inventory/BulkUploadProductsModal';
 import { Plus, Search, Eye, Edit2, Trash2, Calendar, DollarSign, Package, TrendingUp, Sparkles, MapPin, Globe, Mail, Phone, Building, ArrowLeft, Ban, Users, CreditCard, ShoppingCart, Receipt, MessageSquare as Whatsapp, Link2, Tag, LayoutGrid, UserCircle, Truck, BarChart2 } from 'lucide-react';
 import { SkeletonPulse, TableSkeleton, KPISkeleton, DetailHeaderSkeleton } from '../../../../components/Skeleton';
 import {
@@ -18,6 +30,8 @@ import {
     useBusinessIntegrations,
     useBusinessAi
 } from '@/api/inventory';
+import { inventoryKeys } from '@/api/inventory/inventory.queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 
@@ -31,8 +45,7 @@ const TABS = [
     { key: 'integrations', label: 'Integrations', icon: <Link2 size={14} /> },
     { key: 'brands', label: 'Brands', icon: <Tag size={14} /> },
     { key: 'categories', label: 'Categories', icon: <LayoutGrid size={14} /> },
-    { key: 'customers', label: 'Customers', icon: <UserCircle size={14} /> },
-    { key: 'suppliers', label: 'Suppliers', icon: <Truck size={14} /> },
+    { key: 'contacts', label: 'Customers & Suppliers', icon: <UserCircle size={14} /> },
     { key: 'ai', label: 'AI', icon: <Sparkles size={14} /> },
 ];
 
@@ -44,8 +57,21 @@ const ActionBtn = ({ label, color = '#6c9e4e', icon, onClick }: { label: string;
     </button>
 );
 
-function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
+function TabContent({ tab, businessId, businessName }: { tab: string; businessId: string; businessName?: string }) {
     const [page, setPage] = useState(1);
+    const [assignOpen, setAssignOpen] = useState(false);
+    const [productOpen, setProductOpen] = useState(false);
+    const [saleOpen, setSaleOpen] = useState(false);
+    const [importSalesOpen, setImportSalesOpen] = useState(false);
+    const [expenseOpen, setExpenseOpen] = useState(false);
+    const [importExpensesOpen, setImportExpensesOpen] = useState(false);
+    const [whatsappOpen, setWhatsappOpen] = useState(false);
+    // Date filter on the Products, Sales and Expenses tabs
+    const [range, setRange] = useState<DateRange>({});
+    // The row whose View or Edit window is open
+    const [rowAction, setRowAction] = useState<{ type: 'view' | 'edit'; row: any } | null>(null);
+    const queryClient = useQueryClient();
+    const [bulkOpen, setBulkOpen] = useState(false);
     const [pageSize, setPageSize] = useState(10);
 
     const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
@@ -55,14 +81,16 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     // Reset page when tab changes
     React.useEffect(() => {
         setPage(1);
+        setRange({});
     }, [tab]);
+    const changeRange = (r: DateRange) => { setRange(r); setPage(1); };
 
     // Lazy matching hooks to tabs
     const { data: usersResp, isLoading: usersLoading } = useBusinessUsers(tab === 'users' ? businessId : '', page, pageSize);
     const { data: subsResp, isLoading: subsLoading } = useBusinessSubscriptions(tab === 'subscriptions' ? businessId : '', page, pageSize);
-    const { data: productsResp, isLoading: productsLoading } = useBusinessProducts(tab === 'products' ? businessId : '', page, pageSize);
-    const { data: salesResp, isLoading: salesLoading } = useBusinessSales(tab === 'sales' ? businessId : '', page, pageSize);
-    const { data: expensesResp, isLoading: expensesLoading } = useBusinessExpenses(tab === 'expenses' ? businessId : '', page, pageSize);
+    const { data: productsResp, isLoading: productsLoading } = useBusinessProducts(tab === 'products' ? businessId : '', page, pageSize, range);
+    const { data: salesResp, isLoading: salesLoading } = useBusinessSales(tab === 'sales' ? businessId : '', page, pageSize, range);
+    const { data: expensesResp, isLoading: expensesLoading } = useBusinessExpenses(tab === 'expenses' ? businessId : '', page, pageSize, range);
     const { data: whatsappResp, isLoading: whatsappLoading } = useBusinessWhatsapp(tab === 'whatsapp' ? businessId : '', page, pageSize);
     const { data: integrationsResp, isLoading: integrationsLoading } = useBusinessIntegrations(tab === 'integrations' ? businessId : '', page, pageSize);
     const { data: aiData, isLoading: aiLoading } = useBusinessAi(tab === 'ai' ? businessId : '');
@@ -78,19 +106,58 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     const getMeta = (resp: any) => resp?.meta || { total: 0, page: 1, pageSize: 10 };
 
     const handleCreateNew = () => {
+        if (tab === 'subscriptions') {
+            setAssignOpen(true);
+            return;
+        }
+        if (tab === 'products') {
+            setProductOpen(true);
+            return;
+        }
+        if (tab === 'sales') {
+            setSaleOpen(true);
+            return;
+        }
+        if (tab === 'expenses') {
+            setExpenseOpen(true);
+            return;
+        }
+        if (tab === 'whatsapp') {
+            setWhatsappOpen(true);
+            return;
+        }
         toast.info(`Create feature for ${tab} coming soon!`);
     };
 
-    const handleAction = (type: 'view' | 'edit' | 'delete', item: any) => {
-        const name = item.name || item.receiptNumber || item.plan || item.purpose || 'item';
-        if (type === 'delete') {
-            if (confirm(`Are you sure you want to delete ${name}?`)) {
-                toast.success(`${name} deleted successfully`);
-            }
-        } else {
-            toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)}ing ${name}...`);
+    const handleAction = async (type: 'view' | 'edit' | 'delete', item: any) => {
+        if (type !== 'delete') {
+            setRowAction({ type, row: item });
+            return;
+        }
+        const action = deleteActionFor(tab as RowKind, item, businessId);
+        if (!action || !confirm(action.question)) return;
+        try {
+            const result: any = await action.run();
+            // The app can skip products that have sales; show its own message then
+            toast.success(result?.message && tab === 'products' ? result.message : action.done);
+            queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not delete');
         }
     };
+
+    // View and Edit windows for whichever row was clicked
+    const close = () => setRowAction(null);
+    const rowModal = rowAction && (
+        rowAction.type === 'view' ? <ViewRowModal kind={tab as RowKind} row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'users' ? <EditUserModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'subscriptions' ? <EditSubscriptionModal row={rowAction.row} onClose={close} />
+            : tab === 'products' ? <EditProductModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'sales' ? <EditSaleModal row={rowAction.row} businessId={businessId} onClose={close} />
+            : tab === 'expenses' ? <RecordExpenseModal isOpen onClose={close} businessId={businessId} businessName={businessName} expense={rowAction.row} />
+            : tab === 'whatsapp' ? <WhatsAppNumberModal row={rowAction.row} businessId={businessId} businessName={businessName} onClose={close} />
+            : null
+    );
 
     const createBtn = (
         <button
@@ -100,21 +167,28 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
         </button>
     );
 
+    // Integrations are connected by the merchant in the app, so the admin can only view them
+    const canChange = tab !== 'integrations';
     const acts = (item: any) => (
         <div style={{ display: 'flex', gap: 4 }}>
-            <button
+            {rowModal && rowAction?.row === item ? rowModal : null}
+            <button title="View"
                 onClick={() => handleAction('view', item)}
                 style={{ padding: 5, background: '#f0f9f0', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#6c9e4e', display: 'flex' }}><Eye size={12} /></button>
-            <button
+            {canChange && <button title="Edit"
                 onClick={() => handleAction('edit', item)}
-                style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>
-            <button
+                style={{ padding: 5, background: '#f0f9ff', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#0284c7', display: 'flex' }}><Edit2 size={12} /></button>}
+            {canChange && <button title={tab === 'users' ? 'Deactivate' : 'Delete'}
                 onClick={() => handleAction('delete', item)}
-                style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}><Trash2 size={12} /></button>
+                style={{ padding: 5, background: '#fee2e2', border: 'none', borderRadius: 6, cursor: 'pointer', color: '#dc2626', display: 'flex' }}>{tab === 'users' ? <Ban size={12} /> : <Trash2 size={12} />}</button>}
         </div>
     );
 
     const loadingEl = <TableSkeleton rows={5} cols={6} />;
+
+    if (['brands', 'categories', 'contacts'].includes(tab)) {
+        return <MerchantListTab kind={tab as ListKind} businessId={businessId} businessName={businessName} />;
+    }
 
     if (tab === 'users') {
         if (usersLoading) return loadingEl;
@@ -139,6 +213,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(usersResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -149,12 +224,13 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
         if (subsLoading) return loadingEl;
         return (
             <div>{createBtn}
+                <AssignSubscriptionModal isOpen={assignOpen} onClose={() => setAssignOpen(false)} businessId={businessId} businessName={businessName} />
                 <div style={{ overflowX: 'auto' }}>
                     <table style={tableStyle}><thead><tr>{['Plan', 'Amount', 'Start Date', 'End Date', 'Status', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                         <tbody>
                             {(subscriptions || []).map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
                                 <td style={tdStyle}><b>{s.plan}</b></td>
-                                <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(s.amount)}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(s.amount)}</td>
                                 <td style={tdStyle}>{formatDate(s.startsAt)}</td>
                                 <td style={tdStyle}>{formatDate(s.endsAt)}</td>
                                 <td style={tdStyle}><StatusBadge status={s.status} size="sm" /></td>
@@ -170,6 +246,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(subsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -179,21 +256,43 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     if (tab === 'products') {
         if (productsLoading) return loadingEl;
         return (
-            <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Price', 'Stock', 'Unit', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+            <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setBulkOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Bulk Upload
+                    </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
+                </div>
+                <CreateProductModal isOpen={productOpen} onClose={() => setProductOpen(false)} businessId={businessId} businessName={businessName} />
+                <BulkUploadProductsModal isOpen={bulkOpen} onClose={() => setBulkOpen(false)} businessId={businessId} businessName={businessName} />
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1100 }}><thead><tr>{['Name', 'SKU', 'Category', 'Brand', 'Vendor', 'Cost', 'Price', 'Margin', 'Stock', 'Unit', 'Added', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(products || []).map((p, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={tdStyle}><b>{p.name}</b></td>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{p.sku}</td>
-                            <td style={tdStyle}>{p.category}</td>
-                            <td style={tdStyle}>{p.brand}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(p.sellingPrice)}</td>
-                            <td style={tdStyle}>{p.openingStock}</td>
-                            <td style={tdStyle}>{p.unit}</td>
-                            <td style={tdStyle}>{acts(p)}</td>
-                        </tr>)}
+                        {(products || []).map((p: any, i: number) => {
+                            const margin = p.sellingPrice > 0 ? Math.round(((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100) : null;
+                            // Red when at or below the merchant's low-stock level (2 if they haven't set one)
+                            const lowStock = p.openingStock <= (p.lowStockAlert ?? 2);
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={tdStyle}><b>{p.name}</b>{p.store && <div style={{ fontSize: 11, color: '#9ca3af' }}>{p.store}</div>}</td>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace' }}>{p.sku}</td>
+                                <td style={tdStyle}>{p.category}</td>
+                                <td style={tdStyle}>{p.brand}</td>
+                                <td style={tdStyle}>{p.vendor || <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                                <td style={tdStyle}>{fullNaira(p.costPrice)}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700 }}>{fullNaira(p.sellingPrice)}</td>
+                                <td style={{ ...tdStyle, color: margin === null ? '#9ca3af' : margin < 0 ? '#dc2626' : '#15803d', fontWeight: 600 }}>{margin === null ? '—' : `${margin}%`}</td>
+                                <td style={{ ...tdStyle, color: lowStock ? '#dc2626' : '#374151', fontWeight: lowStock ? 700 : 400 }} title={lowStock ? 'Low stock' : undefined}>{Number(p.openingStock || 0).toLocaleString()}</td>
+                                <td style={tdStyle}>{p.unit}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{p.createdAt ? formatDate(p.createdAt) : '—'}</td>
+                                <td style={tdStyle}>{acts(p)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}
@@ -201,6 +300,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(productsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -210,20 +310,43 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     if (tab === 'sales') {
         if (salesLoading) return loadingEl;
         return (
-            <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Receipt #', 'Customer', 'Amount', 'Payment', 'Processing', 'Date', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+            <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setImportSalesOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Import
+                    </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
+                </div>
+                <RecordSaleModal isOpen={saleOpen} onClose={() => setSaleOpen(false)} businessId={businessId} businessName={businessName} />
+                <ImportRecordsModal kind="sales" isOpen={importSalesOpen} onClose={() => setImportSalesOpen(false)} businessId={businessId} businessName={businessName} />
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1350 }}><thead><tr>{['Receipt #', 'Date', 'Customer', 'Items', 'Total', 'Discount', 'Paid', 'Balance', 'Method', 'Payment', 'Processing', 'Store', 'Sold by', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(sales || []).map((s, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{s.receiptNumber}</td>
-                            <td style={tdStyle}>{s.customer}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(s.totalAmount)}</td>
-                            <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
-                            <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
-                            <td style={tdStyle}>{formatDate(s.createdAt)}</td>
-                            <td style={tdStyle}>{acts(s)}</td>
-                        </tr>)}
+                        {(sales || []).map((s: any, i: number) => {
+                            const none = <span style={{ color: '#9ca3af' }}>—</span>;
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>{s.receiptNumber}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{s.receiptDate || s.createdAt ? formatDate(s.receiptDate || s.createdAt) : '—'}</td>
+                                <td style={tdStyle}>{s.customer || none}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{Number(s.itemsCount || 0).toLocaleString()}{s.unitsCount > s.itemsCount && <span style={{ color: '#9ca3af', fontSize: 11 }}> · {Number(s.unitsCount).toLocaleString()} units</span>}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{fullNaira(s.totalAmount)}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{s.totalDiscount > 0 ? fullNaira(s.totalDiscount) : none}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: '#15803d' }}>{fullNaira(s.amountPaid || 0)}</td>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: s.amountDue > 0 ? '#dc2626' : '#374151', fontWeight: s.amountDue > 0 ? 700 : 400 }}>{s.amountDue > 0 ? fullNaira(s.amountDue) : none}</td>
+                                <td style={tdStyle}>{s.paymentMethod || none}</td>
+                                <td style={tdStyle}><StatusBadge status={s.paymentStatus} size="sm" /></td>
+                                <td style={tdStyle}><span style={{ padding: '2px 8px', background: '#f3f4f6', borderRadius: 6, fontSize: 11 }}>{s.processingStatus}</span></td>
+                                <td style={tdStyle}>{s.store || none}</td>
+                                <td style={tdStyle}>{s.salesperson || none}</td>
+                                <td style={tdStyle}>{acts(s)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}
@@ -231,6 +354,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(salesResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -240,19 +364,40 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     if (tab === 'expenses') {
         if (expensesLoading) return loadingEl;
         return (
-            <div>{createBtn}
-                <table style={tableStyle}><thead><tr>{['Date', 'Purpose', 'Account', 'Amount', 'Ref #', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
+            <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {createBtn}
+                    <button
+                        onClick={() => setImportExpensesOpen(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#fff', border: '1px solid #c7ddb8', borderRadius: 8, color: '#3f7d2c', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}>
+                        Import
+                    </button>
+                    <div style={{ marginLeft: 'auto' }}><DateRangeFilter key={tab} onChange={changeRange} /></div>
+                </div>
+                <RecordExpenseModal isOpen={expenseOpen} onClose={() => setExpenseOpen(false)} businessId={businessId} businessName={businessName} />
+                <ImportRecordsModal kind="expenses" isOpen={importExpensesOpen} onClose={() => setImportExpensesOpen(false)} businessId={businessId} businessName={businessName} />
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ ...tableStyle, minWidth: 1100 }}><thead><tr>{['Date', 'Purpose', 'Description', 'Amount', 'Account', 'Employee', 'Approved by', 'Store', 'Ref #', 'Receipt', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
-                        {(expenses || []).map((e, i) => <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
-                            <td style={tdStyle}>{formatDate(e.date)}</td>
-                            <td style={tdStyle}>{e.purpose}</td>
-                            <td style={tdStyle}>{e.account}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700 }}>{formatCurrency(e.amount)}</td>
-                            <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11 }}>{e.referenceNumber}</td>
-                            <td style={tdStyle}>{acts(e)}</td>
-                        </tr>)}
+                        {(expenses || []).map((e: any, i: number) => {
+                            const none = <span style={{ color: '#9ca3af' }}>—</span>;
+                            return <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatDate(e.date)}</td>
+                                <td style={tdStyle}>{e.purpose}</td>
+                                <td style={{ ...tdStyle, maxWidth: 220 }}>{e.description || none}</td>
+                                <td style={{ ...tdStyle, fontWeight: 700, whiteSpace: 'nowrap' }}>{fullNaira(e.amount)}</td>
+                                <td style={tdStyle}>{e.account}</td>
+                                <td style={tdStyle}>{e.employee || none}</td>
+                                <td style={tdStyle}>{e.approvedBy || none}</td>
+                                <td style={tdStyle}>{e.store || none}</td>
+                                <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, whiteSpace: 'nowrap' }}>{e.referenceNumber || none}</td>
+                                <td style={tdStyle}>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3f7d2c', fontWeight: 700, fontSize: 12 }}>View</a> : none}</td>
+                                <td style={tdStyle}>{acts(e)}</td>
+                            </tr>;
+                        })}
                     </tbody>
                 </table>
+                </div>
                 <div style={{ marginTop: 20 }}>
                     <Pagination
                         currentPage={page}
@@ -260,6 +405,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(expensesResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -270,6 +416,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
         if (whatsappLoading) return loadingEl;
         return (
             <div>{createBtn}
+                {whatsappOpen && <WhatsAppNumberModal businessId={businessId} businessName={businessName} onClose={() => setWhatsappOpen(false)} />}
                 <table style={tableStyle}><thead><tr>{['Name', 'Number', 'Status', 'Connected', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(whatsapp || []).map((w, i) => (
@@ -288,6 +435,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(whatsappResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -297,7 +445,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
     if (tab === 'integrations') {
         if (integrationsLoading) return loadingEl;
         return (
-            <div>{createBtn}
+            <div>
                 <table style={tableStyle}><thead><tr>{['Name', 'Status', 'Connected At', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr></thead>
                     <tbody>
                         {(integrations || []).map((item, i) => (
@@ -317,6 +465,7 @@ function TabContent({ tab, businessId }: { tab: string; businessId: string }) {
                         onPageChange={setPage}
                         totalItems={getMeta(integrationsResp).total}
                         pageSize={pageSize}
+                        onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                     />
                 </div>
             </div>
@@ -377,7 +526,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
     if (isLoading) {
         return (
             <div>
-                <Topbar title="Business Detail" subtitle="..." product="inventory" />
+                <Topbar title="Merchant Detail" subtitle="..." product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
                     <DetailHeaderSkeleton />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
@@ -387,26 +536,24 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
             </div>
         );
     }
-    if (error || !business) return <div style={{ padding: 40, color: '#ef4444' }}>Error: Business not found</div>;
+    if (error || !business) return <div style={{ padding: 40, color: '#ef4444' }}>Error: Merchant not found</div>;
 
     const daysColor = getDaysRemainingColor(business.daysRemaining);
 
 
     return (
         <div>
-            <Topbar title={business.name} subtitle="Business Details" product="inventory" />
+            <Topbar title={business.name} subtitle="Merchant Details" product="inventory" />
             <div style={{ padding: 28 }}>
                 <Link href="/inventory/businesses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#6b7280', textDecoration: 'none', fontSize: 13, marginBottom: 20 }}>
-                    <ArrowLeft size={14} /> Back to Businesses
+                    <ArrowLeft size={14} /> Back to Merchants
                 </Link>
 
                 {/* Identity Card */}
                 <div style={{ background: '#fff', borderRadius: 20, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', marginBottom: 20 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
                         <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-                            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #6c9e4e, #5b8441)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <span style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{business.name[0]}</span>
-                            </div>
+                            <MerchantLogo name={business.name} logo={business.logo} size={64} radius={18} />
                             <div>
                                 <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#1a1a2e' }}>{business.name}</h2>
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -415,8 +562,9 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, auto)', gap: '4px 24px', fontSize: 13, color: '#6b7280' }}>
                                     <span>📧 {business.email}</span>
-                                    <span>🌐 {business.website}</span>
+                                    <span>📞 {business.phone ? <a href={`tel:${business.phone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{business.phone}</a> : 'N/A'}</span>
                                     <span>📍 {business.address}</span>
+                                    <span>🌐 {business.website}</span>
                                     <span>🏭 {business.industry} · {business.country}</span>
                                     <span>📋 Reg: {business.registrationNumber}</span>
                                     <span>💰 Tax: {business.taxNumber}</span>
@@ -428,7 +576,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                             <button
                                 onClick={handleEditBusiness}
                                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                                <Edit2 size={14} /> Edit Business
+                                <Edit2 size={14} /> Edit Merchant
                             </button>
                             <button
                                 onClick={handleSuspendBusiness}
@@ -442,12 +590,12 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 {/* KPI Cards Row 1 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 14, marginBottom: 14 }}>
                     {[
-                        { label: 'Sales Records', value: business.totalSales || 0, icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
-                        { label: 'Expense Records', value: business.totalExpenses || 0, icon: <Receipt size={16} />, accent: '#f59e0b' },
-                        { label: 'Products', value: business.totalProducts || 0, icon: <Package size={16} />, accent: '#7c5cbf' },
+                        { label: 'Sales Records', value: fullCount(business.totalSales || 0), icon: <ShoppingCart size={16} />, accent: '#6c9e4e' },
+                        { label: 'Expense Records', value: fullCount(business.totalExpenses || 0), icon: <Receipt size={16} />, accent: '#f59e0b' },
+                        { label: 'Products', value: fullCount(business.totalProducts || 0), icon: <Package size={16} />, accent: '#7c5cbf' },
                         { label: 'Sub Ends', value: business.subEndDate ? formatDate(business.subEndDate) : 'N/A', icon: <CreditCard size={16} />, accent: '#6c9e4e' },
                         { label: 'Days Remaining', value: business.daysRemaining < 0 ? `${Math.abs(business.daysRemaining)}d overdue` : `${business.daysRemaining || 0}d`, icon: <BarChart2 size={16} />, accent: daysColor },
-                        { label: 'Total Revenue', value: formatCurrency(business.totalRevenue || 0), icon: <DollarSign size={16} />, accent: '#22c55e' },
+                        { label: 'Total Revenue', value: <ToggleValue short={compactNaira(business.totalRevenue || 0)} full={fullNaira(business.totalRevenue || 0)} />, icon: <DollarSign size={16} />, accent: '#22c55e' },
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 6 }}>{k.icon}</div>
@@ -460,7 +608,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #0ea5e9' }}>
                         <div style={{ color: '#0ea5e9', marginBottom: 6 }}><Users size={16} /></div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{business.totalUsers || 0}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>{fullCount(business.totalUsers || 0)}</div>
                         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Total Users</div>
                     </div>
                     <div style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: '3px solid #6b7280' }}>
@@ -486,7 +634,7 @@ export default function BusinessDetailPage({ params: paramsPromise }: { params: 
                         ))}
                     </div>
                     <div style={{ padding: 20 }}>
-                        <TabContent tab={activeTab} businessId={business.id} />
+                        <TabContent tab={activeTab} businessId={business.id} businessName={business.name} />
                     </div>
                 </div>
             </div>

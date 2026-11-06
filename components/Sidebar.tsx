@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Building2, Users, Settings, Shield, ChevronLeft,
     ChevronRight, Package, BarChart3, Sparkles, UserCircle, LineChart,
-    LogOut, Home, X, Tag, Layers, ShoppingBag, Scale, Building, Puzzle,
+    LogOut, Home, X, ShoppingBag, Scale, Building, Puzzle,
     Phone, Trophy, UserPlus, Gift, Send, Mail, ShieldCheck, ClipboardList,
-    MessageSquare, Camera, DollarSign, CreditCard
+    MessageSquare, Camera, DollarSign, CreditCard, Bell, FileText, Coins, Headphones
 } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
+import { useMyAccess, pageKeyOf } from '@/api/auth/useMyAccess';
 
 interface NavItem {
     href: string;
@@ -26,11 +27,20 @@ interface Props {
     product: 'inventory' | 'studio';
 }
 
-const inventoryNav: NavGroup[] = [
+export const inventoryNav: NavGroup[] = [
     { items: [{ href: '/inventory/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }] },
     {
         title: 'Finance', items: [
             { href: '/inventory/finance', icon: <DollarSign size={18} />, label: 'Finance' },
+            { href: '/inventory/currencies', icon: <Coins size={18} />, label: 'Currencies' },
+        ],
+    },
+    {
+        title: 'Merchant Management', items: [
+            { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Merchants' },
+            { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
+            { href: '/inventory/users', icon: <Users size={18} />, label: 'Platform Users' },
+            { href: '/inventory/analysis', icon: <LineChart size={18} />, label: 'Analysis' },
         ],
     },
     {
@@ -42,25 +52,16 @@ const inventoryNav: NavGroup[] = [
     },
     {
         title: 'Inventory', items: [
-            { href: '/inventory/brands', icon: <Tag size={18} />, label: 'Brands' },
-            { href: '/inventory/categories', icon: <Layers size={18} />, label: 'Categories' },
             { href: '/inventory/products', icon: <ShoppingBag size={18} />, label: 'Products' },
             { href: '/inventory/units', icon: <Scale size={18} />, label: 'Units' },
         ],
     },
-
-    {
-        title: 'Business Management', items: [
-            { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Businesses' },
-            { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
-        ],
-    },
     {
         title: 'Referral System', items: [
-            { href: '/inventory/referral-analytics', icon: <BarChart3 size={18} />, label: 'Referral Analytics' },
-            { href: '/inventory/referral-tiers', icon: <Trophy size={18} />, label: 'Referral Tiers' },
+            { href: '/inventory/referral-analytics', icon: <BarChart3 size={18} />, label: 'Reward Analytics' },
+            { href: '/inventory/referral-tiers', icon: <Trophy size={18} />, label: 'Reward Tiers' },
             { href: '/inventory/referrals', icon: <UserPlus size={18} />, label: 'Referrals' },
-            { href: '/inventory/referral-configs', icon: <Settings size={18} />, label: 'Referral Point Configs' },
+            { href: '/inventory/referral-configs', icon: <Settings size={18} />, label: 'Reward Point Configs' },
             { href: '/inventory/referral-rewards', icon: <Gift size={18} />, label: 'Referral Rewards' },
         ],
     },
@@ -68,14 +69,11 @@ const inventoryNav: NavGroup[] = [
         title: 'Communication', items: [
             { href: '/inventory/send-broadcast', icon: <Send size={18} />, label: 'Send Broadcast' },
             { href: '/inventory/broadcast-history', icon: <Mail size={18} />, label: 'Broadcast History' },
+            { href: '/inventory/notifications', icon: <Bell size={18} />, label: 'Notifications' },
+            { href: '/inventory/contact-requests', icon: <Headphones size={18} />, label: 'Support & Inquiries' },
         ],
     },
 
-    {
-        title: 'Analytics', items: [
-            { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
-        ],
-    },
     {
         title: 'Content Management', items: [
             { href: '/inventory/testimonials', icon: <MessageSquare size={18} />, label: 'Testimonials' },
@@ -84,7 +82,9 @@ const inventoryNav: NavGroup[] = [
     {
         title: 'Platform', items: [
             { href: '/inventory/admins', icon: <Shield size={18} />, label: 'Admins (RBAC)' },
-            { href: '/inventory/users', icon: <Users size={18} />, label: 'Users' },
+            { href: '/inventory/activity-logs', icon: <ClipboardList size={18} />, label: 'User Activity Logs' },
+            { href: '/inventory/admin-referrals', icon: <Gift size={18} />, label: 'Admin Referrals' },
+            { href: '/inventory/blog', icon: <FileText size={18} />, label: 'Blog' },
             { href: '/inventory/settings', icon: <Settings size={18} />, label: 'Settings' },
         ],
     },
@@ -118,7 +118,19 @@ export default function Sidebar({ product }: Props) {
     const { mobileOpen, setMobileOpen } = useLayout();
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
-    const nav = product === 'inventory' ? inventoryNav : studioNav;
+    const { canOpen } = useMyAccess();
+    // Sign out of this product and go back to the Inventory / Studio choice
+    const logout = () => {
+        try {
+            const keys = product === 'inventory' ? ['inventoryToken', 'inventoryUser'] : ['adminToken', 'adminUser'];
+            keys.forEach(k => localStorage.removeItem(k));
+        } catch { }
+        window.location.href = '/select';
+    };
+    // Only the pages the admin's role includes
+    const nav = product === 'inventory'
+        ? inventoryNav.map(g => ({ ...g, items: g.items.filter(i => canOpen(pageKeyOf(i.href))) })).filter(g => g.items.length)
+        : studioNav;
     const isInventory = product === 'inventory';
     const accentColor = isInventory ? '#6c9e4e' : '#7c5cbf';
     const lightBg = isInventory ? '#eaf4e3' : '#f0ebff';
@@ -209,15 +221,15 @@ export default function Sidebar({ product }: Props) {
 
                 {/* Bottom */}
                 <div style={{ padding: collapsed ? '12px 0' : '12px', borderTop: '1px solid #f5f5f5', flexShrink: 0 }}>
-                    <Link href="/signin" style={{
+                    <button onClick={logout} style={{
                         display: 'flex', alignItems: 'center', gap: 8, padding: collapsed ? '10px' : '10px 12px',
-                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        justifyContent: collapsed ? 'center' : 'flex-start', width: '100%', background: 'none', border: 'none', cursor: 'pointer',
                         color: '#ef4444', textDecoration: 'none', fontSize: 13, fontWeight: 500,
                         borderRadius: 8, transition: 'background 0.15s',
                     }}>
                         <LogOut size={16} />
                         {!collapsed && 'Logout'}
-                    </Link>
+                    </button>
                 </div>
             </aside>
         </>

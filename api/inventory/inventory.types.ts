@@ -1,4 +1,4 @@
-export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended';
+export type SubStatus = 'Active' | 'Trial' | 'Expired' | 'Cancelled' | 'Suspended' | 'Unpaid checkout';
 export type BillingCycle = 'Monthly' | 'Annual';
 
 export interface PaginatedResponse<T> {
@@ -15,6 +15,7 @@ export interface Business {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   logo?: string;
   address?: string;
   registrationNumber?: string;
@@ -62,6 +63,8 @@ export interface KPIMetrics {
   arpu: KPIValue;
   pendingRenewalsValue?: { value: number };
   pendingRenewals?: { value: number };
+  revenuePeriod?: KPIValue;
+  payingSubscriptions?: { value: number };
   conversionRate?: { value: number; trend?: string; trendUp?: boolean };
   activeVsInactiveRatio?: KPIValue;
   newPayingBusinesses?: KPIValue;
@@ -73,7 +76,10 @@ export interface ChartData {
   revenue: number;
   arpu: number;
   totalBusiness?: number;
+  newBusinesses?: number;
+  paidSubscriptions?: number;
   subscribing?: number;
+  salesVolume?: number;
 }
 
 export interface RenewalTimelineItem {
@@ -87,19 +93,32 @@ export interface ConversionFunnel {
   paying: number;
   trialConversionRate: number;
   payingConversionRate: number;
+  stillTrialing?: number;
+  trialEnded?: number;
+  trialToPaidRate?: number | null;
 }
 
-export interface RetentionChurnItem {
+export interface RetentionStats {
+  retained: number;
+  lost: number;
+  new: number;
+  paying: number;
+  retentionRate: number | null;
+}
+
+export interface RetentionChurnItem extends Partial<RetentionStats> {
   week: string;
   active: number;
   inactive: number;
 }
 
 export interface InventoryCharts {
+  granularity?: 'day' | 'week' | 'month';
   monthlyTrends: ChartData[];
   pendingRenewalsTimeline: RenewalTimelineItem[];
   conversionFunnel?: ConversionFunnel;
   retentionChurn?: RetentionChurnItem[];
+  retentionSummary?: RetentionStats | null;
 }
 
 export interface RecentAction {
@@ -173,6 +192,7 @@ export interface AnomalousEvent {
   id: number | string;
   type: string;
   clientId: string;
+  businessName?: string;
   time: string;
   amount: number;
   status: string;
@@ -181,8 +201,9 @@ export interface AnomalousEvent {
 export interface UnifiedFinanceData {
   kpis: KPIMetrics;
   charts: {
+    granularity?: 'day' | 'week' | 'month';
     monthlyRevenue: Array<{ month: string; amount: number }>;
-    subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number }>;
+    subscriptionGrowth: Array<{ month: string; basic: number; smart: number; genius: number; platinum?: number }>;
   };
   subscriptions?: FinanceSubscription[];
   anomalousEvents: AnomalousEvent[];
@@ -462,6 +483,12 @@ export interface WhatsappNumber {
   status: string;
   lastActive: string;
   createdAt?: string;
+  businessLogo?: string | null;
+  integrationId?: string | null;
+  // The merchant's WhatsApp entry in Business Integrations: active, inactive or not set up
+  integrationStatus?: string;
+  lastUsed?: string | null;
+  merchantLastUsed?: string | null;
 }
 
 export interface ReferralTier {
@@ -551,7 +578,36 @@ export interface PlatformUserRecord {
   role?: string;
   status: string;
   lastLogin?: string;
+  lastLoginIp?: string | null;
+  lastLoginDevice?: string | null;
+  lastActive?: string | null;
+  storeName?: string | null;
+  isPrimaryUser?: boolean;
   createdAt: string;
   totalSales?: number;
   totalExpenses?: number;
 }
+
+export interface ContactRequest {
+  id: number;
+  fullName: string;
+  companyName?: string | null;
+  email: string;
+  phoneNumber?: string | null;
+  phoneCountryCode?: string | null;
+  job_title?: string | null;
+  message?: string | null;
+  status: 'pending' | 'read' | 'responded' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  country?: { id: number; name: string; code: string } | null;
+}
+
+export interface ContactRequestStats {
+  total: number;
+  pending: number;
+  read: number;
+  responded: number;
+  closed: number;
+}
+

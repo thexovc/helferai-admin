@@ -145,6 +145,7 @@ export default function BroadcastHistoryPageClient() {
                             onPageChange={setPage}
                             totalItems={meta.total}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>

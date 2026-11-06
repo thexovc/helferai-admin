@@ -5,49 +5,144 @@ import { useInventoryDashboard } from '@/api/inventory';
 import * as T from '@/api/inventory/inventory.types';
 import { 
     Building2, TrendingUp, Users, AlertCircle, XCircle, Calendar, 
-    DollarSign, Repeat, ArrowUpRight, ArrowDownRight, Zap, Download, 
+    DollarSign, ArrowUpRight, ArrowDownRight, Zap, Download, 
     ChevronDown, UserCheck, Flame, PieChart as PieIcon
 } from 'lucide-react';
 import { KPISkeleton } from '../Skeleton';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Area, AreaChart, Cell
+    BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
 import DashboardCard from './DashboardCard';
 import ConversionFunnel from './ConversionFunnel';
 import RecentActions from './RecentActions';
+import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
-const fmtMillions = (v: number) => v >= 1000000 ? `₦${(v / 1000000).toFixed(1)}M` : `₦${(v / 1000).toFixed(0)}K`;
+// Full amount for tooltips and totals, e.g. ₦16,000
+const fmtNaira = (v: number) => `₦${Math.round(v).toLocaleString()}`;
+// Short axis labels, e.g. ₦0, ₦4K, ₦1.5M
+const fmtNairaShort = (v: number) => v >= 1000000 ? `₦${+(v / 1000000).toFixed(1)}M` : v >= 1000 ? `₦${+(v / 1000).toFixed(1)}K` : `₦${v}`;
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const RevenueTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
     return (
         <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
             <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-            {payload.map((p: any, i: number) => (
-                <div key={i} style={{ color: p.color, fontWeight: 600 }}>{fmtMillions(p.value)}</div>
-            ))}
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{fmtNaira(d.value)}</div>
+            <div style={{ color: '#cbd5e1', marginTop: 2 }}>{d.count} paid subscription{d.count === 1 ? '' : 's'}</div>
         </div>
     );
 };
 
+const GrowthTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    return (
+        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{Number(d.value).toLocaleString()} merchants</div>
+            <div style={{ color: '#cbd5e1', marginTop: 2 }}>+{d.added} joined</div>
+        </div>
+    );
+};
+
+// Local YYYY-MM-DD (toISOString would shift the day to UTC)
+const toYMD = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// 'All time' starts well before the first record; the server trims it to the first one
+const getRangeDates = (range: string, customStart: string, customEnd: string): { startDate?: string; endDate?: string } => {
+    const today = new Date();
+    const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return d; };
+    const monthsAgo = (n: number) => { const d = new Date(today); d.setMonth(d.getMonth() - n); return d; };
+    switch (range) {
+        case 'Today': return { startDate: toYMD(today), endDate: toYMD(today) };
+        case 'Yesterday': return { startDate: toYMD(daysAgo(1)), endDate: toYMD(daysAgo(1)) };
+        case '7D': return { startDate: toYMD(daysAgo(6)), endDate: toYMD(today) };
+        case '30D': return { startDate: toYMD(daysAgo(29)), endDate: toYMD(today) };
+        case '3M': return { startDate: toYMD(monthsAgo(3)), endDate: toYMD(today) };
+        case '6M': return { startDate: toYMD(monthsAgo(6)), endDate: toYMD(today) };
+        case '12M': return { startDate: toYMD(monthsAgo(12)), endDate: toYMD(today) };
+        case 'Custom': return { startDate: customStart, endDate: customEnd };
+        default: return { startDate: '2000-01-01', endDate: toYMD(today) };
+    }
+};
+
+// 'totalSubscribingBusiness' -> 'Total Subscribing Merchants', 'mrr' -> 'MRR'
+const metricName = (key: string) =>
+    key === 'totalBusiness' ? 'Total Merchants'
+    : ['mrr', 'arr', 'rr', 'arpu'].includes(key)
+        ? key.toUpperCase()
+        : key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+
+const RetentionTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    const row = (color: string, name: string, value: number) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 99, background: color, display: 'inline-block' }} />
+            <span>{name}: <b>{value}</b></span>
+        </div>
+    );
+    return (
+        <div style={{ background: '#1a1a2e', padding: '10px 14px', borderRadius: 12, color: '#fff', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
+            {row('#6c9e4e', 'Kept', d.retained)}
+            {row('#b7d7a0', 'New', d.new)}
+            {row('#ef4444', 'Lost', d.lost)}
+            <div style={{ color: '#cbd5e1', marginTop: 6 }}>{d.paying} paying · {d.retentionRate ?? '–'}% kept</div>
+        </div>
+    );
+};
+
+// Round step for axis ticks: 1, 2, 5, 10, 20, 50, 100...
+const niceStep = (rough: number) => {
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(rough, 1))));
+    return [1, 2, 5, 10].map(m => m * pow).find(step => rough <= step) ?? 10 * pow;
+};
+
+const csvCell = (v: unknown) => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
 export default function InventoryDashboardClient() {
-    const [selectedRange, setSelectedRange] = React.useState('30D');
+    const [selectedRange, setSelectedRange] = React.useState('All time');
     const [showDateDropdown, setShowDateDropdown] = React.useState(false);
-    const [startDate, setStartDate] = React.useState('2023-08-01');
-    const [endDate, setEndDate] = React.useState('2023-08-31');
+    // Applied custom range, plus the draft values being edited in the dropdown
+    const [customStart, setCustomStart] = React.useState('');
+    const [customEnd, setCustomEnd] = React.useState('');
+    const [draftStart, setDraftStart] = React.useState('');
+    const [draftEnd, setDraftEnd] = React.useState('');
 
-    const { data: dashboard, isLoading } = useInventoryDashboard();
+    const { startDate, endDate } = getRangeDates(selectedRange, customStart, customEnd);
+    const { data: dashboard, isLoading, isFetching, isError } = useInventoryDashboard(startDate, endDate);
 
-    // Toggle dropdown
-    const toggleDropdown = () => setShowDateDropdown(!showDateDropdown);
+    // Dates shown in the header
+    const today = new Date();
+    const shownStart = startDate ?? toYMD(new Date(today.getFullYear(), today.getMonth(), 1));
+    const shownEnd = endDate ?? toYMD(today);
 
-    // Handle range selection
+    const toggleDropdown = () => {
+        if (!showDateDropdown) {
+            setDraftStart(shownStart);
+            setDraftEnd(shownEnd);
+        }
+        setShowDateDropdown(!showDateDropdown);
+    };
+
     const handleRangeChange = (range: string) => {
         setSelectedRange(range);
-        if (range !== 'Custom') {
-            setShowDateDropdown(false);
-        }
+        setShowDateDropdown(false);
+    };
+
+    const draftValid = !!draftStart && !!draftEnd && draftStart <= draftEnd;
+    const applyCustomRange = () => {
+        if (!draftValid) return;
+        setCustomStart(draftStart);
+        setCustomEnd(draftEnd);
+        setSelectedRange('Custom');
+        setShowDateDropdown(false);
     };
 
     if (isLoading || !dashboard) {
@@ -55,9 +150,15 @@ export default function InventoryDashboardClient() {
             <div>
                 <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
                 <div style={{ padding: 'var(--content-padding)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
-                        {Array(4).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
-                    </div>
+                    {isError && !isLoading ? (
+                        <div style={{ padding: 24, borderRadius: 12, background: '#fef2f2', color: '#b91c1c', fontSize: 14, fontWeight: 600 }}>
+                            Couldn&apos;t load the dashboard. Check your connection or sign in again.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 30 }}>
+                            {Array(4).fill(0).map((_: number, i: number) => <KPISkeleton key={i} />)}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -69,33 +170,75 @@ export default function InventoryDashboardClient() {
     // Adapt chart data for Recharts
     const chartData = {
         mrrTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.mrr })),
-        monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue })),
+        monthlyRevenue: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.revenue, count: d.paidSubscriptions ?? 0 })),
         arpuTrend: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.arpu || 0 })),
         renewalForecast: (charts.pendingRenewalsTimeline || []).map((d: any) => ({ month: d.week, value: d.amount })),
-        retentionData: [
-            { week: 'W1', active: 85, inactive: 15 },
-            { week: 'W2', active: 82, inactive: 18 },
-            { week: 'W3', active: 78, inactive: 22 },
-            { week: 'W4', active: 75, inactive: 25 },
-            { week: 'W5', active: 72, inactive: 28 },
-            { week: 'W6', active: 70, inactive: 30 },
-            { week: 'W7', active: 68, inactive: 32 },
-            { week: 'W8', active: 65, inactive: 35 },
-            { week: 'W9', active: 63, inactive: 37 },
-            { week: 'W10', active: 60, inactive: 40 },
-            { week: 'W11', active: 58, inactive: 42 },
-            { week: 'W12', active: 55, inactive: 45 },
-        ]
+        businessGrowth: (charts.monthlyTrends || []).map((d: any) => ({ month: d.month, value: d.totalBusiness ?? 0, added: d.newBusinesses ?? 0 })),
+        // Lost is drawn below the line, so it gets a negative value
+        retentionData: (charts.retentionChurn || []).map((d: any) => ({ ...d, lostBelow: -(d.lost || 0) }))
     };
 
+    // Parse YYYY-MM-DD as a local date so the label doesn't slip a day
     const formatDateRange = (start: string, end: string) => {
-        const s = new Date(start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const e = new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return `${s} - ${e}`;
+        const fmt = (v: string) => new Date(`${v}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return start === end ? fmt(start) : `${fmt(start)} - ${fmt(end)}`;
+    };
+
+    const allTime = selectedRange === 'All time';
+    const comparisonSubtitle = selectedRange === 'All time' ? 'all time' : 'vs previous period';
+
+    // The charts are split by day, week or month depending on the period length
+    const granularity: string = charts.granularity || 'month';
+    const revenueTotal = chartData.monthlyRevenue.reduce((sum: number, d: any) => sum + d.value, 0);
+    const retentionSummary = charts.retentionSummary;
+    const latestBusinessTotal = chartData.businessGrowth.length ? chartData.businessGrowth[chartData.businessGrowth.length - 1].value : 0;
+    const businessesAdded = chartData.businessGrowth.reduce((sum: number, d: any) => sum + d.added, 0);
+
+    // Axis starts near the lowest total on round numbers, so growth is visible instead of a flat line at the top
+    const growthValues: number[] = chartData.businessGrowth.map((d: any) => d.value);
+    const growthMin = growthValues.length ? Math.min(...growthValues) : 0;
+    const growthMax = growthValues.length ? Math.max(...growthValues) : 0;
+    const growthStep = niceStep(Math.max(growthMax - growthMin, 4) / 4);
+    const growthLow = Math.max(0, Math.floor(growthMin / growthStep) * growthStep);
+    const growthHigh = Math.max(growthLow + growthStep, Math.ceil(growthMax / growthStep) * growthStep);
+    const growthTicks = Array.from({ length: Math.round((growthHigh - growthLow) / growthStep) + 1 }, (_, i) => growthLow + i * growthStep);
+
+    // The active count covers the whole selected period, so name it after the period
+    const activeLabels: Record<string, string> = { Today: 'Active Today', Yesterday: 'Active Yesterday', 'All time': 'Active Ever' };
+    const activeLabel = activeLabels[selectedRange] ?? 'Active in Period';
+
+    // Bars under the status cards show each count as a share of all businesses
+    const totalCount = Number(overview.totalBusiness?.value || 0);
+    const shareOfTotal = (v?: number) => totalCount > 0 ? Math.min(100, Math.round((Number(v || 0) / totalCount) * 100)) : 0;
+
+    const exportReport = () => {
+        const rows: unknown[][] = [
+            ['HelferAI Inventory Report'],
+            ['Period', formatDateRange(shownStart, shownEnd)],
+            ['Generated', new Date().toLocaleString()],
+            [],
+            ['Metric', 'Value', 'Trend'],
+            ...Object.entries(kpis || {}).map(([key, v]: [string, any]) => [metricName(key), v?.value ?? '', v?.trend ?? '']),
+            [],
+            ['Period', 'Subscription Income', 'MRR', 'ARPU', 'Total Merchants', 'New Merchants', 'Subscribing', 'Sales by Merchants'],
+            ...(charts.monthlyTrends || []).map((d: any) => [d.month, d.revenue, d.mrr, d.arpu, d.totalBusiness ?? '', d.newBusinesses ?? '', d.subscribing ?? '', d.salesVolume ?? '']),
+            [],
+            ['Period', 'Kept', 'New', 'Lost', 'Paying', 'Kept %'],
+            ...(charts.retentionChurn || []).map((d: any) => [d.week, d.retained ?? '', d.new ?? '', d.lost ?? '', d.paying ?? '', d.retentionRate ?? '']),
+        ];
+        const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventory-report-${shownStart}-to-${shownEnd}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     return (
         <div style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: 60 }}>
+            {/* Page title, and the menu button on phones */}
+            <Topbar title="Inventory Overview" subtitle="Real-time performance and inventory health metrics." product="inventory" />
             {/* Custom Header with Date Selector */}
             <div style={{ 
                 padding: '16px var(--content-padding)', 
@@ -109,7 +252,7 @@ export default function InventoryDashboardClient() {
                 position: 'relative',
                 zIndex: 50
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                     <div 
                         onClick={toggleDropdown}
                         style={{ 
@@ -119,7 +262,7 @@ export default function InventoryDashboardClient() {
                             userSelect: 'none', position: 'relative'
                         }}
                     >
-                        {selectedRange === 'Custom' ? formatDateRange(startDate, endDate) : (selectedRange === '30D' ? 'Aug 1, 2023 - Aug 31, 2023' : `Last ${selectedRange}`)}
+                        {selectedRange === 'All time' ? 'All time' : formatDateRange(shownStart, shownEnd)}
                         <ChevronDown size={14} color="#94a3b8" />
                         
                         {/* Date Picker Dropdown */}
@@ -129,7 +272,7 @@ export default function InventoryDashboardClient() {
                                 style={{
                                     position: 'absolute', top: '100%', left: 0, marginTop: 8,
                                     background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 280,
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: 16, width: 'min(280px, calc(100vw - 32px))', boxSizing: 'border-box',
                                     zIndex: 100
                                 }}
                             >
@@ -139,8 +282,9 @@ export default function InventoryDashboardClient() {
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>START DATE</div>
                                         <input 
                                             type="date" 
-                                            value={startDate} 
-                                            onChange={e => { setStartDate(e.target.value); setSelectedRange('Custom'); }}
+                                            value={draftStart}
+                                            max={toYMD(today)}
+                                            onChange={e => setDraftStart(e.target.value)}
                                             style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }} 
                                         />
                                     </div>
@@ -148,14 +292,19 @@ export default function InventoryDashboardClient() {
                                         <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>END DATE</div>
                                         <input 
                                             type="date" 
-                                            value={endDate} 
-                                            onChange={e => { setEndDate(e.target.value); setSelectedRange('Custom'); }}
+                                            value={draftEnd}
+                                            max={toYMD(today)}
+                                            onChange={e => setDraftEnd(e.target.value)}
                                             style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }} 
                                         />
                                     </div>
-                                    <button 
-                                        onClick={() => setShowDateDropdown(false)}
-                                        style={{ background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}
+                                    {!draftValid && draftStart && draftEnd && (
+                                        <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>Start date must be before end date.</div>
+                                    )}
+                                    <button
+                                        onClick={applyCustomRange}
+                                        disabled={!draftValid}
+                                        style={{ background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 700, cursor: draftValid ? 'pointer' : 'not-allowed', opacity: draftValid ? 1 : 0.5, marginTop: 8 }}
                                     >
                                         Apply Range
                                     </button>
@@ -163,8 +312,9 @@ export default function InventoryDashboardClient() {
                             </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'Default'].map(p => (
+                    {/* Scrolls sideways on narrow screens instead of widening the page */}
+                    <div style={{ display: 'flex', gap: 4, overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                        {['Today', 'Yesterday', '7D', '30D', '3M', '6M', '12M', 'All time'].map(p => (
                             <button 
                                 key={p} 
                                 onClick={() => handleRangeChange(p)}
@@ -173,7 +323,7 @@ export default function InventoryDashboardClient() {
                                     border: selectedRange === p ? '1px solid #e2e8f0' : 'none', 
                                     padding: '6px 12px', fontSize: 12, fontWeight: 700,
                                     color: selectedRange === p ? '#1a1a2e' : '#94a3b8', cursor: 'pointer',
-                                    borderRadius: 6,
+                                    borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0,
                                     boxShadow: selectedRange === p ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
                                 }}
                             >
@@ -181,8 +331,11 @@ export default function InventoryDashboardClient() {
                             </button>
                         ))}
                     </div>
+                    {isFetching && (
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>Updating…</span>
+                    )}
                 </div>
-                <button style={{ 
+                <button onClick={exportReport} style={{
                     background: '#6c9e4e', color: '#fff', border: 'none', padding: '10px 20px', 
                     borderRadius: 10, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', 
                     gap: 8, cursor: 'pointer', boxShadow: '0 4px 10px rgba(108, 158, 78, 0.2)'
@@ -195,45 +348,42 @@ export default function InventoryDashboardClient() {
                 
                 {/* FIRST KPI ROW - Basic Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 24 }}>
-                    <DashboardCard variant="metric" label="Total Businesses" value={overview.totalBusiness?.value?.toLocaleString() ?? '0'} trend={overview.totalBusiness?.trend ?? ''} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
-                    <DashboardCard variant="metric" label="New This Month" value={overview.newBusinessThisMonth?.value ?? '0'} trend={overview.newBusinessThisMonth?.trend ?? ''} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle="vs last month" />
-                    <DashboardCard variant="metric" label="Active Today" value={overview.activeToday?.value ?? '0'} trend={overview.activeToday?.trend ?? ''} trendUp={overview.activeToday?.trendUp ?? true} subtitle="daily active rate" />
-                    <DashboardCard variant="metric" label="MRR" value={`₦${(overview.mrr?.value / 1000).toFixed(1)}k`} trend={overview.mrr?.trend ?? ''} trendUp={overview.mrr?.trendUp ?? true} subtitle="vs last month" />
+                    <DashboardCard variant="metric" label="Total Merchants" value={compactCount(overview.totalBusiness?.value ?? 0)} fullValue={fullCount(overview.totalBusiness?.value ?? 0)} trend={allTime ? '' : (overview.totalBusiness?.trend ?? '')} trendUp={overview.totalBusiness?.trendUp ?? true} subtitle="overall growth" />
+                    <DashboardCard variant="metric" label={selectedRange === 'All time' ? 'Merchants Joined' : 'New in Period'} value={compactCount(overview.newBusinessThisMonth?.value ?? 0)} fullValue={fullCount(overview.newBusinessThisMonth?.value ?? 0)} trend={allTime ? '' : (overview.newBusinessThisMonth?.trend ?? '')} trendUp={overview.newBusinessThisMonth?.trendUp ?? true} subtitle={comparisonSubtitle} />
+                    <DashboardCard variant="metric" label={activeLabel} value={compactCount(overview.activeToday?.value ?? 0)} fullValue={fullCount(overview.activeToday?.value ?? 0)} trend={allTime ? '' : (overview.activeToday?.trend ?? '')} trendUp={overview.activeToday?.trendUp ?? true} subtitle="merchants using HelferAI" />
+                    <DashboardCard variant="metric" label="MRR" value={compactNaira(overview.mrr?.value ?? 0)} fullValue={fullNaira(overview.mrr?.value ?? 0)} trend={allTime ? '' : (overview.mrr?.trend ?? '')} trendUp={overview.mrr?.trendUp ?? true} subtitle={comparisonSubtitle} />
                 </div>
 
                 {/* SECOND KPI ROW - Status Metrics */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
-                    <DashboardCard variant="status" label="Subscribing Orgs" value={overview.totalSubscribingBusiness?.value?.toLocaleString() ?? '0'} subValue={overview.totalSubscribingBusiness?.trend ?? ''} icon={Building2} accent="#3b82f6" progress={100} />
-                    <DashboardCard variant="status" label="Active Trials" value={overview.trialUsers?.value ?? '0'} subValue="Trial active" icon={Calendar} accent="#a16207" progress={75} />
-                    <DashboardCard variant="status" label="Cancelled" value={overview.cancelledBusinesses?.value ?? '0'} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={10} />
-                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="conversion rate" icon={TrendingUp} accent="#22c55e" progress={45} />
+                    <DashboardCard variant="status" label="Subscribing Orgs" value={compactCount(overview.totalSubscribingBusiness?.value ?? 0)} fullValue={fullCount(overview.totalSubscribingBusiness?.value ?? 0)} subValue={allTime ? 'all time' : (overview.totalSubscribingBusiness?.trend ?? '')} icon={Building2} accent="#3b82f6" progress={shareOfTotal(overview.totalSubscribingBusiness?.value)} />
+                    <DashboardCard variant="status" label="Trials Started" value={compactCount(overview.trialUsers?.value ?? 0)} fullValue={fullCount(overview.trialUsers?.value ?? 0)} subValue="in this period" icon={Calendar} accent="#a16207" progress={shareOfTotal(overview.trialUsers?.value)} />
+                    <DashboardCard variant="status" label="Cancelled" value={compactCount(overview.cancelledBusinesses?.value ?? 0)} fullValue={fullCount(overview.cancelledBusinesses?.value ?? 0)} subValue="Loss rate" icon={XCircle} accent="#ef4444" progress={shareOfTotal(overview.cancelledBusinesses?.value)} />
+                    <DashboardCard variant="status" label="Trial → Paid" value={`${overview.conversionRate?.value ?? '0'}%`} subValue="of ended trials paid" icon={TrendingUp} accent="#22c55e" progress={Math.min(100, Math.round(Number(overview.conversionRate?.value || 0)))} />
                 </div>
 
                 {/* CHARTS ROW */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
-                    {/* Monthly Revenue Chart */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: 24, marginBottom: 32 }}>
+                    {/* Revenue Chart */}
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Monthly Revenue</h3>
-                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Gross billing performance by month</div>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Revenue</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Subscription income HelferAI collected each {granularity}</div>
                             </div>
-                            <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>{fmtNaira(revenueTotal)}</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>in this period</div>
+                            </div>
                         </div>
                         <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={chartData.monthlyRevenue}>
-                                <defs>
-                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6c9e4e" stopOpacity={0.15} />
-                                        <stop offset="95%" stopColor="#6c9e4e" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
+                            <BarChart data={chartData.monthlyRevenue}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tickFormatter={v => `₦${v / 1000000}M`} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area type="monotone" dataKey="value" stroke="#6c9e4e" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
-                            </AreaChart>
+                                <YAxis tickFormatter={fmtNairaShort} allowDecimals={false} width={56} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                                <Tooltip content={<RevenueTooltip />} cursor={{ fill: '#f8fafc' }} />
+                                <Bar dataKey="value" fill="#6c9e4e" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
 
@@ -241,59 +391,73 @@ export default function InventoryDashboardClient() {
                     <div style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Business Growth</h3>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>Merchant Growth</h3>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginTop: 4 }}>Total merchants at the end of each {granularity}</div>
                             </div>
-                            <div style={{ color: '#94a3b8' }}><Repeat size={20} /></div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a2e' }}>{latestBusinessTotal.toLocaleString()}</div>
+                                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>+{businessesAdded} in this period</div>
+                            </div>
                         </div>
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={chartData.monthlyRevenue} barSize={40}>
+                            <LineChart data={chartData.businessGrowth}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                                <YAxis tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar dataKey="value" fill="#eaf4e3" radius={[8, 8, 8, 8]}>
-                                    {chartData.monthlyRevenue.map((_item: any, index: number) => (
-                                        <Cell key={index} fill={index === chartData.monthlyRevenue.length - 2 ? '#6c9e4e' : '#eaf4e3'} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
+                                <YAxis
+                                    domain={[growthLow, growthHigh]}
+                                    ticks={growthTicks}
+                                    allowDecimals={false}
+                                    tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10}
+                                />
+                                <Tooltip content={<GrowthTooltip />} />
+                                <Line type="monotone" dataKey="value" stroke="#6c9e4e" strokeWidth={3} dot={{ r: 3, fill: '#6c9e4e' }} activeDot={{ r: 5 }} />
+                            </LineChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* RETENTION & CHURN VELOCITY CHART */}
-                <div style={{ background: '#fff', borderRadius: 20, padding: 40, border: '1.5px solid #3b82f6', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', marginBottom: 32 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                <div style={{ background: '#fff', borderRadius: 20, padding: 40, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', marginBottom: 32 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>Retention & Churn Velocity</h3>
-                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Comparison of Active vs Inactive business profiles</div>
+                            <div style={{ fontSize: 14, color: '#6b7280', fontWeight: 500, marginTop: 4 }}>Paying merchants kept, new and lost each {granularity}</div>
+                            <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                                {[['#6c9e4e', 'KEPT'], ['#b7d7a0', 'NEW'], ['#ef4444', 'LOST']].map(([color, name]) => (
+                                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ width: 10, height: 10, borderRadius: 99, background: color }} /> {name}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#64748b'
-                    }}>
-                        <div style={{ width: 12, height: 12, borderRadius: 99, background: '#6c9e4e' }} /> ACTIVE
+                        {retentionSummary && (
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e' }}>{retentionSummary.retentionRate ?? '–'}%</div>
+                                <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>kept in this period</div>
+                                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginTop: 4 }}>
+                                    <span style={{ color: '#ef4444' }}>{retentionSummary.lost} lost</span> · <span style={{ color: '#6c9e4e' }}>{retentionSummary.new} new</span> · {retentionSummary.paying} paying now
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-                        <div style={{ width: 12, height: 12, borderRadius: 99, background: '#eaf4e3' }} /> INACTIVE
-                    </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height={360}>
-                        <BarChart data={chartData.retentionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <XAxis dataKey="week" tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                            <Tooltip />
-                            <Bar dataKey="active" stackId="a" fill="#6c9e4e" radius={[4, 4, 0, 0]} barSize={50} />
-                            <Bar dataKey="inactive" stackId="a" fill="#eaf4e3" radius={[0, 0, 4, 4]} barSize={50} />
+                    <ResponsiveContainer width="100%" height={320}>
+                        <BarChart data={chartData.retentionData} stackOffset="sign" margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
+                            <YAxis allowDecimals={false} tickFormatter={(v: number) => String(Math.abs(v))} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} width={36} />
+                            <Tooltip content={<RetentionTooltip />} cursor={{ fill: '#f8fafc' }} />
+                            <ReferenceLine y={0} stroke="#cbd5e1" />
+                            <Bar dataKey="retained" stackId="a" fill="#6c9e4e" maxBarSize={48} />
+                            <Bar dataKey="new" stackId="a" fill="#b7d7a0" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                            <Bar dataKey="lostBelow" stackId="a" fill="#ef4444" radius={[0, 0, 4, 4]} maxBarSize={48} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
                 {/* BOTTOM ROW (Funnel and Actions) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, flexWrap: 'wrap' }}>
-                    <ConversionFunnel data={{
-                        registered: overview.totalBusiness?.value ?? 0,
-                        trialing: overview.trialUsers?.value ?? 0,
-                        paying: overview.totalSubscribingBusiness?.value ?? 0
-                    }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 32 }}>
+                    {/* Businesses that joined in the selected period, and how far they got */}
+                    <ConversionFunnel data={charts.conversionFunnel} />
                     <RecentActions actions={recentActions} />
                 </div>
 

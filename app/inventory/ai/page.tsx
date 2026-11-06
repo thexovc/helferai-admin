@@ -68,13 +68,13 @@ export default function AIPage() {
                 {/* Business AI usage table */}
                 <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
                     <div style={{ padding: '18px 24px', borderBottom: '1px solid #f5f5f5' }}>
-                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1a1a2e' }}>AI Usage by Business</h3>
+                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1a1a2e' }}>AI Usage by Merchant</h3>
                     </div>
                     <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
                             <thead>
                                 <tr>
-                                    {['Business', 'Predictions', 'Forecasts', 'Alerts', 'Accuracy', 'Status'].map(h => (
+                                    {['Merchant', 'Predictions', 'Forecasts', 'Alerts', 'Accuracy', 'Status'].map(h => (
                                         <th key={h}>{h}</th>
                                     ))}
                                 </tr>

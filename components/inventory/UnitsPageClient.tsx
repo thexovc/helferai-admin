@@ -154,6 +154,7 @@ export default function UnitsPageClient() {
                             <tr>
                                 <th>Unit Name</th>
                                 <th>Abbreviation</th>
+                                <th>Created By</th>
                                 <th>Status</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
@@ -162,17 +163,23 @@ export default function UnitsPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={4}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={5}><div style={{ height: 40, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
                             ) : units.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No units found</td>
+                                    <td colSpan={5} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No units found</td>
                                 </tr>
-                            ) : units.map((unit: Unit) => (
+                            ) : units.map((unit: any) => (
                                 <tr key={unit.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ fontWeight: 600, color: '#1a1a2e' }}>{unit.name}</td>
                                     <td><span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#374151', background: '#f3f4f6', padding: '2px 8px', borderRadius: 4 }}>{unit.abbreviation}</span></td>
+                                    <td>
+                                        {/* System units are shared by every merchant and listed first */}
+                                        {unit.isSystem
+                                            ? <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, background: '#eef2ff', color: '#4338ca' }}>System</span>
+                                            : <span style={{ fontSize: 13, color: '#374151' }}>{unit.createdBy}</span>}
+                                    </td>
                                     <td>
                                         <span style={{
                                             padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
@@ -208,6 +215,7 @@ export default function UnitsPageClient() {
                             onPageChange={setPage}
                             totalItems={totalCount}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>

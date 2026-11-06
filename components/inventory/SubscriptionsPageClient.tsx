@@ -11,8 +11,10 @@ import { toast } from 'sonner';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import SearchableSelect from '../SearchableSelect';
+import ToggleValue from './ToggleValue';
+import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
-const STATUS_OPTIONS = ['All', 'Active', 'Trial', 'Expired', 'Cancelled'];
+const STATUS_OPTIONS = ['All', 'Expiring soon', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
 const BILLING_OPTIONS = ['All', 'Monthly', 'Annual'];
 
 const statusStyle: Record<string, { bg: string; color: string }> = {
@@ -20,6 +22,18 @@ const statusStyle: Record<string, { bg: string; color: string }> = {
     Trial: { bg: '#fef9c3', color: '#a16207' },
     Expired: { bg: '#fee2e2', color: '#dc2626' },
     Cancelled: { bg: '#f3f4f6', color: '#6b7280' },
+    'Unpaid checkout': { bg: '#fff7ed', color: '#c2410c' },
+};
+
+const toYMD = (d: Date) => d.toISOString().split('T')[0];
+const isYearly = (frequency?: string) => ['yearly', 'annual'].includes((frequency || '').toLowerCase());
+// End date one billing period after the start, matching the plan
+const periodEnd = (start: string, frequency?: string) => {
+    const d = new Date(`${start}T00:00:00`);
+    if (isNaN(d.getTime())) return '';
+    if (isYearly(frequency)) d.setFullYear(d.getFullYear() + 1);
+    else d.setMonth(d.getMonth() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 export default function SubscriptionsPageClient() {
@@ -30,6 +44,9 @@ export default function SubscriptionsPageClient() {
     const [planFilter, setPlanFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [billingFilter, setBillingFilter] = useState('All');
+    // "Expiring soon": running subscriptions that end within this many days
+    const [expiringDays, setExpiringDays] = useState('5');
+    const daysValue = Math.min(Math.max(parseInt(expiringDays) || 0, 1), 365);
 
     React.useEffect(() => {
         const handler = setTimeout(() => {
@@ -44,7 +61,8 @@ export default function SubscriptionsPageClient() {
         pageSize,
         search: debouncedSearch,
         plan: planFilter === 'All' ? '' : planFilter,
-        status: statusFilter === 'All' ? '' : statusFilter,
+        status: statusFilter === 'All' ? '' : statusFilter === 'Expiring soon' ? 'expiring' : statusFilter,
+        expiringDays: statusFilter === 'Expiring soon' ? daysValue : undefined,
         billing: billingFilter === 'All' ? '' : billingFilter,
     });
 
@@ -80,16 +98,20 @@ export default function SubscriptionsPageClient() {
                 startsAt: sub.startDate ? new Date(sub.startDate).toISOString().split('T')[0] : '',
                 endsAt: sub.endDate ? new Date(sub.endDate).toISOString().split('T')[0] : '',
                 billingCycle: sub.billingCycle || 'Monthly',
-                status: sub.status || 'Active',
+                // Trial and unpaid checkout can't be set by hand; treat them as expired
+                status: ['Active', 'Expired', 'Cancelled'].includes(sub.status) ? sub.status : 'Expired',
                 paymentMethod: sub.paymentMethod || 'Paystack'
             });
         } else {
             setEditingSub(null);
+            const firstPlan = plansData?.[0];
+            const start = toYMD(new Date());
             setFormData({
-                businessId: businessesData?.data?.[0]?.id || '',
-                planId: plansData?.[0]?.id || '',
-                startsAt: new Date().toISOString().split('T')[0],
-                endsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                // Pick the merchant on purpose rather than defaulting to whoever is first in the list
+                businessId: '',
+                planId: firstPlan?.id || '',
+                startsAt: start,
+                endsAt: periodEnd(start, firstPlan?.frequency),
                 billingCycle: 'Monthly',
                 status: 'Active',
                 paymentMethod: 'Paystack'
@@ -100,7 +122,7 @@ export default function SubscriptionsPageClient() {
 
     const handleSaveSubscription = async () => {
         if (!formData.businessId || !formData.planId) {
-            toast.error('Business and Plan are required');
+            toast.error('Merchant and Plan are required');
             return;
         }
 
@@ -164,13 +186,9 @@ export default function SubscriptionsPageClient() {
     };
 
     const rawSubscriptions = subscriptionsResponse?.data || [];
-    // Sort latest first
-    const subscriptions = [...rawSubscriptions].sort((a: any, b: any) => {
-        const timeA = new Date(a.createdAt || a.startsAt || a.startDate || 0).getTime();
-        const timeB = new Date(b.createdAt || b.startsAt || b.startDate || 0).getTime();
-        return timeB - timeA;
-    });
-    const aggregates = subscriptionsResponse?.aggregates || {
+    // The server already returns newest first across all pages
+    const subscriptions = rawSubscriptions;
+    const aggregates: any = subscriptionsResponse?.aggregates || {
         totalActive: rawSubscriptions.filter(s => s.status === 'Active').length,
         totalTrial: rawSubscriptions.filter(s => s.status === 'Trial').length,
         totalExpired: rawSubscriptions.filter(s => s.status === 'Expired').length,
@@ -193,22 +211,28 @@ export default function SubscriptionsPageClient() {
 
     return (
         <div>
-            <Topbar title="Subscriptions" subtitle="Manage all business subscription plans, payments, and renewals." product="inventory" />
+            <Topbar title="Subscriptions" subtitle="Manage all merchant subscription plans, payments, and renewals." product="inventory" />
             <div style={{ padding: 'var(--content-padding)' }}>
 
                 {/* KPI Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
                     {[
-                        { label: 'Active', value: aggregates.totalActive, icon: <CheckCircle size={18} />, accent: '#22c55e', sub: 'Paid & current' },
-                        { label: 'On Trial', value: aggregates.totalTrial, icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Free trial period' },
-                        { label: 'Expired', value: aggregates.totalExpired, icon: <XCircle size={18} />, accent: '#ef4444', sub: 'Needs renewal' },
-                        { label: 'Cancelled', value: aggregates.totalCancelled, icon: <XCircle size={18} />, accent: '#6b7280', sub: 'Churned' },
-                        { label: 'Monthly Revenue', value: formatCurrency(aggregates.totalMRR), icon: <CreditCard size={18} />, accent: '#6c9e4e', sub: 'Active monthly subs' },
-                        { label: 'Annual Revenue', value: formatCurrency(aggregates.totalARR), icon: <TrendingUp size={18} />, accent: '#7c5cbf', sub: 'Active annual subs' },
+                        // Short by default (1.2K, ₦375K); click a figure for the exact value
+                        { label: 'Total Value', money: aggregates.totalValue ?? 0, icon: <CreditCard size={18} />, accent: '#0f766e', sub: 'All time, paid subscriptions' },
+                        { label: 'Active', count: aggregates.totalActive, icon: <CheckCircle size={18} />, accent: '#22c55e', sub: 'Paid & current' },
+                        { label: 'On Trial', count: aggregates.totalTrial, icon: <Clock size={18} />, accent: '#f59e0b', sub: 'Free trial period' },
+                        { label: 'Expired', count: aggregates.totalExpired, icon: <XCircle size={18} />, accent: '#ef4444', sub: 'Ended, not renewed yet' },
+                        { label: 'Cancelled', count: aggregates.totalCancelled, icon: <XCircle size={18} />, accent: '#6b7280', sub: 'Churned' },
+                        { label: 'MRR', money: aggregates.totalMRR, icon: <CreditCard size={18} />, accent: '#6c9e4e', sub: 'Active subs per month (yearly ÷ 12)' },
+                        { label: 'ARR', money: aggregates.totalARR, icon: <TrendingUp size={18} />, accent: '#7c5cbf', sub: 'MRR × 12' },
                     ].map(k => (
                         <div key={k.label} style={{ background: '#fff', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', borderLeft: `3px solid ${k.accent}` }}>
                             <div style={{ color: k.accent, marginBottom: 8 }}>{k.icon}</div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>{isLoading ? '...' : k.value}</div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e', marginBottom: 2 }}>
+                                {isLoading ? '...' : k.money !== undefined
+                                    ? <ToggleValue short={compactNaira(k.money)} full={fullNaira(k.money)} />
+                                    : <ToggleValue short={compactCount(k.count)} full={fullCount(k.count)} />}
+                            </div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a2e' }}>{k.label}</div>
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{k.sub}</div>
                         </div>
@@ -232,7 +256,7 @@ export default function SubscriptionsPageClient() {
                                     setSearch(e.target.value);
                                     setPage(1);
                                 }}
-                                placeholder="Search business or plan…"
+                                placeholder="Search merchant or plan…"
                                 style={{ paddingLeft: 30, width: '100%', height: 34, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 12, outline: 'none', color: '#1a1a2e', boxSizing: 'border-box' }}
                             />
                         </div>
@@ -249,6 +273,15 @@ export default function SubscriptionsPageClient() {
                             </select>
                         ))}
 
+                        {statusFilter === 'Expiring soon' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid #fde68a', background: '#fffbeb' }}>
+                                within
+                                <input type="number" min={1} max={365} value={expiringDays}
+                                    onChange={e => { setExpiringDays(e.target.value.replace(/[^0-9]/g, '')); setPage(1); }}
+                                    style={{ width: 52, height: 26, border: '1px solid #e5e7eb', borderRadius: 6, padding: '0 6px', fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                                days
+                            </label>
+                        )}
                         <button
                             onClick={() => handleOpenModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 34, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -261,7 +294,7 @@ export default function SubscriptionsPageClient() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
                             <thead>
                                 <tr>
-                                    {['Business', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status', 'Actions'].map(h => (
+                                    {['Merchant', 'Plan', 'Payment Method', 'Start Date', 'End Date', 'Days Remaining', 'Amount', 'Billing', 'Auto-Renew', 'Status', 'Actions'].map(h => (
                                         <th key={h} style={thStyle}>{h}</th>
                                     ))}
                                 </tr>
@@ -302,7 +335,7 @@ export default function SubscriptionsPageClient() {
                                             </td>
 
                                             {/* Payment Method */}
-                                            <td style={{ ...tdStyle, fontSize: 12, color: '#6b7280' }}>{s.paymentMethod}</td>
+                                            <td style={{ ...tdStyle, fontSize: 12, color: '#6b7280' }}>{s.paymentMethod || '—'}</td>
 
                                             {/* Dates */}
                                             <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{s.startDate ? formatDate(s.startDate) : '—'}</td>
@@ -311,7 +344,7 @@ export default function SubscriptionsPageClient() {
                                             {/* Days Remaining */}
                                             <td style={tdStyle}>
                                                 <span style={{ fontWeight: 700, color: daysColor, fontSize: 13 }}>
-                                                    {s.daysRemaining < 0 ? `${Math.abs(s.daysRemaining)}d overdue` : s.status === 'Cancelled' ? '—' : `${s.daysRemaining}d`}
+                                                    {s.status === 'Cancelled' || s.status === 'Unpaid checkout' ? '—' : s.daysRemaining < 0 ? `${Math.abs(s.daysRemaining)}d overdue` : `${s.daysRemaining}d`}
                                                 </span>
                                             </td>
 
@@ -371,6 +404,7 @@ export default function SubscriptionsPageClient() {
                             onPageChange={setPage}
                             totalItems={totalCount}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>
@@ -395,7 +429,7 @@ export default function SubscriptionsPageClient() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-                            <Building2 size={14} /> Select Business
+                            <Building2 size={14} /> Select Merchant
                         </label>
                         {editingSub ? (
                             <input
@@ -409,8 +443,8 @@ export default function SubscriptionsPageClient() {
                                 onChange={val => setFormData(prev => ({ ...prev, businessId: val }))}
                                 onSearch={setBusinessSelectSearch}
                                 isLoading={isBusinessesFetching}
-                                placeholder="Select or search business..."
-                                searchPlaceholder="Type business name or email..."
+                                placeholder="Select or search merchant..."
+                                searchPlaceholder="Type merchant name or email..."
                                 options={businessesData?.data?.map(b => ({
                                     value: b.id,
                                     label: b.name,
@@ -425,7 +459,7 @@ export default function SubscriptionsPageClient() {
                         </label>
                         <SearchableSelect
                             value={formData.planId}
-                            onChange={val => setFormData(prev => ({ ...prev, planId: val }))}
+                            onChange={val => setFormData(prev => ({ ...prev, planId: val, endsAt: periodEnd(prev.startsAt, plansData?.find(p => String(p.id) === String(val))?.frequency) || prev.endsAt }))}
                             placeholder="Select or search plan..."
                             searchPlaceholder="Search plans..."
                             options={plansData?.map(p => ({
@@ -443,7 +477,7 @@ export default function SubscriptionsPageClient() {
                             <input
                                 type="date"
                                 value={formData.startsAt}
-                                onChange={e => setFormData(prev => ({ ...prev, startsAt: e.target.value }))}
+                                onChange={e => setFormData(prev => ({ ...prev, startsAt: e.target.value, endsAt: periodEnd(e.target.value, plansData?.find(p => String(p.id) === String(prev.planId))?.frequency) || prev.endsAt }))}
                                 style={{ height: 42, width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '0 14px', fontSize: 14, outline: 'none', background: '#f9fafb' }}
                             />
                         </div>
@@ -459,15 +493,21 @@ export default function SubscriptionsPageClient() {
                             />
                         </div>
                     </div>
-                    <div>
-                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
-                        <SearchableSelect
-                            value={formData.status}
-                            onChange={val => setFormData(prev => ({ ...prev, status: val }))}
-                            placeholder="Select status..."
-                            options={['Active', 'Trial', 'Expired', 'Cancelled'].map(s => ({ value: s, label: s }))}
-                        />
-                    </div>
+                    {editingSub ? (
+                        <div>
+                            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Status</label>
+                            <SearchableSelect
+                                value={formData.status}
+                                onChange={val => setFormData(prev => ({ ...prev, status: val }))}
+                                placeholder="Select status..."
+                                options={['Active', 'Expired', 'Cancelled'].map(s => ({ value: s, label: s }))}
+                            />
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 12, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', lineHeight: 1.5 }}>
+                            This switches off the merchant&apos;s current subscription and starts this one, marked as paid.
+                        </div>
+                    )}
                 </div>
             </Modal>
 
@@ -494,7 +534,7 @@ export default function SubscriptionsPageClient() {
                 details={
                     confirmModal.sub
                         ? [
-                              { label: 'Business Name', value: confirmModal.sub.businessName },
+                              { label: 'Merchant Name', value: confirmModal.sub.businessName },
                               { label: 'Current Plan', value: confirmModal.sub.plan },
                               { label: 'Status', value: confirmModal.sub.status },
                               {

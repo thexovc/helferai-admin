@@ -547,7 +547,7 @@ export default function EmailComposerModal({
                                             { value: 'Active Subscribers', label: 'Active Subscribers (Paid Plans)' },
                                             { value: 'Trial Users', label: 'Trial Users' },
                                             { value: 'Expired Businesses', label: 'Expired Subscription Users' },
-                                            { value: 'Specific Business', label: 'Specific Business Customers' },
+                                            { value: 'Specific Business', label: 'Specific Merchant' },
                                             { value: 'Specific Users', label: 'Specific Users Multi-Select' },
                                         ]}
                                     />
@@ -556,14 +556,14 @@ export default function EmailComposerModal({
                                 {segment === 'Specific Business' && (
                                     <div>
                                         <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>
-                                            Select Business
+                                            Select Merchant
                                         </label>
                                         <SearchableSelect
                                             value={businessId}
                                             onChange={val => setBusinessId(val)}
                                             onSearch={setBusinessSearch}
                                             isLoading={isBizLoading}
-                                            placeholder="Search by business name or email..."
+                                            placeholder="Search by merchant name or email..."
                                             options={businessesData?.data?.map(b => ({
                                                 value: b.id,
                                                 label: b.name,

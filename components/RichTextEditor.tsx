@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
@@ -14,15 +14,38 @@ import {
     AlignLeft, AlignCenter, AlignRight, AlignJustify,
     List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3,
     Link as LinkIcon, Unlink, Undo, Redo, Minus, Eraser,
-    Sparkles, MousePointerClick, ChevronDown, Check,
-    Image as ImageIcon, Upload, X, FileImage
+    Sparkles, MousePointerClick, ChevronDown, Check, ImagePlus, Loader2,
+    Upload,
+    X,
+    ImageIcon
 } from 'lucide-react';
+
+// Images inside the text (e.g. blog articles)
+const ImageNode = Node.create({
+    name: 'image',
+    group: 'block',
+    draggable: true,
+    atom: true,
+    addAttributes() {
+        return { src: { default: null }, alt: { default: null } };
+    },
+    parseHTML() {
+        return [{ tag: 'img[src]' }];
+    },
+    renderHTML({ HTMLAttributes }) {
+        return ['img', mergeAttributes(HTMLAttributes, { style: 'max-width: 100%; height: auto; border-radius: 10px; margin: 8px 0;' })];
+    },
+});
 
 interface RichTextEditorProps {
     value: string;
     onChange: (html: string) => void;
     placeholder?: string;
     minHeight?: number;
+    // Hide email-only tools (CTA button, {{variables}}), e.g. for blog articles
+    hideEmailTools?: boolean;
+    // When given, shows an image button; returns the uploaded image's link
+    onUploadImage?: (file: File) => Promise<string>;
 }
 
 const TEXT_COLORS = [
@@ -56,7 +79,11 @@ export default function RichTextEditor({
     onChange,
     placeholder = 'Compose your formatted email message here...',
     minHeight = 280,
+    hideEmailTools = false,
+    onUploadImage,
 }: RichTextEditorProps) {
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const imageInput = React.useRef<HTMLInputElement>(null);
     const [isMounted, setIsMounted] = useState(false);
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
@@ -108,12 +135,7 @@ export default function RichTextEditor({
             TextStyle,
             Color,
             Highlight.configure({ multicolor: true }),
-            TipTapImage.configure({
-                allowBase64: true,
-                HTMLAttributes: {
-                    style: 'max-width: 100%; height: auto; border-radius: 8px; margin: 16px auto; display: block;',
-                },
-            }),
+            ImageNode,
         ],
         content: value,
         onUpdate: ({ editor }) => {
@@ -427,6 +449,36 @@ export default function RichTextEditor({
                     >
                         <Minus size={15} />
                     </button>
+                    {onUploadImage && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => imageInput.current?.click()}
+                                disabled={uploadingImage}
+                                style={toolbarIconBtn(false, uploadingImage)}
+                                title="Insert Image"
+                            >
+                                {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+                            </button>
+                            <input
+                                ref={imageInput}
+                                type="file"
+                                accept="image/png,image/jpeg,image/gif,image/webp"
+                                style={{ display: 'none' }}
+                                onChange={async e => {
+                                    const file = e.target.files?.[0];
+                                    e.target.value = '';
+                                    if (!file) return;
+                                    setUploadingImage(true);
+                                    try {
+                                        const src = await onUploadImage(file);
+                                        editor.chain().focus().insertContent({ type: 'image', attrs: { src, alt: file.name } }).run();
+                                    } catch { /* the uploader shows its own error */ }
+                                    finally { setUploadingImage(false); }
+                                }}
+                            />
+                        </>
+                    )}
                 </div>
 
                 {/* Group 6: Links */}
@@ -453,16 +505,16 @@ export default function RichTextEditor({
 
                 {/* Group 7: Interactive Pills (CTA Button, Media/Image, Colors, Variables, Clear) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {/* CTA Button Generator */}
-                    <button
-                        type="button"
-                        onClick={() => setIsButtonModalOpen(true)}
-                        style={toolbarPillBtn('cta')}
-                        title="Insert Styled Email Button (CTA)"
-                    >
-                        <MousePointerClick size={14} />
-                        <span>+ CTA Button</span>
-                    </button>
+                    {!hideEmailTools && (<>{/* CTA Button Generator */}
+                        <button
+                            type="button"
+                            onClick={() => setIsButtonModalOpen(true)}
+                            style={toolbarPillBtn('cta')}
+                            title="Insert Styled Email Button (CTA)"
+                        >
+                            <MousePointerClick size={14} />
+                            <span>+ CTA Button</span>
+                        </button></>)}
 
                     {/* Image / Media Inserter */}
                     <button
@@ -573,65 +625,65 @@ export default function RichTextEditor({
                         )}
                     </div>
 
-                    {/* Personalization Variables Menu */}
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsVarMenuOpen(prev => !prev)}
-                            style={toolbarPillBtn('variable', isVarMenuOpen)}
-                            title="Insert Personalized Variable (e.g. {{name}})"
-                        >
-                            <Sparkles size={13} />
-                            <span>Insert Variable</span>
-                            <ChevronDown size={12} />
-                        </button>
+                    {!hideEmailTools && (<>{/* Personalization Variables Menu */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsVarMenuOpen(prev => !prev)}
+                                style={toolbarPillBtn('variable', isVarMenuOpen)}
+                                title="Insert Personalized Variable (e.g. {{name}})"
+                            >
+                                <Sparkles size={13} />
+                                <span>Insert Variable</span>
+                                <ChevronDown size={12} />
+                            </button>
 
-                        {isVarMenuOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: 'calc(100% + 4px)',
-                                right: 0,
-                                background: '#ffffff',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: 10,
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
-                                padding: 6,
-                                zIndex: 100,
-                                minWidth: 240,
-                            }}>
-                                <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Dynamic Variables
+                            {isVarMenuOpen && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 4px)',
+                                    right: 0,
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 10,
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                                    padding: 6,
+                                    zIndex: 100,
+                                    minWidth: 240,
+                                }}>
+                                    <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                        Dynamic Variables
+                                    </div>
+                                    {VARIABLES.map(v => (
+                                        <button
+                                            key={v.tag}
+                                            type="button"
+                                            onClick={() => handleInsertVariable(v.tag)}
+                                            style={{
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '8px 10px',
+                                                borderRadius: 6,
+                                                border: 'none',
+                                                background: 'transparent',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 2,
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                                                {v.label} <code style={{ fontSize: 11, color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: 4 }}>{v.tag}</code>
+                                            </span>
+                                            <span style={{ fontSize: 11, color: '#64748b' }}>{v.desc}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                                {VARIABLES.map(v => (
-                                    <button
-                                        key={v.tag}
-                                        type="button"
-                                        onClick={() => handleInsertVariable(v.tag)}
-                                        style={{
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '8px 10px',
-                                            borderRadius: 6,
-                                            border: 'none',
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 2,
-                                            transition: 'background 0.1s',
-                                        }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                    >
-                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                            {v.label} <code style={{ fontSize: 11, color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: 4 }}>{v.tag}</code>
-                                        </span>
-                                        <span style={{ fontSize: 11, color: '#64748b' }}>{v.desc}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div></>)}
 
                     {/* Clear Formatting */}
                     <button

@@ -29,8 +29,10 @@ export const inventoryApi = {
   },
 
   // --- Businesses ---
-  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '') =>
-    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}`),
+  getBusinesses: (page = 1, pageSize = 10, search = '', filter = '', managerId = '') =>
+    inventoryClient.get<T.PaginatedResponse<T.Business>>(`/admin/api/inventory/businesses?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}&managerId=${encodeURIComponent(managerId)}`),
+  setAccountManager: (id: string, adminId: string | null) =>
+    inventoryClient.put<{ accountManager: { id: string; name: string } | null }>(`/admin/api/inventory/businesses/${id}/account-manager`, { adminId }),
   getBusinessById: (id: string) => inventoryClient.get<T.Business>(`/admin/api/inventory/businesses/${id}`),
   getBusinessMetrics: (id: string) => inventoryClient.get<T.BusinessMetrics>(`/admin/api/inventory/businesses/${id}/metrics`),
   getBusinessRoles: (id: string) => inventoryClient.get<Array<{ id: number; name: string; description?: string }>>(`/admin/api/inventory/businesses/${id}/roles`),
@@ -46,11 +48,30 @@ export const inventoryApi = {
   updateBusinessUser: (businessId: string, userId: string, dto: { name?: string; email?: string; password?: string; roleId?: string | number; status?: string }) =>
     inventoryClient.put<T.BusinessUser>(`/admin/api/inventory/businesses/${businessId}/users/${userId}`, dto),
   getBusinessSubscriptions: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessSubscription>>(`/admin/api/inventory/businesses/${id}/subscriptions?page=${page}&pageSize=${pageSize}`),
-  getBusinessProducts: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessProduct>>(`/admin/api/inventory/businesses/${id}/products?page=${page}&pageSize=${pageSize}`),
-  getBusinessSales: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessSale>>(`/admin/api/inventory/businesses/${id}/sales?page=${page}&pageSize=${pageSize}`),
-  getBusinessExpenses: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessExpense>>(`/admin/api/inventory/businesses/${id}/expenses?page=${page}&pageSize=${pageSize}`),
+  getBusinessProducts: (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => inventoryClient.get<T.PaginatedResponse<T.BusinessProduct>>(`/admin/api/inventory/businesses/${id}/products?page=${page}&pageSize=${pageSize}${range.from ? `&from=${range.from}` : ''}${range.to ? `&to=${range.to}` : ''}`),
+  getBusinessSales: (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => inventoryClient.get<T.PaginatedResponse<T.BusinessSale>>(`/admin/api/inventory/businesses/${id}/sales?page=${page}&pageSize=${pageSize}${range.from ? `&from=${range.from}` : ''}${range.to ? `&to=${range.to}` : ''}`),
+  getBusinessExpenses: (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => inventoryClient.get<T.PaginatedResponse<T.BusinessExpense>>(`/admin/api/inventory/businesses/${id}/expenses?page=${page}&pageSize=${pageSize}${range.from ? `&from=${range.from}` : ''}${range.to ? `&to=${range.to}` : ''}`),
   getBusinessWhatsapp: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessWhatsapp>>(`/admin/api/inventory/businesses/${id}/whatsapp?page=${page}&pageSize=${pageSize}`),
   getBusinessIntegrations: (id: string, page = 1, pageSize = 10) => inventoryClient.get<T.PaginatedResponse<T.BusinessIntegrationItem>>(`/admin/api/inventory/businesses/${id}/integrations?page=${page}&pageSize=${pageSize}`),
+  getBusinessExpenseOptions: (id: string) => inventoryClient.get<{
+    purposes: { id: string; name: string }[];
+    accounts: { id: string; name: string }[];
+    people: { id: string; name: string; hasLogin: boolean; userId?: string | null }[];
+  }>(`/admin/api/inventory/businesses/${id}/expense-options`),
+  getBusinessSaleOptions: (id: string, search = '') => inventoryClient.get<{
+    customers: { id: string; name: string; phone?: string | null }[];
+    products: { id: string; name: string; sku: string; sellingPrice: number; costPrice: number; stock: number }[];
+    paymentMethods: { id: string; name: string }[];
+    salespeople: { id: string; name: string }[];
+  }>(`/admin/api/inventory/businesses/${id}/sale-options?search=${encodeURIComponent(search)}`),
+  createBusinessSale: (id: string, dto: any) => inventoryClient.post<any>(`/admin/api/inventory/businesses/${id}/sales`, dto),
+  getBusinessProductOptions: (id: string) => inventoryClient.get<{
+    categories: { id: string; name: string }[];
+    brands: { id: string; name: string }[];
+    vendors: { id: string; name: string }[];
+    units: { id: string; name: string }[];
+    stores: { id: string; name: string; isDefault: boolean }[];
+  }>(`/admin/api/inventory/businesses/${id}/product-options`),
   getBusinessAi: (id: string) => inventoryClient.get<T.AIUsage>(`/admin/api/inventory/businesses/${id}/ai`),
 
   // --- Products ---
@@ -60,15 +81,15 @@ export const inventoryApi = {
     if (status) url += `&status=${encodeURIComponent(status)}`;
     return inventoryClient.get<T.PaginatedResponse<T.Product>>(url);
   },
-  createProduct: (dto: { name: string; sku?: string; price: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number; businessId?: string | number }) =>
+  createProduct: (dto: { name: string; sku?: string; price: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number; businessId?: string | number; vendorId?: string | number; storeId?: string | number; lowStockAlert?: number }) =>
     inventoryClient.post<T.Product>('/admin/api/inventory/products', dto),
   updateProduct: (id: string, dto: { name?: string; sku?: string; price?: number; costPrice?: number; stockLevel?: number; categoryId?: string | number; brandId?: string | number; unitId?: string | number }) =>
     inventoryClient.put<T.Product>(`/admin/api/inventory/products/${id}`, dto),
   deleteProduct: (id: string) => inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/products/${id}`),
 
   // --- Subscriptions ---
-  getSubscriptions: (params: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string } = {}) => {
-    const { page = 1, pageSize = 10, search = '', plan = '', status = '', startDate = '', endDate = '', billing = '' } = params;
+  getSubscriptions: (params: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string; expiringDays?: number } = {}) => {
+    const { page = 1, pageSize = 10, search = '', plan = '', status = '', startDate = '', endDate = '', billing = '', expiringDays } = params;
     let url = `/admin/api/inventory/subscriptions?page=${page}&pageSize=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (plan) url += `&plan=${encodeURIComponent(plan)}`;
@@ -76,6 +97,7 @@ export const inventoryApi = {
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
     if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
     if (billing) url += `&billing=${encodeURIComponent(billing)}`;
+    if (expiringDays) url += `&expiringDays=${expiringDays}`;
     return inventoryClient.get<T.SubscriptionsResponse>(url);
   },
   getSubscriptionPlans: () => inventoryClient.get<T.SubscriptionPlan[]>('/admin/api/inventory/subscriptions/plans'),
@@ -133,8 +155,9 @@ export const inventoryApi = {
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/units/${id}`),
 
   // --- WhatsApp Numbers ---
-  getWhatsappNumbers: (page = 1, pageSize = 10, search = '', status = '') => {
+  getWhatsappNumbers: (page = 1, pageSize = 10, search = '', status = '', businessId = '') => {
     let url = `/admin/api/inventory/whatsapp-numbers?page=${page}&pageSize=${pageSize}`;
+    if (businessId) url += `&businessId=${encodeURIComponent(businessId)}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     return inventoryClient.get<T.PaginatedResponse<T.WhatsappNumber>>(url);
@@ -173,12 +196,13 @@ export const inventoryApi = {
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/roles/${id}`),
 
   // --- Platform Users ---
-  getPlatformUsers: (params: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string } = {}) => {
-    const { page = 1, pageSize = 10, search = '', status = '', businessId = '' } = params;
+  getPlatformUsers: (params: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string; inactiveHours?: number } = {}) => {
+    const { page = 1, pageSize = 10, search = '', status = '', businessId = '', inactiveHours } = params;
     let url = `/admin/api/inventory/users?page=${page}&pageSize=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     if (businessId) url += `&businessId=${encodeURIComponent(businessId)}`;
+    if (inactiveHours) url += `&inactiveHours=${inactiveHours}`;
     return inventoryClient.get<T.PaginatedResponse<T.PlatformUserRecord>>(url);
   },
   getUserActivities: (userId: string, page = 1, pageSize = 20) =>
@@ -187,8 +211,8 @@ export const inventoryApi = {
     inventoryClient.patch<{ id: string; status: string }>(`/admin/api/inventory/users/${userId}/status`, { status }),
 
   // --- Broadcasts ---
-  getBroadcastHistory: (page = 1, pageSize = 10, search = '') => {
-    let url = `/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}`;
+  getBroadcastHistory: (page = 1, pageSize = 10, search = '', kind = 'admin') => {
+    let url = `/admin/api/inventory/broadcasts/history?page=${page}&pageSize=${pageSize}&kind=${kind}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     return inventoryClient.get<T.PaginatedResponse<T.Broadcast>>(url);
   },
@@ -246,6 +270,23 @@ export const inventoryApi = {
   deleteTestimonial: (id: string | number) =>
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/testimonials/${id}`),
 
+  // --- Contact Requests / Support Inquiries ---
+  getContactRequests: (params: { search?: string; status?: string; page?: number; per_page?: number; sort_by?: string; sort_order?: string } = {}) => {
+    const { search = '', status = '', page = 1, per_page = 10, sort_by = 'createdAt', sort_order = 'desc' } = params;
+    let url = `/admin/api/inventory/contact-requests?page=${page}&per_page=${per_page}&sort_by=${sort_by}&sort_order=${sort_order}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    return inventoryClient.get<{ data: T.ContactRequest[]; meta: { total: number; page: number; per_page: number; last_page: number } }>(url);
+  },
+  getContactRequestStats: () =>
+    inventoryClient.get<T.ContactRequestStats>('/admin/api/inventory/contact-requests/stats'),
+  getContactRequest: (id: number | string) =>
+    inventoryClient.get<T.ContactRequest>(`/admin/api/inventory/contact-requests/${id}`),
+  updateContactRequest: (id: number | string, dto: { status?: string }) =>
+    inventoryClient.put<T.ContactRequest>(`/admin/api/inventory/contact-requests/${id}`, dto),
+  deleteContactRequest: (id: number | string) =>
+    inventoryClient.delete<{ message: string }>(`/admin/api/inventory/contact-requests/${id}`),
+
   // --- Integrations ---
   getIntegrations: (params: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number } = {}) => {
     const { search = '', status = '', authStatus = '', page = 1, pageSize = 10 } = params;
@@ -280,6 +321,14 @@ export const inventoryApi = {
     if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
     if (params.length) url += `?${params.join('&')}`;
     return inventoryClient.get<T.UnifiedFinanceData>(url);
+  },
+  getFinanceSubscriptions: (params: { page?: number; pageSize?: number; search?: string; planFilter?: string; statusFilter?: string } = {}) => {
+    const { page = 1, pageSize = 10, search = '', planFilter = '', statusFilter = '' } = params;
+    let url = `/admin/api/inventory/finance/subscriptions?page=${page}&pageSize=${pageSize}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (planFilter) url += `&planFilter=${encodeURIComponent(planFilter)}`;
+    if (statusFilter) url += `&statusFilter=${encodeURIComponent(statusFilter)}`;
+    return inventoryClient.get<T.PaginatedResponse<T.FinanceSubscription>>(url);
   },
   getFinanceSummary: () => inventoryClient.get<T.FinanceSummary>('/admin/api/inventory/finance/summary'),
   getTransactions: (page = 1, pageSize = 10) =>

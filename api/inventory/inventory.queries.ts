@@ -1,5 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { inventoryApi } from './inventory.api';
+import { useDebouncedValue } from '@/app/lib/useDebouncedValue';
 
 export const inventoryKeys = {
   all: ['inventory'] as const,
@@ -19,6 +20,8 @@ export const inventoryKeys = {
   referralsList: () => [...inventoryKeys.all, 'referrals', 'list'] as const,
   integrations: () => [...inventoryKeys.all, 'integrations'] as const,
   testimonials: () => [...inventoryKeys.all, 'testimonials'] as const,
+  contactRequests: () => [...inventoryKeys.all, 'contact-requests'] as const,
+  contactRequestStats: () => [...inventoryKeys.all, 'contact-requests', 'stats'] as const,
   activityLogs: () => [...inventoryKeys.all, 'activity-logs'] as const,
   brands: () => [...inventoryKeys.all, 'brands'] as const,
   categories: () => [...inventoryKeys.all, 'categories'] as const,
@@ -50,6 +53,7 @@ export const useInventoryDashboard = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: inventoryKeys.dashboard(startDate, endDate),
     queryFn: () => inventoryApi.getDashboardData(startDate, endDate),
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -67,10 +71,11 @@ export const useInventoryCharts = (startDate?: string, endDate?: string) => {
   });
 };
 
-export const useInventoryBusinesses = (page = 1, pageSize = 10, search = '', filter = '') => {
+export const useInventoryBusinesses = (page = 1, pageSize = 10, searchInput = '', filter = '', managerId = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter],
-    queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter),
+    queryKey: [...inventoryKeys.businesses(), page, pageSize, search, filter, managerId],
+    queryFn: () => inventoryApi.getBusinesses(page, pageSize, search, filter, managerId),
     placeholderData: keepPreviousData,
   });
 };
@@ -98,7 +103,8 @@ export const useInventoryTransactions = (page = 1, pageSize = 10) => {
   });
 };
 
-export const useInventoryProducts = (page = 1, pageSize = 10, search = '', status = '') => {
+export const useInventoryProducts = (page = 1, pageSize = 10, searchInput = '', status = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
     queryKey: [...inventoryKeys.products(), page, pageSize, search, status],
     queryFn: () => inventoryApi.getProducts(page, pageSize, search, status),
@@ -112,10 +118,11 @@ export const useInventoryAiUsage = () => {
   });
 };
 
-export const useInventoryBroadcasts = (page = 1, pageSize = 10, search = '') => {
+export const useInventoryBroadcasts = (page = 1, pageSize = 10, searchInput = '', kind = 'admin') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.broadcasts(), page, pageSize, search],
-    queryFn: () => inventoryApi.getBroadcastHistory(page, pageSize, search),
+    queryKey: [...inventoryKeys.broadcasts(), page, pageSize, search, kind],
+    queryFn: () => inventoryApi.getBroadcastHistory(page, pageSize, search, kind),
   });
 };
 
@@ -127,21 +134,24 @@ export const useBroadcastDetails = (id: string) => {
   });
 };
 
-export const useInventoryReferrals = (params: { search?: string; pointsFilter?: string; page?: number; pageSize?: number } = {}) => {
+export const useInventoryReferrals = (rawParams: { search?: string; pointsFilter?: string; page?: number; pageSize?: number } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.referrals(), params],
     queryFn: () => inventoryApi.getReferralAnalytics(params),
   });
 };
 
-export const useReferralsList = (params: { search?: string; status?: string; page?: number; pageSize?: number } = {}) => {
+export const useReferralsList = (rawParams: { search?: string; status?: string; page?: number; pageSize?: number } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.referralsList(), params],
     queryFn: () => inventoryApi.getReferralsList(params),
   });
 };
 
-export const useInventoryIntegrations = (params: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number } = {}) => {
+export const useInventoryIntegrations = (rawParams: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.integrations(), params],
     queryFn: () => inventoryApi.getIntegrations(params),
@@ -155,42 +165,63 @@ export const useInventoryTestimonials = (page = 1, pageSize = 10) => {
   });
 };
 
-export const useInventoryActivityLogs = (params: { page?: number; pageSize?: number; search?: string; businessId?: string; userId?: string; action?: string; startDate?: string; endDate?: string } = {}) => {
+export const useInventoryContactRequests = (rawParams: { search?: string; status?: string; page?: number; per_page?: number; sort_by?: string; sort_order?: string } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
+  return useQuery({
+    queryKey: [...inventoryKeys.contactRequests(), params],
+    queryFn: () => inventoryApi.getContactRequests(params),
+  });
+};
+
+export const useInventoryContactRequestStats = () => {
+  return useQuery({
+    queryKey: inventoryKeys.contactRequestStats(),
+    queryFn: () => inventoryApi.getContactRequestStats(),
+  });
+};
+
+export const useInventoryActivityLogs = (rawParams: { page?: number; pageSize?: number; search?: string; businessId?: string; userId?: string; action?: string; startDate?: string; endDate?: string } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.activityLogs(), params],
     queryFn: () => inventoryApi.getActivityLogs(params),
   });
 };
 
-export const useInventoryBrands = (params: { page?: number; pageSize?: number; search?: string; start_date?: string; end_date?: string; sort_by?: string; sort_order?: string } = {}) => {
+export const useInventoryBrands = (rawParams: { page?: number; pageSize?: number; search?: string; start_date?: string; end_date?: string; sort_by?: string; sort_order?: string } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.brands(), params],
     queryFn: () => inventoryApi.getBrands(params),
   });
 };
 
-export const useInventoryCategories = (page = 1, pageSize = 10, search = '', businessId = '') => {
+export const useInventoryCategories = (page = 1, pageSize = 10, searchInput = '', businessId = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
     queryKey: [...inventoryKeys.categories(), page, pageSize, search, businessId],
     queryFn: () => inventoryApi.getCategories(page, pageSize, search, businessId),
   });
 };
 
-export const useInventoryUnits = (page = 1, pageSize = 10, search = '') => {
+export const useInventoryUnits = (page = 1, pageSize = 10, searchInput = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
     queryKey: [...inventoryKeys.units(), page, pageSize, search],
     queryFn: () => inventoryApi.getUnits(page, pageSize, search),
   });
 };
 
-export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10, search = '', status = '') => {
+export const useInventoryWhatsappNumbers = (page = 1, pageSize = 10, searchInput = '', status = '', businessId = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
-    queryKey: [...inventoryKeys.whatsappNumbers(), page, pageSize, search, status],
-    queryFn: () => inventoryApi.getWhatsappNumbers(page, pageSize, search, status),
+    queryKey: [...inventoryKeys.whatsappNumbers(), page, pageSize, search, status, businessId],
+    queryFn: () => inventoryApi.getWhatsappNumbers(page, pageSize, search, status, businessId),
   });
 };
 
-export const useInventorySubscriptions = (params: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string } = {}) => {
+export const useInventorySubscriptions = (rawParams: { page?: number; pageSize?: number; search?: string; plan?: string; status?: string; startDate?: string; endDate?: string; billing?: string; expiringDays?: number } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.subscriptions(), params],
     queryFn: () => inventoryApi.getSubscriptions(params),
@@ -236,24 +267,37 @@ export const useInventoryFinance = (startDate?: string, endDate?: string) => {
   return useQuery({
     queryKey: inventoryKeys.finance(startDate, endDate),
     queryFn: () => inventoryApi.getFinanceData(startDate, endDate),
+    placeholderData: keepPreviousData,
   });
 };
 
-export const useInventoryAdmins = (page = 1, pageSize = 10, search = '') => {
+export const useFinanceSubscriptions = (page = 1, pageSize = 10, searchInput = '', planFilter = '', statusFilter = '') => {
+  const search = useDebouncedValue(searchInput);
+  return useQuery({
+    queryKey: [...inventoryKeys.all, 'finance-subscriptions', page, pageSize, search, planFilter, statusFilter],
+    queryFn: () => inventoryApi.getFinanceSubscriptions({ page, pageSize, search, planFilter, statusFilter }),
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useInventoryAdmins = (page = 1, pageSize = 10, searchInput = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
     queryKey: [...inventoryKeys.admins(), page, pageSize, search],
     queryFn: () => inventoryApi.getAdmins(page, pageSize, search),
   });
 };
 
-export const useInventoryRoles = (page = 1, pageSize = 20, search = '') => {
+export const useInventoryRoles = (page = 1, pageSize = 20, searchInput = '') => {
+  const search = useDebouncedValue(searchInput);
   return useQuery({
     queryKey: [...inventoryKeys.roles(), page, pageSize, search],
     queryFn: () => inventoryApi.getRoles(page, pageSize, search),
   });
 };
 
-export const usePlatformUsers = (params: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string } = {}) => {
+export const usePlatformUsers = (rawParams: { page?: number; pageSize?: number; search?: string; status?: string; businessId?: string; inactiveHours?: number } = {}) => {
+  const params = { ...rawParams, search: useDebouncedValue(rawParams.search) };
   return useQuery({
     queryKey: [...inventoryKeys.platformUsers(), params],
     queryFn: () => inventoryApi.getPlatformUsers(params),
@@ -284,27 +328,33 @@ export const useBusinessSubscriptions = (id: string, page = 1, pageSize = 10) =>
   });
 };
 
-export const useBusinessProducts = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessProducts = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessProducts(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessProducts(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessProducts(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessProducts(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 
-export const useBusinessSales = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessSales = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessSales(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessSales(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessSales(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessSales(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 
-export const useBusinessExpenses = (id: string, page = 1, pageSize = 10) => {
+export const useBusinessExpenses = (id: string, page = 1, pageSize = 10, range: { from?: string; to?: string } = {}) => {
   return useQuery({
-    queryKey: [...inventoryKeys.businessExpenses(id), page, pageSize],
-    queryFn: () => inventoryApi.getBusinessExpenses(id, page, pageSize),
+    queryKey: [...inventoryKeys.businessExpenses(id), page, pageSize, range.from || '', range.to || ''],
+    queryFn: () => inventoryApi.getBusinessExpenses(id, page, pageSize, range),
     enabled: !!id,
+    // Keep the table (and its date filter) on screen while a new date range loads
+    placeholderData: keepPreviousData,
   });
 };
 

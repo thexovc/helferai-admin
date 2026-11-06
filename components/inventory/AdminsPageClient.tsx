@@ -11,7 +11,10 @@ import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import SearchableSelect from '../SearchableSelect';
 
-export default function AdminsPageClient() {
+// Backend sends the role as its name; older shapes had { name }
+const roleName = (a: any) => (typeof a?.role === 'string' ? a.role : a?.role?.name) || 'No role';
+
+export default function AdminsPageClient({ embedded = false }: { embedded?: boolean }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
@@ -120,7 +123,7 @@ export default function AdminsPageClient() {
 
     return (
         <div>
-            <Topbar title="Admins" subtitle="Manage administrative accounts, credentials, and role assignments." product="inventory" />
+            {!embedded && <Topbar title="Admins" subtitle="Manage administrative accounts, credentials, and role assignments." product="inventory" />}
 
             <div style={{ padding: 'var(--content-padding)' }}>
                 {/* Header Section */}
@@ -173,8 +176,9 @@ export default function AdminsPageClient() {
                                 <th>Admin Name</th>
                                 <th>Email</th>
                                 <th>Assigned Role</th>
-                                <th>Status</th>
-                                <th>Created Date</th>
+                                <th>Referral Code</th>
+                                <th>Last sign-in</th>
+                                <th>Added</th>
                                 <th style={{ width: 100 }}>Actions</th>
                             </tr>
                         </thead>
@@ -182,12 +186,12 @@ export default function AdminsPageClient() {
                             {isLoading ? (
                                 [1, 2, 3, 4, 5].map((item) => (
                                     <tr key={item} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                        <td colSpan={6}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
+                                        <td colSpan={7}><div style={{ height: 20, width: '100%', background: '#f5f5f5', borderRadius: 4 }} className="animate-pulse-soft"></div></td>
                                     </tr>
                                 ))
                             ) : admins.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No admin users found</td>
+                                    <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>No admin users found</td>
                                 </tr>
                             ) : admins.map((admin: AdminUserRecord) => (
                                 <tr key={admin.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
@@ -195,18 +199,20 @@ export default function AdminsPageClient() {
                                     <td style={{ color: '#6b7280' }}>{admin.email}</td>
                                     <td>
                                         <span style={{ padding: '3px 10px', background: '#dbeafe', color: '#1d4ed8', borderRadius: 99, fontSize: 11, fontWeight: 700 }}>
-                                            {admin.role?.name || 'Administrator'}
+                                            {roleName(admin)}
                                         </span>
                                     </td>
                                     <td>
-                                        <span style={{
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                            background: admin.isActive !== false ? '#dcfce7' : '#fee2e2',
-                                            color: admin.isActive !== false ? '#166534' : '#991b1b'
-                                        }}>
-                                            {admin.isActive !== false ? 'Active' : 'Suspended'}
-                                        </span>
+                                        {(admin as any).referralCode ? (
+                                            <button
+                                                title="Copy. Merchants who sign up with this code are assigned to this admin."
+                                                onClick={() => { navigator.clipboard?.writeText((admin as any).referralCode); toast.success('Referral code copied'); }}
+                                                style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, padding: '3px 8px', borderRadius: 6, border: '1px dashed #6c9e4e', background: '#f0f7eb', color: '#3f7d2c', cursor: 'pointer' }}>
+                                                {(admin as any).referralCode}
+                                            </button>
+                                        ) : '—'}
                                     </td>
+                                    <td style={{ color: '#6b7280', fontSize: 12 }}>{admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : 'Not recorded yet'}</td>
                                     <td>{admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : '—'}</td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 8 }}>
@@ -234,6 +240,7 @@ export default function AdminsPageClient() {
                             onPageChange={setPage}
                             totalItems={totalCount}
                             pageSize={pageSize}
+                            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
                         />
                     </div>
                 </div>
@@ -323,7 +330,7 @@ export default function AdminsPageClient() {
                         ? [
                               { label: 'Admin Name', value: deleteModal.admin.name },
                               { label: 'Email', value: deleteModal.admin.email },
-                              { label: 'Assigned Role', value: deleteModal.admin.role?.name || 'Administrator' },
+                              { label: 'Assigned Role', value: roleName(deleteModal.admin) },
                           ]
                         : []
                 }
