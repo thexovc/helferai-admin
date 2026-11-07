@@ -338,6 +338,7 @@ export interface Broadcast {
   channel: string;
   preheader?: string;
   isHtml?: boolean;
+  video?: { url: string; playUrl?: string; poster?: string } | null;
 }
 
 export interface EmailAttachmentDto {
@@ -359,6 +360,7 @@ export interface SendBroadcastDto {
   preheader?: string;
   isHtml?: boolean;
   attachments?: EmailAttachmentDto[];
+  video?: { url: string };
 }
 
 export interface SendTestEmailDto {
@@ -367,6 +369,7 @@ export interface SendTestEmailDto {
   message: string;
   preheader?: string;
   attachments?: EmailAttachmentDto[];
+  video?: { url: string };
 }
 
 export interface SendDirectEmailDto {
@@ -378,6 +381,7 @@ export interface SendDirectEmailDto {
   message: string;
   preheader?: string;
   attachments?: EmailAttachmentDto[];
+  video?: { url: string };
 }
 
 export interface ReferralAnalytics {

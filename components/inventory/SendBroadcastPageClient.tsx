@@ -10,6 +10,7 @@ import Pagination from '../Pagination';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import dynamic from 'next/dynamic';
+import { BroadcastVideoPlayer } from './BroadcastVideoPicker';
 
 const EmailComposerModal = dynamic(() => import('../EmailComposerModal'), { ssr: false });
 
@@ -260,6 +261,11 @@ export default function SendBroadcastPageClient() {
                                 ) : (
                                     <div style={{ whiteSpace: 'pre-wrap', color: '#1a1a2e', lineHeight: 1.6 }}>
                                         {selectedBroadcast.message || 'No content preview available'}
+                                    </div>
+                                )}
+                                {selectedBroadcast.video?.url && (
+                                    <div style={{ marginTop: 16 }}>
+                                        <BroadcastVideoPlayer video={selectedBroadcast.video} />
                                     </div>
                                 )}
                             </div>

@@ -13,6 +13,17 @@ import { useSendBroadcast, useSendTestEmail, useSendDirectEmail } from '@/api/in
 import { useInventoryBusinesses, usePlatformUsers } from '@/api/inventory/inventory.queries';
 import type { EmailAttachmentDto } from '@/api/inventory/inventory.types';
 import { toast } from 'sonner';
+import BroadcastVideoPicker, { BroadcastVideoPlayer } from './inventory/BroadcastVideoPicker';
+import { BroadcastVideo, uploadBroadcastImage } from '@/api/inventory/broadcastMedia';
+
+async function uploadImageWithToast(file: File): Promise<string> {
+    try {
+        return await uploadBroadcastImage(file);
+    } catch (err: any) {
+        toast.error(err?.message || 'Could not upload the picture');
+        throw err;
+    }
+}
 
 export interface EmailComposerTarget {
     mode: 'broadcast' | 'direct';
@@ -123,6 +134,8 @@ export default function EmailComposerModal({
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [businessSearch, setBusinessSearch] = useState('');
     const [userSearch, setUserSearch] = useState('');
+    const [video, setVideo] = useState<BroadcastVideo | null>(null);
+    const [videoUploading, setVideoUploading] = useState(false);
 
     // Test email sub-modal
     const [isTestEmailOpen, setIsTestEmailOpen] = useState(false);
@@ -146,6 +159,8 @@ export default function EmailComposerModal({
             setActiveTab('compose');
             setPreviewDevice('desktop');
             setAttachments([]);
+            setVideo(null);
+            setVideoUploading(false);
 
             if (isDirect && initialTarget?.recipientUser) {
                 setTitle('');
@@ -218,6 +233,7 @@ export default function EmailComposerModal({
                 message,
                 preheader: preheader || undefined,
                 attachments: attachments.length > 0 ? attachments : undefined,
+                video: video ? { url: video.url } : undefined,
             });
             setIsTestEmailOpen(false);
         } catch (err) { }
@@ -232,6 +248,10 @@ export default function EmailComposerModal({
             toast.error('Please enter the email body content');
             return;
         }
+        if (videoUploading) {
+            toast.error('Wait for the video to finish uploading');
+            return;
+        }
 
         try {
             if (isDirect && initialTarget?.recipientUser) {
@@ -242,6 +262,7 @@ export default function EmailComposerModal({
                     message,
                     preheader: preheader || undefined,
                     attachments: attachments.length > 0 ? attachments : undefined,
+                    video: video ? { url: video.url } : undefined,
                 });
             } else {
                 await sendBroadcastMutation.mutateAsync({
@@ -255,6 +276,7 @@ export default function EmailComposerModal({
                     preheader: preheader || undefined,
                     isHtml: channel === 'Email',
                     attachments: channel === 'Email' && attachments.length > 0 ? attachments : undefined,
+                    video: video ? { url: video.url } : undefined,
                 });
             }
 
@@ -679,6 +701,7 @@ export default function EmailComposerModal({
                                     value={message}
                                     onChange={setMessage}
                                     minHeight={280}
+                                    onUploadImage={uploadImageWithToast}
                                 />
                             ) : (
                                 <textarea
@@ -840,6 +863,8 @@ export default function EmailComposerModal({
                                 )}
                             </div>
                         )}
+
+                        <BroadcastVideoPicker value={video} onChange={setVideo} onUploadingChange={setVideoUploading} />
                     </div>
                 )}
 
@@ -949,6 +974,14 @@ export default function EmailComposerModal({
                                         }}
                                         dangerouslySetInnerHTML={{ __html: getResolvedPreviewHtml() }}
                                     />
+                                    {video && (
+                                        <div style={{ padding: previewDevice === 'mobile' ? '0 20px 20px' : '0 28px 28px' }}>
+                                            <BroadcastVideoPlayer video={video} />
+                                            <p style={{ margin: '8px 0 0', fontSize: 11, color: '#6b7280', textAlign: 'center' }}>
+                                                In the email this shows as a picture with a Play button. In the app it plays right here.
+                                            </p>
+                                        </div>
+                                    )}
 
                                     {/* Preview Attachments */}
                                     {attachments.length > 0 && (
