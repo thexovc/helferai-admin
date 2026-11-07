@@ -7,6 +7,7 @@ import Pagination from '../Pagination';
 import Modal from '../Modal';
 import { formatDateTime } from '@/app/lib/utils';
 import { Broadcast } from '@/api/inventory/inventory.types';
+import { BroadcastVideoPlayer } from './BroadcastVideoPicker';
 
 export default function BroadcastHistoryPageClient() {
     const [page, setPage] = useState(1);
@@ -189,6 +190,11 @@ export default function BroadcastHistoryPageClient() {
                                 ) : (
                                     <div style={{ whiteSpace: 'pre-wrap', color: '#1a1a2e', lineHeight: 1.6, fontSize: 14 }}>
                                         {selectedBroadcast.message || 'No content preview available'}
+                                    </div>
+                                )}
+                                {selectedBroadcast.video?.url && (
+                                    <div style={{ marginTop: 16 }}>
+                                        <BroadcastVideoPlayer video={selectedBroadcast.video} />
                                     </div>
                                 )}
                             </div>
