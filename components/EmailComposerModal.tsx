@@ -6,10 +6,12 @@ import SearchableSelect from './SearchableSelect';
 import {
     Mail, Send, Eye, Edit3, Smartphone, Monitor, Sparkles,
     AlertCircle, CheckCircle2, User, Building, Users,
-    FileText, Check, HelpCircle
+    FileText, Check, HelpCircle, Paperclip, Trash2, Plus,
+    Image as ImageIcon, UploadCloud
 } from 'lucide-react';
 import { useSendBroadcast, useSendTestEmail, useSendDirectEmail } from '@/api/inventory/inventory.mutations';
 import { useInventoryBusinesses, usePlatformUsers } from '@/api/inventory/inventory.queries';
+import type { EmailAttachmentDto } from '@/api/inventory/inventory.types';
 import { toast } from 'sonner';
 
 export interface EmailComposerTarget {
@@ -126,6 +128,10 @@ export default function EmailComposerModal({
     const [isTestEmailOpen, setIsTestEmailOpen] = useState(false);
     const [testEmailAddress, setTestEmailAddress] = useState('');
 
+    // Attachments State
+    const [attachments, setAttachments] = useState<EmailAttachmentDto[]>([]);
+    const attachmentInputRef = React.useRef<HTMLInputElement>(null);
+
     // Queries & Mutations
     const { data: businessesData, isFetching: isBizLoading } = useInventoryBusinesses(1, 50, businessSearch);
     const { data: usersData, isFetching: isUsersLoading } = usePlatformUsers({ page: 1, pageSize: 50, search: userSearch });
@@ -139,30 +145,17 @@ export default function EmailComposerModal({
         if (isOpen) {
             setActiveTab('compose');
             setPreviewDevice('desktop');
+            setAttachments([]);
 
             if (isDirect && initialTarget?.recipientUser) {
                 setTitle('');
                 setPreheader('');
                 setMessage(`<p>Hello <strong>${initialTarget.recipientUser.name || 'Valued Partner'}</strong>,</p><p></p><p>Best regards,<br/><strong>HelferAI Team</strong></p>`);
-                setSelectedUserIds([initialTarget.recipientUser.id]);
-                setSegment('Specific Users');
-            } else if (isDirect && initialTarget?.recipientBusiness) {
-                setTitle('');
-                setPreheader('');
-                setMessage(`<p>Hello <strong>${initialTarget.recipientBusiness.name}</strong> Team,</p><p></p><p>Best regards,<br/><strong>HelferAI Team</strong></p>`);
-                setBusinessId(initialTarget.recipientBusiness.id);
-                setSegment('Specific Business');
             } else {
-                // Default broadcast
-                setChannel('Email');
-                setSegment('All Customers');
-                setBusinessId('');
-                setSelectedUserIds([]);
-                // Pre-fill with general announcement template
-                const t = TEMPLATES[0];
-                setTitle(t.subject);
-                setPreheader(t.preheader);
-                setMessage(t.content);
+                const defaultTemplate = TEMPLATES[0];
+                setTitle(defaultTemplate.subject);
+                setPreheader(defaultTemplate.preheader);
+                setMessage(defaultTemplate.content);
             }
         }
     }, [isOpen, isDirect, initialTarget]);
@@ -174,6 +167,38 @@ export default function EmailComposerModal({
         setPreheader(found.preheader);
         setMessage(found.content);
         toast.info(`Applied "${found.name}" template`);
+    };
+
+    const handleAddAttachments = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        Array.from(files).forEach((file) => {
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error(`"${file.name}" exceeds 10MB limit.`);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result as string;
+                setAttachments(prev => [
+                    ...prev,
+                    {
+                        filename: file.name,
+                        contentType: file.type || 'application/octet-stream',
+                        content: base64,
+                        size: file.size,
+                    },
+                ]);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+    };
+
+    const handleRemoveAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSendTestEmail = async () => {
@@ -192,6 +217,7 @@ export default function EmailComposerModal({
                 title,
                 message,
                 preheader: preheader || undefined,
+                attachments: attachments.length > 0 ? attachments : undefined,
             });
             setIsTestEmailOpen(false);
         } catch (err) { }
@@ -215,6 +241,7 @@ export default function EmailComposerModal({
                     title,
                     message,
                     preheader: preheader || undefined,
+                    attachments: attachments.length > 0 ? attachments : undefined,
                 });
             } else {
                 await sendBroadcastMutation.mutateAsync({
@@ -227,6 +254,7 @@ export default function EmailComposerModal({
                     userIds: selectedUserIds.length > 0 ? selectedUserIds : undefined,
                     preheader: preheader || undefined,
                     isHtml: channel === 'Email',
+                    attachments: channel === 'Email' && attachments.length > 0 ? attachments : undefined,
                 });
             }
 
@@ -666,6 +694,152 @@ export default function EmailComposerModal({
                                 />
                             )}
                         </div>
+
+                        {/* Attached Media & Files Section */}
+                        {channel === 'Email' && (
+                            <div style={{
+                                padding: '14px 16px',
+                                background: '#f8fafc',
+                                border: '1.5px dashed #cbd5e1',
+                                borderRadius: 10,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 10,
+                            }}>
+                                <input
+                                    ref={attachmentInputRef}
+                                    type="file"
+                                    multiple
+                                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                                    onChange={handleAddAttachments}
+                                    style={{ display: 'none' }}
+                                />
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Paperclip size={15} color="#475569" />
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                                            Attached Media & Files
+                                        </span>
+                                        {attachments.length > 0 && (
+                                            <span style={{
+                                                background: '#e0e7ff',
+                                                color: '#3730a3',
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                padding: '1px 7px',
+                                                borderRadius: 12
+                                            }}>
+                                                {attachments.length}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => attachmentInputRef.current?.click()}
+                                        style={{
+                                            background: '#ffffff',
+                                            border: '1px solid #cbd5e1',
+                                            color: '#334155',
+                                            borderRadius: 6,
+                                            padding: '5px 12px',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 5,
+                                            transition: 'background 0.15s'
+                                        }}
+                                    >
+                                        <Plus size={13} />
+                                        <span>Add Files (Images, PDF, Docs)</span>
+                                    </button>
+                                </div>
+
+                                {attachments.length > 0 ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                                        {attachments.map((att, idx) => {
+                                            const isImg = att.contentType.startsWith('image/');
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        background: '#ffffff',
+                                                        border: '1px solid #e2e8f0',
+                                                        borderRadius: 8,
+                                                        padding: '6px 10px',
+                                                        gap: 8,
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                        {isImg ? (
+                                                            <img
+                                                                src={att.content}
+                                                                alt={att.filename}
+                                                                style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{
+                                                                width: 28, height: 28, borderRadius: 4,
+                                                                background: '#eff6ff', color: '#2563eb',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                                            }}>
+                                                                <FileText size={15} />
+                                                            </div>
+                                                        )}
+                                                        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={att.filename}>
+                                                                {att.filename}
+                                                            </span>
+                                                            <span style={{ fontSize: 10, color: '#64748b' }}>
+                                                                {att.size ? `${(att.size / 1024).toFixed(1)} KB` : 'Attached'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveAttachment(idx)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            color: '#94a3b8',
+                                                            cursor: 'pointer',
+                                                            padding: 2,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: 4
+                                                        }}
+                                                        onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                                                        onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
+                                                        title="Remove Attachment"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => attachmentInputRef.current?.click()}
+                                        style={{
+                                            textAlign: 'center',
+                                            padding: '8px',
+                                            color: '#94a3b8',
+                                            fontSize: 12,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Drop images or documents here, or click <strong>Add Files</strong> (Max 10MB each)
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -775,6 +949,42 @@ export default function EmailComposerModal({
                                         }}
                                         dangerouslySetInnerHTML={{ __html: getResolvedPreviewHtml() }}
                                     />
+
+                                    {/* Preview Attachments */}
+                                    {attachments.length > 0 && (
+                                        <div style={{
+                                            margin: '0 24px 20px',
+                                            paddingTop: 16,
+                                            borderTop: '1px solid #e5e7eb',
+                                        }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <Paperclip size={13} />
+                                                <span>Attached Files ({attachments.length})</span>
+                                            </div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                                {attachments.map((att, i) => (
+                                                    <div key={i} style={{
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                        padding: '4px 10px', background: '#f8fafc',
+                                                        border: '1px solid #e2e8f0', borderRadius: 6,
+                                                        fontSize: 11, color: '#1e293b'
+                                                    }}>
+                                                        {att.contentType.startsWith('image/') ? (
+                                                            <ImageIcon size={12} color="#7c3aed" />
+                                                        ) : (
+                                                            <FileText size={12} color="#2563eb" />
+                                                        )}
+                                                        <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {att.filename}
+                                                        </span>
+                                                        <span style={{ fontSize: 10, color: '#94a3b8' }}>
+                                                            {att.size ? `(${(att.size / 1024).toFixed(0)} KB)` : ''}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Brand Footer */}
                                     <div style={{

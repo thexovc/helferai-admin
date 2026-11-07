@@ -270,6 +270,23 @@ export const inventoryApi = {
   deleteTestimonial: (id: string | number) =>
     inventoryClient.delete<{ success: boolean; message: string }>(`/admin/api/inventory/testimonials/${id}`),
 
+  // --- Contact Requests / Support Inquiries ---
+  getContactRequests: (params: { search?: string; status?: string; page?: number; per_page?: number; sort_by?: string; sort_order?: string } = {}) => {
+    const { search = '', status = '', page = 1, per_page = 10, sort_by = 'createdAt', sort_order = 'desc' } = params;
+    let url = `/admin/api/inventory/contact-requests?page=${page}&per_page=${per_page}&sort_by=${sort_by}&sort_order=${sort_order}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (status) url += `&status=${encodeURIComponent(status)}`;
+    return inventoryClient.get<{ data: T.ContactRequest[]; meta: { total: number; page: number; per_page: number; last_page: number } }>(url);
+  },
+  getContactRequestStats: () =>
+    inventoryClient.get<T.ContactRequestStats>('/admin/api/inventory/contact-requests/stats'),
+  getContactRequest: (id: number | string) =>
+    inventoryClient.get<T.ContactRequest>(`/admin/api/inventory/contact-requests/${id}`),
+  updateContactRequest: (id: number | string, dto: { status?: string }) =>
+    inventoryClient.put<T.ContactRequest>(`/admin/api/inventory/contact-requests/${id}`, dto),
+  deleteContactRequest: (id: number | string) =>
+    inventoryClient.delete<{ message: string }>(`/admin/api/inventory/contact-requests/${id}`),
+
   // --- Integrations ---
   getIntegrations: (params: { search?: string; status?: string; authStatus?: string; page?: number; pageSize?: number } = {}) => {
     const { search = '', status = '', authStatus = '', page = 1, pageSize = 10 } = params;

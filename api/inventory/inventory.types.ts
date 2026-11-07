@@ -340,6 +340,13 @@ export interface Broadcast {
   isHtml?: boolean;
 }
 
+export interface EmailAttachmentDto {
+  filename: string;
+  contentType: string;
+  content: string; // base64 encoded content
+  size?: number;
+}
+
 export interface SendBroadcastDto {
   title: string;
   message: string;
@@ -351,6 +358,7 @@ export interface SendBroadcastDto {
   userIds?: string[];
   preheader?: string;
   isHtml?: boolean;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface SendTestEmailDto {
@@ -358,6 +366,7 @@ export interface SendTestEmailDto {
   title: string;
   message: string;
   preheader?: string;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface SendDirectEmailDto {
@@ -368,6 +377,7 @@ export interface SendDirectEmailDto {
   title: string;
   message: string;
   preheader?: string;
+  attachments?: EmailAttachmentDto[];
 }
 
 export interface ReferralAnalytics {
@@ -577,3 +587,27 @@ export interface PlatformUserRecord {
   totalSales?: number;
   totalExpenses?: number;
 }
+
+export interface ContactRequest {
+  id: number;
+  fullName: string;
+  companyName?: string | null;
+  email: string;
+  phoneNumber?: string | null;
+  phoneCountryCode?: string | null;
+  job_title?: string | null;
+  message?: string | null;
+  status: 'pending' | 'read' | 'responded' | 'closed';
+  createdAt: string;
+  updatedAt: string;
+  country?: { id: number; name: string; code: string } | null;
+}
+
+export interface ContactRequestStats {
+  total: number;
+  pending: number;
+  read: number;
+  responded: number;
+  closed: number;
+}
+

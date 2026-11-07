@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -8,12 +8,16 @@ import TextAlign from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
+import TipTapImage from '@tiptap/extension-image';
 import {
     Bold, Italic, Underline as UnderlineIcon, Strikethrough,
     AlignLeft, AlignCenter, AlignRight, AlignJustify,
     List, ListOrdered, Quote, Code, Heading1, Heading2, Heading3,
     Link as LinkIcon, Unlink, Undo, Redo, Minus, Eraser,
-    Sparkles, MousePointerClick, ChevronDown, Check, ImagePlus, Loader2
+    Sparkles, MousePointerClick, ChevronDown, Check, ImagePlus, Loader2,
+    Upload,
+    X,
+    ImageIcon
 } from 'lucide-react';
 
 // Images inside the text (e.g. blog articles)
@@ -89,6 +93,17 @@ export default function RichTextEditor({
     const [buttonText, setButtonText] = useState('View Dashboard');
     const [buttonUrl, setButtonUrl] = useState('https://app.helferai.com');
     const [buttonColor, setButtonColor] = useState('#6c9e4e');
+
+    // Image Insertion State
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [imageTab, setImageTab] = useState<'upload' | 'url'>('upload');
+    const [imageUrl, setImageUrl] = useState('');
+    const [imageAlt, setImageAlt] = useState('');
+    const [imageWidth, setImageWidth] = useState<'100%' | '480px' | '280px'>('100%');
+    const [imageAlign, setImageAlign] = useState<'center' | 'left' | 'right'>('center');
+    const [imagePreview, setImagePreview] = useState('');
+    const [imageError, setImageError] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
     const [isVarMenuOpen, setIsVarMenuOpen] = useState(false);
@@ -188,6 +203,47 @@ export default function RichTextEditor({
         const buttonHtml = `<div style="text-align: center; margin: 20px 0;"><a href="${finalUrl}" class="email-btn" style="display: inline-block; background-color: ${buttonColor}; color: #ffffff !important; font-weight: 700; font-size: 15px; padding: 12px 28px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">${buttonText}</a></div><p></p>`;
         editor.chain().focus().insertContent(buttonHtml).run();
         setIsButtonModalOpen(false);
+    };
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            setImageError('Please select a valid image file (PNG, JPG, WebP, GIF)');
+            return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+            setImageError('Image exceeds 8MB limit. Please select a smaller image.');
+            return;
+        }
+        setImageError('');
+        const reader = new FileReader();
+        reader.onload = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleInsertImage = () => {
+        const srcToUse = imageTab === 'upload' ? imagePreview : imageUrl.trim();
+        if (!srcToUse) {
+            setImageError('Please provide an image URL or upload a file');
+            return;
+        }
+
+        const widthStyle = imageWidth === '100%'
+            ? 'width: 100%; max-width: 100%;'
+            : `width: ${imageWidth}; max-width: 100%;`;
+
+        const imageHtml = `<div style="text-align: ${imageAlign}; margin: 18px 0;"><img src="${srcToUse}" alt="${imageAlt || 'HelferAI Image'}" style="${widthStyle} height: auto; border-radius: 8px; display: inline-block;" /></div><p></p>`;
+        editor.chain().focus().insertContent(imageHtml).run();
+
+        // Reset and close
+        setImagePreview('');
+        setImageUrl('');
+        setImageAlt('');
+        setImageError('');
+        setIsImageModalOpen(false);
     };
 
     const handleInsertVariable = (tag: string) => {
@@ -447,18 +503,35 @@ export default function RichTextEditor({
                     )}
                 </div>
 
-                {/* Group 7: Interactive Pills (CTA Button, Colors, Variables, Clear) */}
+                {/* Group 7: Interactive Pills (CTA Button, Media/Image, Colors, Variables, Clear) */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {!hideEmailTools && (<>{/* CTA Button Generator */}
+                        <button
+                            type="button"
+                            onClick={() => setIsButtonModalOpen(true)}
+                            style={toolbarPillBtn('cta')}
+                            title="Insert Styled Email Button (CTA)"
+                        >
+                            <MousePointerClick size={14} />
+                            <span>+ CTA Button</span>
+                        </button></>)}
+
+                    {/* Image / Media Inserter */}
                     <button
                         type="button"
-                        onClick={() => setIsButtonModalOpen(true)}
-                        style={toolbarPillBtn('cta')}
-                        title="Insert Styled Email Button (CTA)"
+                        onClick={() => {
+                            setImagePreview('');
+                            setImageUrl('');
+                            setImageAlt('');
+                            setImageError('');
+                            setIsImageModalOpen(true);
+                        }}
+                        style={toolbarPillBtn('media')}
+                        title="Insert Image, Banner, or Visual Media"
                     >
-                        <MousePointerClick size={14} />
-                        <span>+ CTA Button</span>
-                    </button></>)}
+                        <ImageIcon size={14} />
+                        <span>+ Media / Image</span>
+                    </button>
 
                     {/* Color & Highlight Menu */}
                     <div style={{ position: 'relative' }}>
@@ -553,64 +626,64 @@ export default function RichTextEditor({
                     </div>
 
                     {!hideEmailTools && (<>{/* Personalization Variables Menu */}
-                    <div style={{ position: 'relative' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsVarMenuOpen(prev => !prev)}
-                            style={toolbarPillBtn('variable', isVarMenuOpen)}
-                            title="Insert Personalized Variable (e.g. {{name}})"
-                        >
-                            <Sparkles size={13} />
-                            <span>Insert Variable</span>
-                            <ChevronDown size={12} />
-                        </button>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsVarMenuOpen(prev => !prev)}
+                                style={toolbarPillBtn('variable', isVarMenuOpen)}
+                                title="Insert Personalized Variable (e.g. {{name}})"
+                            >
+                                <Sparkles size={13} />
+                                <span>Insert Variable</span>
+                                <ChevronDown size={12} />
+                            </button>
 
-                        {isVarMenuOpen && (
-                            <div style={{
-                                position: 'absolute',
-                                top: 'calc(100% + 4px)',
-                                right: 0,
-                                background: '#ffffff',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: 10,
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
-                                padding: 6,
-                                zIndex: 100,
-                                minWidth: 240,
-                            }}>
-                                <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    Dynamic Variables
+                            {isVarMenuOpen && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 4px)',
+                                    right: 0,
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 10,
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                                    padding: 6,
+                                    zIndex: 100,
+                                    minWidth: 240,
+                                }}>
+                                    <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                        Dynamic Variables
+                                    </div>
+                                    {VARIABLES.map(v => (
+                                        <button
+                                            key={v.tag}
+                                            type="button"
+                                            onClick={() => handleInsertVariable(v.tag)}
+                                            style={{
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '8px 10px',
+                                                borderRadius: 6,
+                                                border: 'none',
+                                                background: 'transparent',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 2,
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                                                {v.label} <code style={{ fontSize: 11, color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: 4 }}>{v.tag}</code>
+                                            </span>
+                                            <span style={{ fontSize: 11, color: '#64748b' }}>{v.desc}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                                {VARIABLES.map(v => (
-                                    <button
-                                        key={v.tag}
-                                        type="button"
-                                        onClick={() => handleInsertVariable(v.tag)}
-                                        style={{
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '8px 10px',
-                                            borderRadius: 6,
-                                            border: 'none',
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 2,
-                                            transition: 'background 0.1s',
-                                        }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                    >
-                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                                            {v.label} <code style={{ fontSize: 11, color: '#0284c7', background: '#e0f2fe', padding: '1px 5px', borderRadius: 4 }}>{v.tag}</code>
-                                        </span>
-                                        <span style={{ fontSize: 11, color: '#64748b' }}>{v.desc}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div></>)}
+                            )}
+                        </div></>)}
 
                     {/* Clear Formatting */}
                     <button
@@ -792,6 +865,213 @@ export default function RichTextEditor({
                     </div>
                 </div>
             )}
+
+            {/* Image / Media Inserter Modal */}
+            {isImageModalOpen && (
+                <div style={modalOverlayStyle}>
+                    <div style={{ ...modalBoxStyle, width: 480 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1a1a2e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <ImageIcon size={18} color="#7c3aed" />
+                                <span>Insert Image or Media Banner</span>
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setIsImageModalOpen(false)}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', padding: 4 }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Tabs: Upload vs URL */}
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: '#f1f5f9', padding: 4, borderRadius: 8 }}>
+                            <button
+                                type="button"
+                                onClick={() => { setImageTab('upload'); setImageError(''); }}
+                                style={{
+                                    flex: 1, padding: '7px 12px', borderRadius: 6, border: 'none',
+                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                    background: imageTab === 'upload' ? '#ffffff' : 'transparent',
+                                    color: imageTab === 'upload' ? '#0f172a' : '#64748b',
+                                    boxShadow: imageTab === 'upload' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                                }}
+                            >
+                                <Upload size={13} />
+                                <span>Upload from Device</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setImageTab('url'); setImageError(''); }}
+                                style={{
+                                    flex: 1, padding: '7px 12px', borderRadius: 6, border: 'none',
+                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                    background: imageTab === 'url' ? '#ffffff' : 'transparent',
+                                    color: imageTab === 'url' ? '#0f172a' : '#64748b',
+                                    boxShadow: imageTab === 'url' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                                }}
+                            >
+                                <LinkIcon size={13} />
+                                <span>Web Image Link (URL)</span>
+                            </button>
+                        </div>
+
+                        {/* Upload Tab Body */}
+                        {imageTab === 'upload' && (
+                            <div style={{ marginBottom: 14 }}>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                                    onChange={handleImageFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                                {imagePreview ? (
+                                    <div style={{ position: 'relative', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: 8, background: '#f8fafc', textAlign: 'center' }}>
+                                        <img
+                                            src={imagePreview}
+                                            alt="Preview"
+                                            style={{ maxHeight: 180, maxWidth: '100%', borderRadius: 6, objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setImagePreview('');
+                                                if (fileInputRef.current) fileInputRef.current.value = '';
+                                            }}
+                                            style={{
+                                                position: 'absolute', top: 12, right: 12,
+                                                background: '#ef4444', color: '#fff', border: 'none',
+                                                borderRadius: '50%', width: 24, height: 24,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                            }}
+                                            title="Remove Image"
+                                        >
+                                            <X size={13} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        style={{
+                                            border: '2px dashed #cbd5e1', borderRadius: 10, padding: '24px 16px',
+                                            textAlign: 'center', background: '#f8fafc', cursor: 'pointer',
+                                            transition: 'border-color 0.15s'
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#7c3aed')}
+                                        onMouseLeave={e => (e.currentTarget.style.borderColor = '#cbd5e1')}
+                                    >
+                                        <Upload size={28} color="#7c3aed" style={{ margin: '0 auto 8px' }} />
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                                            Click to browse or drop an image here
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                                            Supports PNG, JPG, GIF, WebP (Max 8MB)
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* URL Tab Body */}
+                        {imageTab === 'url' && (
+                            <div style={{ marginBottom: 14 }}>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>
+                                    Image URL
+                                </label>
+                                <input
+                                    value={imageUrl}
+                                    onChange={e => setImageUrl(e.target.value)}
+                                    placeholder="https://example.com/banner.jpg"
+                                    style={inputStyle}
+                                    autoFocus
+                                />
+                                {imageUrl && (
+                                    <div style={{ marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 8, padding: 6, background: '#f8fafc', textAlign: 'center' }}>
+                                        <img
+                                            src={imageUrl}
+                                            alt="Preview"
+                                            onError={() => setImageError('Could not load image from this URL')}
+                                            style={{ maxHeight: 120, maxWidth: '100%', borderRadius: 4, objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {imageError && (
+                            <div style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', padding: '6px 10px', borderRadius: 6, marginBottom: 12 }}>
+                                {imageError}
+                            </div>
+                        )}
+
+                        {/* Display Controls: Width & Alignment */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>
+                                    Display Width
+                                </label>
+                                <select
+                                    value={imageWidth}
+                                    onChange={e => setImageWidth(e.target.value as any)}
+                                    style={{ ...inputStyle, padding: '0 8px' }}
+                                >
+                                    <option value="100%">Full Width (100% Banner)</option>
+                                    <option value="480px">Medium (480px)</option>
+                                    <option value="280px">Compact (280px)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>
+                                    Alignment
+                                </label>
+                                <select
+                                    value={imageAlign}
+                                    onChange={e => setImageAlign(e.target.value as any)}
+                                    style={{ ...inputStyle, padding: '0 8px' }}
+                                >
+                                    <option value="center">Center</option>
+                                    <option value="left">Left</option>
+                                    <option value="right">Right</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Optional Alt Text */}
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4b5563', marginBottom: 4 }}>
+                                Alt / Caption Text (Optional)
+                            </label>
+                            <input
+                                value={imageAlt}
+                                onChange={e => setImageAlt(e.target.value)}
+                                placeholder="e.g. HelferAI New Product Flyer"
+                                style={inputStyle}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <button
+                                type="button"
+                                onClick={() => setIsImageModalOpen(false)}
+                                style={secondaryBtnStyle}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleInsertImage}
+                                style={{ ...primaryBtnStyle, background: '#7c3aed' }}
+                            >
+                                Insert into Email
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -825,7 +1105,7 @@ const toolbarIconBtn = (active: boolean, disabled?: boolean): React.CSSPropertie
 });
 
 const toolbarPillBtn = (
-    variant: 'cta' | 'color' | 'variable' | 'default',
+    variant: 'cta' | 'color' | 'variable' | 'media' | 'default',
     active?: boolean
 ): React.CSSProperties => {
     const base: React.CSSProperties = {
@@ -851,6 +1131,15 @@ const toolbarPillBtn = (
             color: '#166534',
             borderColor: '#bbf7d0',
             boxShadow: '0 1px 2px rgba(22, 101, 52, 0.05)',
+        };
+    }
+    if (variant === 'media') {
+        return {
+            ...base,
+            background: '#f5f3ff',
+            color: '#6d28d9',
+            borderColor: '#ddd6fe',
+            boxShadow: '0 1px 2px rgba(109, 40, 217, 0.05)',
         };
     }
     if (variant === 'variable') {
@@ -1005,5 +1294,12 @@ const editorStyles = `
     color: #6c9e4e;
     text-decoration: underline;
     font-weight: 500;
+  }
+  .tiptap img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 14px 0;
+    display: inline-block;
   }
 `;
