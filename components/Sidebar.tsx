@@ -39,6 +39,7 @@ export const inventoryNav: NavGroup[] = [
         title: 'Merchant Management', items: [
             { href: '/inventory/businesses', icon: <Building2 size={18} />, label: 'Merchants' },
             { href: '/inventory/subscriptions', icon: <CreditCard size={18} />, label: 'Subscriptions' },
+            { href: '/inventory/cac-checks', icon: <ShieldCheck size={18} />, label: 'CAC checks' },
             { href: '/inventory/users', icon: <Users size={18} />, label: 'Platform Users' },
             { href: '/inventory/analysis', icon: <LineChart size={18} />, label: 'Analysis' },
         ],
