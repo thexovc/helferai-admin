@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import MultiSelectFilter from '@/components/MultiSelectFilter';
 import Topbar from '../Topbar';
 import StatusBadge from '../StatusBadge';
 import { formatDate, formatDateTime } from '@/app/lib/utils';
@@ -23,7 +24,7 @@ export default function UsersPageContent({ product }: Props) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
-    const [filterStatus, setFilterStatus] = useState('All');
+    const [filterStatus, setFilterStatus] = useState<string[]>([]);
     // Merchants where nobody has logged in for this many hours (0 = no filter)
     const [inactiveHours, setInactiveHours] = useState(0);
 
@@ -31,7 +32,7 @@ export default function UsersPageContent({ product }: Props) {
         page,
         pageSize,
         search,
-        status: filterStatus === 'All' ? '' : filterStatus,
+        status: filterStatus.join(','),
         inactiveHours: inactiveHours || undefined,
     });
 
@@ -107,16 +108,8 @@ export default function UsersPageContent({ product }: Props) {
                                 style={{ paddingLeft: 32, width: '100%', height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: 13, color: '#1a1a2e', outline: 'none' }}
                             />
                         </div>
-                        <select
-                            value={filterStatus}
-                            onChange={e => {
-                                setFilterStatus(e.target.value);
-                                setPage(1);
-                            }}
-                            style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
-                            <option value="All">All Statuses</option>
-                            {['Active', 'Suspended', 'Inactive'].map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
+                        <MultiSelectFilter label="Status" height={36} options={['Active', 'Suspended', 'Inactive']} selected={filterStatus}
+                            onChange={v => { setFilterStatus(v); setPage(1); }} />
                         <select
                             value={inactiveHours}
                             onChange={e => {

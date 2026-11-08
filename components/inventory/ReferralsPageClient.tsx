@@ -6,6 +6,7 @@ import { Search, UserPlus } from 'lucide-react';
 import Topbar from '../Topbar';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import MultiSelectFilter from '../MultiSelectFilter';
 import MerchantLogo from './MerchantLogo';
 import ToggleValue from './ToggleValue';
 import { compactCount, fullCount } from './formatNumbers';
@@ -103,7 +104,9 @@ export default function ReferralsPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
-    const [show, setShow] = useState('');
+    // Several can be picked; a merchant matching any of them shows. Empty = All
+    const [shows, setShows] = useState<string[]>([]);
+    const show = shows.join(',');
     const [sort, setSort] = useState('referred');
     const [viewing, setViewing] = useState<string | null>(null);
     const debounced = useDebouncedValue(search);
@@ -136,7 +139,7 @@ export default function ReferralsPageClient() {
                         { label: 'Businesses referred', value: s?.referred, sub: 'Signed up with a code', show: '' },
                         { label: 'Points from referrals', value: s?.pointsFromReferrals, sub: 'Earned by referrers', show: '' },
                     ].map(k => (
-                        <button key={k.label} onClick={() => k.show && setShow(show === k.show ? '' : k.show)}
+                        <button key={k.label} onClick={() => k.show && setShows(show === k.show ? [] : [k.show])}
                             style={{ textAlign: 'left', background: '#fff', borderRadius: 14, padding: '14px 16px', border: k.show && show === k.show ? '1.5px solid #6c9e4e' : '1px solid #f0f0f0', cursor: k.show ? 'pointer' : 'default' }}>
                             <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a2e' }} onClick={e => e.stopPropagation()}>
                                 {isLoading ? '...' : <ToggleValue short={compactCount(k.value || 0)} full={fullCount(k.value || 0)} />}
@@ -155,12 +158,9 @@ export default function ReferralsPageClient() {
                             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search merchant or code"
                                 style={{ height: 36, width: '100%', border: '1px solid #e5e7eb', borderRadius: 8, padding: '0 10px 0 30px', fontSize: 13, outline: 'none' }} />
                         </div>
-                        <select value={show} onChange={e => setShow(e.target.value)} style={{ height: 36, border: '1px solid #e5e7eb', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff' }}>
-                            <option value="">All merchants</option>
-                            <option value="referrers">Have referred someone</option>
-                            <option value="with_code">Have a code</option>
-                            <option value="no_code">No code yet</option>
-                        </select>
+                        <MultiSelectFilter label="Show" height={36} selected={shows}
+                            options={[{ value: 'referrers', label: 'Have referred someone' }, { value: 'with_code', label: 'Have a code' }, { value: 'no_code', label: 'No code yet' }]}
+                            onChange={setShows} />
                         <select value={sort} onChange={e => setSort(e.target.value)} style={{ height: 36, border: '1px solid #e5e7eb', borderRadius: 8, padding: '0 10px', fontSize: 13, background: '#fff' }}>
                             <option value="referred">Most referred</option>
                             <option value="points">Most points from referrals</option>

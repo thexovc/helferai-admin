@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import Link from 'next/link';
 import Topbar from '../Topbar';
 import { formatCurrency, formatDate, getDaysRemainingColor } from '@/app/lib/utils';
 import { Search, CreditCard, RefreshCw, XCircle, CheckCircle, Clock, TrendingUp, Plus, Edit2, Trash2, Building2, Calendar, ShieldCheck } from 'lucide-react';
@@ -11,11 +10,13 @@ import { toast } from 'sonner';
 import Modal from '../Modal';
 import ConfirmModal from '../ConfirmModal';
 import SearchableSelect from '../SearchableSelect';
+import MultiSelectFilter from '../MultiSelectFilter';
+import SubscriptionHistoryModal from './SubscriptionHistoryModal';
 import ToggleValue from './ToggleValue';
 import { compactNaira, fullNaira, compactCount, fullCount } from './formatNumbers';
 
-const STATUS_OPTIONS = ['All', 'Expiring soon', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
-const BILLING_OPTIONS = ['All', 'Monthly', 'Annual'];
+const STATUS_OPTIONS = ['Expiring soon', 'Active', 'Trial', 'Expired', 'Cancelled', 'Unpaid checkout'];
+const BILLING_OPTIONS = ['Monthly', 'Annual'];
 
 const statusStyle: Record<string, { bg: string; color: string }> = {
     Active: { bg: '#dcfce7', color: '#15803d' },
@@ -41,9 +42,13 @@ export default function SubscriptionsPageClient() {
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [planFilter, setPlanFilter] = useState('All');
-    const [statusFilter, setStatusFilter] = useState('All');
-    const [billingFilter, setBillingFilter] = useState('All');
+    // Each filter can hold several values; empty = All
+    const [planFilter, setPlanFilter] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState<string[]>([]);
+    const [billingFilter, setBillingFilter] = useState<string[]>([]);
+    const showsExpiring = statusFilter.includes('Expiring soon');
+    // Merchant whose subscription history is open
+    const [historyFor, setHistoryFor] = useState<{ id: string; name: string; email?: string } | null>(null);
     // "Expiring soon": running subscriptions that end within this many days
     const [expiringDays, setExpiringDays] = useState('5');
     const daysValue = Math.min(Math.max(parseInt(expiringDays) || 0, 1), 365);
@@ -60,10 +65,10 @@ export default function SubscriptionsPageClient() {
         page,
         pageSize,
         search: debouncedSearch,
-        plan: planFilter === 'All' ? '' : planFilter,
-        status: statusFilter === 'All' ? '' : statusFilter === 'Expiring soon' ? 'expiring' : statusFilter,
-        expiringDays: statusFilter === 'Expiring soon' ? daysValue : undefined,
-        billing: billingFilter === 'All' ? '' : billingFilter,
+        plan: planFilter.join(','),
+        status: statusFilter.map(x => x === 'Expiring soon' ? 'expiring' : x).join(','),
+        expiringDays: showsExpiring ? daysValue : undefined,
+        billing: billingFilter.join(','),
     });
 
     const [businessSelectSearch, setBusinessSelectSearch] = useState('');
@@ -207,7 +212,7 @@ export default function SubscriptionsPageClient() {
         padding: '12px 14px', fontSize: 13, color: '#374151', borderBottom: '1px solid #f5f5f5',
     };
 
-    const planOptions = ['All', ...(plansData?.map(p => p.name) || ['Enterprise', 'Pro', 'Basic', 'Basic Helfer'])];
+    const planOptions = [...(plansData?.map(p => p.name) || ['Enterprise', 'Pro', 'Basic', 'Basic Helfer'])];
 
     return (
         <div>
@@ -267,13 +272,11 @@ export default function SubscriptionsPageClient() {
                             { label: 'Status', value: statusFilter, setValue: setStatusFilter, options: STATUS_OPTIONS },
                             { label: 'Billing', value: billingFilter, setValue: setBillingFilter, options: BILLING_OPTIONS },
                         ].map(f => (
-                            <select key={f.label} value={f.value} onChange={e => { f.setValue(e.target.value); setPage(1); }}
-                                style={{ height: 34, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 12, background: '#f9fafb', outline: 'none', color: '#374151', cursor: 'pointer' }}>
-                                {f.options.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
+                            <MultiSelectFilter key={f.label} label={f.label} options={f.options} selected={f.value}
+                                onChange={v => { f.setValue(v); setPage(1); }} />
                         ))}
 
-                        {statusFilter === 'Expiring soon' && (
+                        {showsExpiring && (
                             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', height: 34, padding: '0 10px', borderRadius: 8, border: '1px solid #fde68a', background: '#fffbeb' }}>
                                 within
                                 <input type="number" min={1} max={365} value={expiringDays}
@@ -319,14 +322,16 @@ export default function SubscriptionsPageClient() {
                                     const sc = statusStyle[s.status] || { bg: '#f3f4f6', color: '#6b7280' };
                                     return (
                                         <tr key={s.id}
-                                            style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s' }}>
+                                            onClick={() => setHistoryFor({ id: String(s.businessId), name: s.businessName, email: s.businessEmail })}
+                                            title="See this merchant's subscription history"
+                                            onMouseEnter={e => { e.currentTarget.style.background = '#f3f8ef'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafafa'; }}
+                                            style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', transition: 'background 0.15s', cursor: 'pointer' }}>
 
                                             {/* Business */}
                                             <td style={tdStyle}>
-                                                <Link href={`/inventory/businesses/${s.businessId}`} style={{ textDecoration: 'none' }}>
-                                                    <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 13 }}>{s.businessName}</div>
-                                                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{s.businessEmail}</div>
-                                                </Link>
+                                                <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 13 }}>{s.businessName}</div>
+                                                <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{s.businessEmail}</div>
                                             </td>
 
                                             {/* Plan */}
@@ -375,7 +380,7 @@ export default function SubscriptionsPageClient() {
                                             </td>
 
                                             {/* Actions */}
-                                            <td style={tdStyle}>
+                                            <td style={tdStyle} onClick={e => e.stopPropagation()}>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     <button
                                                         onClick={() => handleAction('edit', s)}
@@ -409,6 +414,8 @@ export default function SubscriptionsPageClient() {
                     </div>
                 </div>
             </div>
+
+            <SubscriptionHistoryModal merchant={historyFor} onClose={() => setHistoryFor(null)} />
 
             <Modal
                 isOpen={isModalOpen}

@@ -5,6 +5,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import Topbar from '../Topbar';
 import { Search, Activity } from 'lucide-react';
 import Pagination from '../Pagination';
+import MultiSelectFilter from '../MultiSelectFilter';
 import { formatDateTime } from '@/app/lib/utils';
 import { inventoryClient } from '@/api/api-client';
 import { useDebouncedValue } from '@/app/lib/useDebouncedValue';
@@ -18,8 +19,11 @@ export default function UserActivityLogsPageClient() {
     const [page, setPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
-    const [adminId, setAdminId] = React.useState('');
-    const [type, setType] = React.useState('');
+    // Each filter can hold several values; empty = All
+    const [adminIds, setAdminIds] = React.useState<string[]>([]);
+    const [types, setTypes] = React.useState<string[]>([]);
+    const adminId = adminIds.join(',');
+    const type = types.join(',');
     const debounced = useDebouncedValue(search);
     React.useEffect(() => setPage(1), [debounced, adminId, type]);
 
@@ -57,16 +61,12 @@ export default function UserActivityLogsPageClient() {
                             style={{ width: '100%', height: 44, paddingLeft: 44, paddingRight: 16, borderRadius: 12, border: '1px solid #e5e7eb', background: '#fff', outline: 'none', fontSize: 14, color: '#1a1a2e' }}
                         />
                     </div>
-                    <select value={adminId} onChange={e => setAdminId(e.target.value)} style={selectStyle}>
-                        <option value="">All admins</option>
-                        {admins.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                    <select value={type} onChange={e => setType(e.target.value)} style={selectStyle}>
-                        <option value="">Sign-ins and changes</option>
-                        <option value="logins">Sign-ins only</option>
-                        <option value="changes">Changes only</option>
-                        <option value="failed">Failed attempts</option>
-                    </select>
+                    <MultiSelectFilter label="Admin" height={44} selected={adminIds}
+                        options={admins.map(a => ({ value: String(a.id), label: a.name }))}
+                        onChange={setAdminIds} />
+                    <MultiSelectFilter label="Type" height={44} selected={types}
+                        options={[{ value: 'logins', label: 'Sign-ins' }, { value: 'changes', label: 'Changes' }, { value: 'failed', label: 'Failed attempts' }]}
+                        onChange={setTypes} />
                 </div>
 
                 <div className="table-container">

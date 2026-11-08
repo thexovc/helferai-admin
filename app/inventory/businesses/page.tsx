@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import Modal from '@/components/Modal';
 import ConfirmModal from '@/components/ConfirmModal';
 import SearchableSelect from '@/components/SearchableSelect';
+import MultiSelectFilter from '@/components/MultiSelectFilter';
 import dynamic from 'next/dynamic';
 
 const EmailComposerModal = dynamic(() => import('@/components/EmailComposerModal'), { ssr: false });
@@ -29,8 +30,9 @@ export default function BusinessesPage() {
     const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [activeFilter, setActiveFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All');
+    // Each filter can hold several values; empty = All
+    const [activeFilter, setActiveFilter] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState<string[]>([]);
     const [selectedBizForEmail, setSelectedBizForEmail] = useState<any | null>(null);
 
     // Debounce search input to avoid re-triggering requests on every keystroke
@@ -42,31 +44,26 @@ export default function BusinessesPage() {
         return () => clearTimeout(handler);
     }, [search]);
 
-    // Mapper for API filters
-    const filterKey = (() => {
-        if (activeFilter) {
-            const map: Record<string, string> = {
-                'Expiring in 5 Days': 'expiring_5d',
-                'Expiring in 30 Days': 'expiring_30d',
-                'Trial Ending in 3 Days': 'trial_ending_3d',
-                'High Paying': 'high_paying',
-                'Annual Plan': 'annual_plan',
-                'Auto Renew Off': 'auto_renew_off',
-                'Inactive 30 Days': 'inactive_30d',
-                'Recently Upgraded': 'recently_upgraded',
-                'Converted from Trial': 'converted_trial',
-                'Downgraded Recently': 'recently_downgraded'
-            };
-            return map[activeFilter] || '';
-        }
-        if (statusFilter !== 'All') {
-            return statusFilter.toLowerCase();
-        }
-        return '';
-    })();
+    // Mapper for API filters: quick filters and statuses go together, comma separated
+    const QUICK_KEYS: Record<string, string> = {
+        'Expiring in 5 Days': 'expiring_5d',
+        'Expiring in 30 Days': 'expiring_30d',
+        'Trial Ending in 3 Days': 'trial_ending_3d',
+        'High Paying': 'high_paying',
+        'Annual Plan': 'annual_plan',
+        'Auto Renew Off': 'auto_renew_off',
+        'Inactive 30 Days': 'inactive_30d',
+        'Recently Upgraded': 'recently_upgraded',
+        'Converted from Trial': 'converted_trial',
+        'Downgraded Recently': 'recently_downgraded'
+    };
+    const filterKey = [
+        ...activeFilter.map(f => QUICK_KEYS[f]).filter(Boolean),
+        ...statusFilter.map(f => f.toLowerCase()),
+    ].join(',');
 
-    const [managerFilter, setManagerFilter] = useState('');
-    const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey, managerFilter);
+    const [managerFilter, setManagerFilter] = useState<string[]>([]);
+    const { data: businessesResponse, isLoading, isFetching } = useInventoryBusinesses(page, pageSize, debouncedSearch, filterKey, managerFilter.join(','));
     // Admins who can look after a merchant (Merchant Manager)
     const { data: adminsResponse } = useInventoryAdmins(1, 100, '');
     const adminOptions: any[] = adminsResponse?.data || [];
@@ -202,25 +199,8 @@ export default function BusinessesPage() {
 
                 {/* Quick filter */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                    <label htmlFor="quick-filter" style={{ fontSize: 13, fontWeight: 600, color: '#6b7280' }}>Show</label>
-                    <select
-                        id="quick-filter"
-                        value={activeFilter}
-                        onChange={e => { setActiveFilter(e.target.value); setPage(1); }}
-                        style={{
-                            height: 38, padding: '0 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer',
-                            border: activeFilter ? '1px solid #6c9e4e' : '1px solid #e5e7eb',
-                            background: activeFilter ? '#eaf4e3' : '#fff', color: activeFilter ? '#3f7d2c' : '#374151',
-                        }}
-                    >
-                        <option value="">All merchants</option>
-                        {SORT_FILTERS.map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                    {activeFilter && (
-                        <button onClick={() => { setActiveFilter(''); setPage(1); }} style={{ border: 'none', background: 'none', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
-                            Clear
-                        </button>
-                    )}
+                    <MultiSelectFilter label="Show" height={38} options={SORT_FILTERS} selected={activeFilter}
+                        onChange={v => { setActiveFilter(v); setPage(1); }} />
                 </div>
 
                 {/* Table Card */}
@@ -238,15 +218,11 @@ export default function BusinessesPage() {
                                 <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#6c9e4e' }} />
                             )}
                         </div>
-                        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
-                            <option>All</option>
-                            {['Active', 'Trial', 'Expired', 'Cancelled'].map(s => <option key={s}>{s}</option>)}
-                        </select>
-                        <select value={managerFilter} onChange={e => { setManagerFilter(e.target.value); setPage(1); }} style={{ height: 36, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', fontSize: 13, background: '#f9fafb', color: '#374151', outline: 'none' }}>
-                            <option value="">All merchant managers</option>
-                            <option value="none">No merchant manager</option>
-                            {adminOptions.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
+                        <MultiSelectFilter label="Status" height={36} options={['Active', 'Trial', 'Expired', 'Cancelled']} selected={statusFilter}
+                            onChange={v => { setStatusFilter(v); setPage(1); }} />
+                        <MultiSelectFilter label="Merchant manager" height={36} selected={managerFilter}
+                            options={[{ value: 'none', label: 'No merchant manager' }, ...adminOptions.map(a => ({ value: String(a.id), label: a.name }))]}
+                            onChange={v => { setManagerFilter(v); setPage(1); }} />
                         <button
                             onClick={() => handleOpenModal()}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 36, background: '#6c9e4e', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(108,158,78,0.2)' }}>

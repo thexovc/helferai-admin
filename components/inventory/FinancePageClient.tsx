@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import MultiSelectFilter from '../MultiSelectFilter';
 import Link from 'next/link';
 import Topbar from '../Topbar';
 import { useInventoryFinance, useFinanceSubscriptions } from '@/api/inventory/inventory.queries';
@@ -74,12 +75,13 @@ export default function InventoryFinancePageClient() {
     const [page, setPage] = React.useState(1);
     const [pageSize, setPageSize] = React.useState(10);
     const [search, setSearch] = React.useState('');
-    const [planFilter, setPlanFilter] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState('');
+    // Each filter can hold several values; empty = All
+    const [planFilter, setPlanFilter] = React.useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
 
     const { startDate, endDate } = getRangeDates(selectedRange, customStart, customEnd);
     const { data: financeData, isLoading, isFetching, isError } = useInventoryFinance(startDate, endDate);
-    const { data: subsPage, isFetching: subsLoading } = useFinanceSubscriptions(page, pageSize, search, planFilter, statusFilter);
+    const { data: subsPage, isFetching: subsLoading } = useFinanceSubscriptions(page, pageSize, search, planFilter.join(','), statusFilter.join(','));
 
     const today = toYMD(new Date());
     const draftValid = !!draftStart && !!draftEnd && draftStart <= draftEnd;
@@ -292,16 +294,11 @@ export default function InventoryFinancePageClient() {
                                 <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                                 <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search merchant…" style={{ paddingLeft: 42, paddingRight: 16, width: '100%', height: 44, borderRadius: 12, border: '1px solid #f1f5f9', background: '#f8fafc', fontSize: 13, outline: 'none', color: '#1a1a2e', fontWeight: 500 }} />
                             </div>
-                            <select value={planFilter} onChange={e => { setPlanFilter(e.target.value); setPage(1); }} style={selectStyle}>
-                                <option value="">All plans</option>
-                                {['Basic', 'Smart', 'Genius', 'Platinum', 'Enterprise'].map(p => <option key={p} value={p}>{p} Helfer</option>)}
-                            </select>
-                            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} style={selectStyle}>
-                                <option value="">All statuses</option>
-                                <option>Active</option>
-                                <option>Expiring Soon</option>
-                                <option>Expired</option>
-                            </select>
+                            <MultiSelectFilter label="Plan" height={44} selected={planFilter}
+                                options={['Basic', 'Smart', 'Genius', 'Platinum', 'Enterprise'].map(p => ({ value: p, label: `${p} Helfer` }))}
+                                onChange={v => { setPlanFilter(v); setPage(1); }} />
+                            <MultiSelectFilter label="Status" height={44} options={['Active', 'Expiring Soon', 'Expired']} selected={statusFilter}
+                                onChange={v => { setStatusFilter(v); setPage(1); }} />
                             {subsLoading && <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>Updating…</span>}
                         </div>
                     </div>
