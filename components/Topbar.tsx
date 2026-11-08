@@ -2,12 +2,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Search, User, Menu, Building2, CreditCard, ShieldAlert, CalendarClock, UserPlus, Hourglass, Gift } from 'lucide-react';
+import { Bell, Search, User, Menu, Building2, CreditCard, ShieldAlert, ShieldCheck, CalendarClock, UserPlus, Hourglass, Gift } from 'lucide-react';
 import { useLayout } from '@/app/lib/LayoutContext';
 import { inventoryClient } from '@/api/api-client';
 import PushToggle, { PushPrompt } from './PushToggle';
 
-type Alert = { id: string; kind: 'merchant' | 'payment' | 'security' | 'expiring' | 'staff' | 'trial' | 'referral'; title: string; detail: string; at: string; endsAt?: string; link: string };
+type Alert = { id: string; kind: 'merchant' | 'payment' | 'security' | 'expiring' | 'staff' | 'trial' | 'referral' | 'cac'; title: string; detail: string; at: string; endsAt?: string; link: string };
 const SEEN_KEY = 'adminAlertsSeenAt';
 const ago = (d: string) => {
     const m = Math.round((Date.now() - new Date(d).getTime()) / 60000);
@@ -23,6 +23,7 @@ const KIND = {
     trial: { icon: Hourglass, bg: '#fef3c7', color: '#b45309' },
     staff: { icon: UserPlus, bg: '#f3e8ff', color: '#7c3aed' },
     referral: { icon: Gift, bg: '#eaf4e3', color: '#3f7d2c' },
+    cac: { icon: ShieldCheck, bg: '#fef3c7', color: '#b45309' },
 };
 
 // Bell: what happened on the pages this admin's role can open (new merchants,

@@ -6,6 +6,7 @@ import { FileText, Plus, Edit2, Trash2, Search, X, ChevronUp, ChevronDown, Check
 import Topbar from '../Topbar';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import MultiSelectFilter from '../MultiSelectFilter';
 import dynamic from 'next/dynamic';
 const RichTextEditor = dynamic(() => import('../RichTextEditor'), { ssr: false });
 import { inventoryClient } from '@/api/api-client';
@@ -43,8 +44,11 @@ export default function BlogPageClient() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [search, setSearch] = useState('');
-    const [section, setSection] = useState('');
-    const [status, setStatus] = useState('');
+    // Each filter can hold several values; empty = All
+    const [sectionFilter, setSectionFilter] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState<string[]>([]);
+    const section = sectionFilter.join(',');
+    const status = statusFilter.join(',');
     const debounced = useDebouncedValue(search);
     const [editing, setEditing] = useState<Post | null>(null);
     const [open, setOpen] = useState(false);
@@ -150,15 +154,11 @@ export default function BlogPageClient() {
                         <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
                         <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search by title or tag" style={{ ...input, background: '#fff', paddingLeft: 36 }} />
                     </div>
-                    <select value={section} onChange={e => { setSection(e.target.value); setPage(1); }} style={selectStyle}>
-                        <option value="">All sections</option>
-                        {sections.map(s => <option key={s}>{s}</option>)}
-                    </select>
-                    <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} style={selectStyle}>
-                        <option value="">Published and drafts</option>
-                        <option value="published">Published</option>
-                        <option value="draft">Drafts</option>
-                    </select>
+                    <MultiSelectFilter label="Section" height={40} options={sections} selected={sectionFilter}
+                        onChange={v => { setSectionFilter(v); setPage(1); }} />
+                    <MultiSelectFilter label="Status" height={40} selected={statusFilter}
+                        options={[{ value: 'published', label: 'Published' }, { value: 'draft', label: 'Drafts' }]}
+                        onChange={v => { setStatusFilter(v); setPage(1); }} />
                 </div>
 
                 <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f0f0f0', overflowX: 'auto' }}>
